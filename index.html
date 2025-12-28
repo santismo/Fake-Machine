@@ -221,7 +221,7 @@
       <div class="msg" id="msg">Tip: tap a bar to focus the piano + band on that chord (and play it).</div>
     </div>
 
-    <!-- MOVED UP: LEAD SHEET -->
+    <!-- LEAD SHEET -->
     <section class="card" id="cardLead">
       <div class="cardHead">
         <div class="title">Lead sheet</div>
@@ -232,7 +232,7 @@
       </div>
     </section>
 
-    <!-- MOVED UP: PIANO -->
+    <!-- PIANO -->
     <section class="card" id="cardPiano">
       <div class="cardHead">
         <div class="title">🎹</div>
@@ -251,7 +251,7 @@
       </div>
     </section>
 
-    <!-- Controls (moved down) -->
+    <!-- Controls -->
     <section class="card" id="cardControls">
       <div class="cardHead">
         <div class="title">Controls</div>
@@ -364,7 +364,7 @@
       </div>
     </section>
 
-    <!-- CHORD LIMITERS (moved down) -->
+    <!-- CHORD LIMITERS -->
     <section class="card" id="cardLimiters">
       <div class="cardHead">
         <div class="title">Chord limiters</div>
@@ -424,7 +424,7 @@
         </div>
       </div>
       <div class="modalBody">
-        <div class="msg" style="margin:0 0 10px 0;">Menu order (Controls grid). More advanced stuff can live here later.</div>
+        <div class="msg" style="margin:0 0 10px 0;">Menu order (main sections). More advanced stuff can live here later.</div>
         <div id="orderList"></div>
       </div>
     </div>
@@ -434,10 +434,10 @@
 /* =========================================================
    FIXES + UPDATES:
    ✅ Bug fix: after Play -> Pause, tapping chords still previews sound
-      (previously it only "jumped" because isPlaying stayed true)
    ✅ Random button: randomizes ALL settings + chord limiters, then generates
-   ✅ Layout: Lead sheet + Piano moved under header; controls/limiters moved down
-   ✅ Gear icon: opens Advanced Settings modal to reorder Controls menu tiles
+   ✅ Advanced gear menu now reorders MAIN SECTIONS:
+      Lead sheet / Piano / Controls / Chord limiters
+      (NOT individual control tiles)
    ========================================================= */
 
 const NOTE_NAMES = ["C","C#","D","Eb","E","F","F#","G","Ab","A","Bb","B"];
@@ -816,7 +816,6 @@ function renderSheet(){
     div.className = "bar" + (i===state.activeIndex ? " active" : "");
     div.innerHTML = `<div class="sym">${chordName(ch)}</div><div class="num">${i+1}</div>`;
 
-    // ✅ FIX: when paused, still preview chord (previously would "jump" and not play)
     div.addEventListener("click", async ()=>{
       state.activeIndex = i;
       renderSheet();
@@ -828,8 +827,6 @@ function renderSheet(){
         player.jumpToBar(i);
         els.msg.textContent = `Jumped to: ${chordName(target)}`;
       } else {
-        // if paused OR stopped: preview should always work
-        // also set the resume bar when paused so playback continues from here
         if (player.isPlaying && player.isPaused) player.setResumeBar(i);
         await player.previewChord(target);
         els.msg.textContent = `Preview: ${chordName(target)}`;
@@ -1122,20 +1119,16 @@ els.btnGenerate.addEventListener("click", generateAndRender);
 
 /* ========= Randomize everything ========= */
 function randomizeAllSettings(){
-  // bars
   const barsChoices = [8,16,32];
   state.bars = pick(barsChoices);
 
-  // tempo / swing / chaos
   state.tempo = rint(70, 210);
   state.swing = rint(52, 72);
   state.chaos = rint(0, 100);
 
-  // modes
   state.rootMode = pick(["keyed","drifting","orbiting","freefall"]);
   state.bandMode = pick(["comp","ballad","modal","free","broken"]);
 
-  // presets
   els.bassPreset.value = pick(["upright","round","sub","pluck"]);
   els.keysPreset.value = pick(["ep","piano","organ","pad"]);
   els.drumsPreset.value = pick(["jazz","brushes","tight","lofi"]);
@@ -1143,7 +1136,6 @@ function randomizeAllSettings(){
   els.drumsLevel.value = dl;
   els.drumsLevelNum.value = dl;
 
-  // chord limiters (random, but keep it musically sane)
   const lim = {
     qMaj7: chance(0.85),
     qMin7: chance(0.85),
@@ -1161,13 +1153,10 @@ function randomizeAllSettings(){
     tSlash: chance(0.30),
     tChrom: chance(0.30),
   };
-
-  // ensure at least one core quality
   if (!lim.qMaj7 && !lim.qMin7 && !lim.qDom7 && !lim.qDim7 && !lim.qHalfDim && !lim.qSus){
     lim.qDom7 = true;
   }
 
-  // push into UI
   els.barsSel.value = String(state.bars);
 
   els.tempo.value = state.tempo;
@@ -1184,10 +1173,8 @@ function randomizeAllSettings(){
 
   setChordLimiterState(lim);
 
-  // update derived weights (reset to macro for new chaos)
   state.weights = macroToWeights(state.chaos);
 
-  // update audio presets + level right away
   player.setPresets(els.bassPreset.value, els.keysPreset.value, els.drumsPreset.value);
   player.setDrumsLevel((Number(els.drumsLevel.value)||55)/100);
 
@@ -1197,65 +1184,64 @@ function randomizeAllSettings(){
 }
 els.btnRandom.addEventListener("click", randomizeAllSettings);
 
-/* ========= Advanced settings: reorder controls ========= */
-const DEFAULT_CTL_ORDER = ["generate","bars","tempo","swing","chaos","rootMode","bandMode","bassPreset","keysPreset","drumsPreset","drumsLevel"];
-const CTL_LABELS = {
-  generate:"Generate",
-  bars:"Length",
-  tempo:"Tempo",
-  swing:"Swing",
-  chaos:"Chaos",
-  rootMode:"Root mode",
-  bandMode:"Band mode",
-  bassPreset:"Bass sound",
-  keysPreset:"Keys sound",
-  drumsPreset:"Drums sound",
-  drumsLevel:"Drums level"
+/* ========= Advanced settings: reorder MAIN SECTIONS ========= */
+const DEFAULT_SECTION_ORDER = ["cardLead","cardPiano","cardControls","cardLimiters"];
+const SECTION_LABELS = {
+  cardLead: "Lead sheet",
+  cardPiano: "Piano display",
+  cardControls: "Controls",
+  cardLimiters: "Chord limiters",
 };
 
-function getCtlOrder(){
+function getSectionOrder(){
   try{
-    const raw = localStorage.getItem("fm_ctl_order");
-    if (!raw) return DEFAULT_CTL_ORDER.slice();
+    const raw = localStorage.getItem("fm_section_order");
+    if (!raw) return DEFAULT_SECTION_ORDER.slice();
     const arr = JSON.parse(raw);
-    // validate
-    const set = new Set(DEFAULT_CTL_ORDER);
+
+    const set = new Set(DEFAULT_SECTION_ORDER);
     const cleaned = arr.filter(x=>set.has(x));
-    // add any missing
-    for (const x of DEFAULT_CTL_ORDER) if (!cleaned.includes(x)) cleaned.push(x);
+
+    for (const x of DEFAULT_SECTION_ORDER) if (!cleaned.includes(x)) cleaned.push(x);
     return cleaned;
   }catch{
-    return DEFAULT_CTL_ORDER.slice();
+    return DEFAULT_SECTION_ORDER.slice();
   }
-}
-function setCtlOrder(order){
-  localStorage.setItem("fm_ctl_order", JSON.stringify(order));
 }
 
-function applyCtlOrder(order){
-  const grid = els.controlsGrid;
-  const nodes = new Map();
-  [...grid.querySelectorAll("[data-ctl]")].forEach(n=>{
-    nodes.set(n.getAttribute("data-ctl"), n);
-  });
-  // append in requested order
-  for (const key of order){
-    const node = nodes.get(key);
-    if (node) grid.appendChild(node);
+function setSectionOrder(order){
+  localStorage.setItem("fm_section_order", JSON.stringify(order));
+}
+
+function applySectionOrder(order){
+  const app = document.querySelector(".app");
+  const header = app.querySelector(".header");
+  const sections = new Map();
+
+  for (const id of DEFAULT_SECTION_ORDER){
+    const el = document.getElementById(id);
+    if (el) sections.set(id, el);
   }
+
+  for (const id of order){
+    const el = sections.get(id);
+    if (el) app.appendChild(el);
+  }
+
+  if (header) app.insertBefore(header, app.firstChild);
 }
 
 function renderOrderModal(){
-  const order = getCtlOrder();
+  const order = getSectionOrder();
   els.orderList.innerHTML = "";
-  order.forEach((key, idx)=>{
+  order.forEach((id, idx)=>{
     const row = document.createElement("div");
     row.className = "modalRow";
     row.innerHTML = `
-      <div class="name">${idx+1}. ${CTL_LABELS[key] || key}</div>
+      <div class="name">${idx+1}. ${SECTION_LABELS[id] || id}</div>
       <div class="reorderBtns">
-        <button class="btn small" data-act="up" data-key="${key}">↑</button>
-        <button class="btn small" data-act="down" data-key="${key}">↓</button>
+        <button class="btn small" data-act="up" data-key="${id}">↑</button>
+        <button class="btn small" data-act="down" data-key="${id}">↓</button>
       </div>
     `;
     els.orderList.appendChild(row);
@@ -1265,17 +1251,19 @@ function renderOrderModal(){
     btn.addEventListener("click", ()=>{
       const act = btn.getAttribute("data-act");
       const key = btn.getAttribute("data-key");
-      const cur = getCtlOrder();
+      const cur = getSectionOrder();
       const i = cur.indexOf(key);
       if (i < 0) return;
+
       if (act==="up" && i>0){
         [cur[i-1], cur[i]] = [cur[i], cur[i-1]];
       } else if (act==="down" && i<cur.length-1){
         [cur[i+1], cur[i]] = [cur[i], cur[i+1]];
       }
-      setCtlOrder(cur);
+
+      setSectionOrder(cur);
       renderOrderModal();
-      applyCtlOrder(cur);
+      applySectionOrder(cur);
     });
   });
 }
@@ -1294,9 +1282,9 @@ els.advBack.addEventListener("click", (e)=>{
   if (e.target === els.advBack) closeAdv();
 });
 els.btnResetMenu.addEventListener("click", ()=>{
-  setCtlOrder(DEFAULT_CTL_ORDER.slice());
+  setSectionOrder(DEFAULT_SECTION_ORDER.slice());
   renderOrderModal();
-  applyCtlOrder(getCtlOrder());
+  applySectionOrder(getSectionOrder());
 });
 
 /* Band player */
@@ -1306,13 +1294,11 @@ const player = (() => {
   let tempo=120, swing=60, bandMode="comp", chart=[];
   let bassPreset="upright", keysPreset="ep", drumsPreset="jazz", drumsLevel=0.55;
 
-  // transport
   let startTime=0, timer=null, currentBar=0;
   const lookahead=0.18, interval=25;
 
-  // separate queues to keep UI perfectly in sync with bar start
-  let audioEvents=[];  // scheduled slightly ahead
-  let uiEvents=[];     // executed ONLY when time has reached event time
+  let audioEvents=[];
+  let uiEvents=[];
 
   function now(){ return ctx ? ctx.currentTime : 0; }
   function beatSec(){ return 60/tempo; }
@@ -1656,8 +1642,6 @@ const player = (() => {
   function togglePause(){
     if (!isPlaying) return;
     isPaused = !isPaused;
-
-    // If resuming, clear queues and start from "currentBar" (kept updated by setResumeBar/jumpToBar)
     if (!isPaused){
       audioEvents=[]; uiEvents=[];
       startTime = now() + 0.05;
@@ -1683,7 +1667,6 @@ const player = (() => {
     startTime = now() + 0.05;
   }
 
-  // ✅ NEW: when paused, tapping should set where playback resumes from (without breaking preview)
   function setResumeBar(i){
     currentBar = i;
   }
@@ -1742,8 +1725,8 @@ function setPresetsFromUI(){
   player.setDrumsLevel((Number(els.drumsLevel.value)||55)/100);
 }
 
-/* Apply saved control order on load */
-applyCtlOrder(getCtlOrder());
+/* Apply saved SECTION order on load */
+applySectionOrder(getSectionOrder());
 
 renderPianoBase();
 syncMeta();
