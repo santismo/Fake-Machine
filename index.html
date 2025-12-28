@@ -1,0 +1,1520 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+  <title>🎰 Fake Machine</title>
+  <style>
+    :root{
+      --bg:#0b0f14;
+      --panel:rgba(255,255,255,.05);
+      --panel2:rgba(0,0,0,.20);
+      --ink:#e9eef6;
+      --muted:#9aa6b2;
+      --line:rgba(255,255,255,.09);
+
+      --accent:#2f6bff;  /* scale fill */
+      --good:#3fe18b;    /* root dot */
+      --chord:#b67cff;   /* chord tone dot */
+
+      --keyWhite:#f2f5fb;
+      --keyBlack:#161b23;
+      --keyBorder:#c9d3e2;
+      --keyBlackBorder:#2a3240;
+
+      --radius:16px;
+      --tap:44px;
+      --shadow: 0 12px 30px rgba(0,0,0,.35);
+    }
+
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      background:
+        radial-gradient(1200px 800px at 30% 10%, rgba(122,162,255,.08), transparent 55%),
+        radial-gradient(900px 600px at 90% 30%, rgba(182,124,255,.08), transparent 55%),
+        var(--bg);
+      color:var(--ink);
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      -webkit-font-smoothing: antialiased;
+      overflow-x:hidden;
+      touch-action: manipulation;
+    }
+
+    button, input, select, label {font:inherit}
+    button { -webkit-tap-highlight-color: transparent; }
+    input[type="range"]{width:100%}
+
+    .app{max-width:1100px;margin:0 auto;padding:14px 12px 22px;}
+
+    .header{
+      padding:12px 12px;border:1px solid var(--line);border-radius: var(--radius);
+      background: var(--panel);box-shadow: var(--shadow);margin-bottom:12px;
+    }
+    .headerTop{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+    h1{margin:0;font-size:18px;font-weight:900;letter-spacing:.2px;}
+    .sub{margin-top:2px;color:var(--muted);font-size:12px;}
+    .statusLine{margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+    .pill{
+      padding:6px 10px;border:1px solid var(--line);border-radius:999px;
+      background: rgba(0,0,0,.18);color: var(--muted);font-size:12px;
+      user-select:none;white-space:nowrap;
+    }
+    .pill strong{color:var(--ink);font-weight:900}
+
+    .card{
+      border:1px solid var(--line);border-radius: var(--radius);
+      background: var(--panel);box-shadow: var(--shadow);
+      overflow:hidden;margin-bottom:12px;
+    }
+    .cardHead{
+      display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;
+      padding:12px 12px;border-bottom:1px solid rgba(255,255,255,.06);
+      background: rgba(0,0,0,.12);
+    }
+    .title{font-size:12px;color:var(--muted);letter-spacing:.2px;user-select:none;}
+    .cardBody{padding:12px}
+
+    .controls{display:grid;grid-template-columns: repeat(6, minmax(0,1fr));gap:10px;}
+    @media (max-width: 980px){ .controls{grid-template-columns: repeat(3, minmax(0,1fr));} }
+    @media (max-width: 520px){ .controls{grid-template-columns: repeat(2, minmax(0,1fr));} }
+
+    .control{
+      padding:10px;border-radius:14px;border:1px solid rgba(255,255,255,.08);
+      background: var(--panel2);min-width:0;
+    }
+    .control label{display:block;font-size:11px;color: rgba(154,166,178,.88);margin-bottom:6px;user-select:none;}
+    .inline{display:flex;align-items:center;gap:8px;min-width:0;}
+    input[type="number"], select{
+      width: 90px;min-height: 38px;background: rgba(0,0,0,.25);
+      border:1px solid rgba(255,255,255,.10);color: var(--ink);
+      border-radius: 10px;padding: 8px 8px;outline:none;
+    }
+    select{width:100%}
+    .btn{
+      min-height: var(--tap);
+      padding: 10px 12px;border-radius: 12px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+      color: var(--ink);cursor:pointer;
+      display:inline-flex;align-items:center;justify-content:center;gap:8px;
+      transition: transform .06s ease, border-color .15s ease;width:100%;
+    }
+    .btn:active{transform: translateY(1px)}
+    .btn.primary{
+      border-color: rgba(122,162,255,.45);
+      background: linear-gradient(180deg, rgba(122,162,255,.18), rgba(122,162,255,.06));
+    }
+    .btn.ghost{background: transparent}
+
+    .sheet{display:grid;grid-template-columns: repeat(4, minmax(0, 1fr));gap:10px;}
+    @media (max-width: 640px){ .sheet{grid-template-columns: repeat(2, minmax(0, 1fr));} }
+    .bar{
+      position:relative;min-height: 62px;background: rgba(0,0,0,.22);
+      border:1px solid rgba(255,255,255,.08);border-radius: 14px;
+      padding: 12px 10px 10px;cursor:pointer;
+      transition: border-color .15s ease, transform .06s ease, background .15s ease;
+      overflow:hidden;user-select:none;
+    }
+    .bar:active{transform: translateY(1px)}
+    .bar.active{border-color: rgba(122,162,255,.70);background: rgba(122,162,255,.08);}
+    .bar .sym{font-weight:900;letter-spacing:.2px;font-size:16px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:28px;}
+    .bar .num{position:absolute;top:10px;right:10px;font-size:12px;color: rgba(154,166,178,.55);}
+
+    .limitGrid{display:grid;grid-template-columns: repeat(3, minmax(0,1fr));gap:10px;}
+    @media (max-width: 820px){ .limitGrid{grid-template-columns: repeat(2, minmax(0,1fr));} }
+    @media (max-width: 520px){ .limitGrid{grid-template-columns: 1fr;} }
+
+    .checkRow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+    .chip{
+      display:inline-flex;align-items:center;gap:8px;padding:10px 10px;border-radius: 14px;
+      border:1px solid rgba(255,255,255,.08);background: rgba(0,0,0,.18);
+      min-height: 44px;user-select:none;
+    }
+    .chip input{transform: scale(1.1)}
+    .chip span{font-size:13px;color: rgba(233,238,246,.92)}
+
+    .legend{display:flex;gap:10px;flex-wrap:wrap;align-items:center;color: var(--muted);font-size:12px;user-select:none;margin-bottom:10px;}
+    .dotLegend{display:inline-flex;align-items:center;gap:6px;}
+    .sw{width:10px;height:10px;border-radius:999px;border:1px solid rgba(255,255,255,.15);}
+    .sw.scale{background: var(--accent); border-color: rgba(47,107,255,.95)}
+    .sw.root{background: var(--good); border-color: rgba(63,225,139,.95)}
+    .sw.chord{background: var(--chord); border-color: rgba(182,124,255,.95)}
+
+    .pianoBox{border:1px solid rgba(255,255,255,.10);border-radius: 16px;background: rgba(0,0,0,.18);overflow:hidden;}
+    svg{display:block;width:100%;height:auto}
+    .hint{margin-top:10px;color: rgba(154,166,178,.85);font-size:12px;line-height:1.2;user-select:none;}
+    .msg{margin-top:10px;font-size:12px;color: var(--muted);user-select:none;}
+  </style>
+</head>
+<body>
+  <div class="app">
+
+    <div class="header">
+      <div class="headerTop">
+        <div>
+          <h1>🎰 Fake Machine</h1>
+          <div class="sub">random jazz charts · band · keyboard display</div>
+        </div>
+        <div style="min-width:220px; width:min(420px,100%);">
+          <button class="btn ghost" id="btnCopy" style="width:48%; display:inline-flex;">Copy</button>
+          <button class="btn primary" id="btnPlay" style="width:48%; display:inline-flex; float:right;">Play</button>
+          <div style="clear:both"></div>
+        </div>
+      </div>
+
+      <div class="statusLine">
+        <span class="pill" id="pillLine">—</span>
+        <span class="pill">Bars: <strong id="metaBars">8</strong></span>
+        <span class="pill">Tempo: <strong id="metaTempo">120</strong></span>
+        <span class="pill">Swing: <strong id="metaSwing">60</strong></span>
+        <span class="pill">Chaos: <strong id="metaChaos">50</strong></span>
+      </div>
+
+      <div class="msg" id="msg">Tip: tap a bar to focus the piano + band on that chord (and play it).</div>
+    </div>
+
+    <!-- Controls -->
+    <section class="card">
+      <div class="cardHead">
+        <div class="title">Controls</div>
+        <div class="title">⚙️</div>
+      </div>
+      <div class="cardBody">
+        <div class="controls">
+          <div class="control">
+            <label>Generate</label>
+            <button class="btn primary" id="btnGenerate">Generate</button>
+          </div>
+
+          <div class="control">
+            <label>Length</label>
+            <select id="barsSel">
+              <option value="8" selected>8 bars</option>
+              <option value="16">16 bars</option>
+              <option value="32">32 bars</option>
+            </select>
+          </div>
+
+          <div class="control">
+            <label>Tempo</label>
+            <div class="inline">
+              <input id="tempo" type="range" min="60" max="220" value="120">
+              <input id="tempoNum" type="number" min="40" max="300" value="120">
+            </div>
+          </div>
+
+          <div class="control">
+            <label>Swing</label>
+            <div class="inline">
+              <input id="swing" type="range" min="50" max="75" value="60">
+              <input id="swingNum" type="number" min="50" max="80" value="60">
+            </div>
+          </div>
+
+          <div class="control">
+            <label>Chaos</label>
+            <div class="inline">
+              <input id="chaos" type="range" min="0" max="100" value="50">
+              <input id="chaosNum" type="number" min="0" max="100" value="50">
+            </div>
+          </div>
+
+          <div class="control">
+            <label>Root mode</label>
+            <select id="rootMode">
+              <option value="keyed" selected>Keyed</option>
+              <option value="drifting">Drifting</option>
+              <option value="orbiting">Orbiting</option>
+              <option value="freefall">Freefall</option>
+            </select>
+          </div>
+
+          <div class="control">
+            <label>Band mode</label>
+            <select id="bandMode">
+              <option value="comp" selected>Comp</option>
+              <option value="ballad">Ballad</option>
+              <option value="modal">Modal</option>
+              <option value="free">Free</option>
+              <option value="broken">Broken</option>
+            </select>
+          </div>
+
+          <div class="control">
+            <label>Bass sound</label>
+            <select id="bassPreset">
+              <option value="upright" selected>Upright</option>
+              <option value="round">Round</option>
+              <option value="sub">Sub</option>
+              <option value="pluck">Pluck</option>
+            </select>
+          </div>
+
+          <div class="control">
+            <label>Keys sound</label>
+            <select id="keysPreset">
+              <option value="ep" selected>EP</option>
+              <option value="piano">Piano</option>
+              <option value="organ">Organ</option>
+              <option value="pad">Pad</option>
+            </select>
+          </div>
+
+          <div class="control">
+            <label>Drums sound</label>
+            <select id="drumsPreset">
+              <option value="jazz" selected>Jazz kit</option>
+              <option value="brushes">Brushes</option>
+              <option value="tight">Tight</option>
+              <option value="lofi">Lo-fi</option>
+            </select>
+          </div>
+
+          <div class="control">
+            <label>Drums level</label>
+            <div class="inline">
+              <input id="drumsLevel" type="range" min="0" max="100" value="55">
+              <input id="drumsLevelNum" type="number" min="0" max="100" value="55">
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CHORD LIMITERS -->
+    <section class="card">
+      <div class="cardHead">
+        <div class="title">Chord limiters</div>
+        <div class="title">🎲</div>
+      </div>
+      <div class="cardBody">
+        <div class="limitGrid">
+          <div class="control">
+            <label>Core qualities</label>
+            <div class="checkRow">
+              <!-- DEFAULT: only maj7 / m7 / 7 / dim7 -->
+              <label class="chip"><input type="checkbox" id="qMaj7" checked><span>maj7</span></label>
+              <label class="chip"><input type="checkbox" id="qMin7" checked><span>m7</span></label>
+              <label class="chip"><input type="checkbox" id="qDom7" checked><span>7</span></label>
+              <label class="chip"><input type="checkbox" id="qDim7" checked><span>dim7</span></label>
+              <label class="chip"><input type="checkbox" id="qHalfDim"><span>ø7</span></label>
+              <label class="chip"><input type="checkbox" id="qSus"><span>sus</span></label>
+            </div>
+          </div>
+
+          <div class="control">
+            <label>Extensions</label>
+            <div class="checkRow">
+              <!-- DEFAULT: off -->
+              <label class="chip"><input type="checkbox" id="x9"><span>9</span></label>
+              <label class="chip"><input type="checkbox" id="x11"><span>11</span></label>
+              <label class="chip"><input type="checkbox" id="x13"><span>13</span></label>
+              <label class="chip"><input type="checkbox" id="x6"><span>6 / 6-9</span></label>
+            </div>
+          </div>
+
+          <div class="control">
+            <label>Tension</label>
+            <div class="checkRow">
+              <!-- DEFAULT: off -->
+              <label class="chip"><input type="checkbox" id="tAlt"><span>alt dom</span></label>
+              <label class="chip"><input type="checkbox" id="tSlash"><span>slash</span></label>
+              <label class="chip"><input type="checkbox" id="tChrom"><span>chromatic</span></label>
+            </div>
+          </div>
+        </div>
+
+        <div class="msg" style="margin-top:12px;">
+         🤖
+        </div>
+      </div>
+    </section>
+
+    <!-- LEAD SHEET -->
+    <section class="card">
+      <div class="cardHead">
+        <div class="title">Lead sheet</div>
+        <div class="title" id="leadKey">—</div>
+      </div>
+      <div class="cardBody">
+        <div class="sheet" id="sheet"></div>
+      </div>
+    </section>
+
+    <!-- PIANO -->
+    <section class="card">
+      <div class="cardHead">
+        <div class="title">🎹</div>
+        <div class="title" id="pianoTop">—</div>
+      </div>
+      <div class="cardBody">
+        <div class="legend">
+          <span class="dotLegend"><span class="sw scale"></span>Scale tones</span>
+          <span class="dotLegend"><span class="sw root"></span>Root</span>
+          <span class="dotLegend"><span class="sw chord"></span>Chord tones</span>
+        </div>
+        <div class="pianoBox">
+          <svg id="pianoSvg" viewBox="0 0 1000 240" preserveAspectRatio="none" aria-label="Piano keyboard"></svg>
+        </div>
+        <div class="hint" id="pianoHint">—</div>
+      </div>
+    </section>
+
+  </div>
+
+<script>
+/* =========================================================
+   - Tap a chord => plays that chord immediately (preview)
+   - Drums: more jazz ride + cymbal (swingy 8ths, hat chicks)
+   - Tight sync: UI updates happen on bar-start (no "next chord early")
+   - Default: 8 bars, only maj7/m7/7/dim7
+   - Chord-local scale per chord (E7 => E Mixolydian, etc.)
+   ========================================================= */
+
+const NOTE_NAMES = ["C","C#","D","Eb","E","F","F#","G","Ab","A","Bb","B"];
+const WHITE_PCS = new Set([0,2,4,5,7,9,11]);
+
+const SCALES = {
+  ionian:[0,2,4,5,7,9,11],
+  dorian:[0,2,3,5,7,9,10],
+  phryg:[0,1,3,5,7,8,10],
+  lydian:[0,2,4,6,7,9,11],
+  mixo:  [0,2,4,5,7,9,10],
+  aeolian:[0,2,3,5,7,8,10],
+  locrian:[0,1,3,5,6,8,10],
+};
+
+const CHORDS = {
+  maj7:[0,4,7,11],
+  maj9:[0,4,7,11,14],
+  maj6:[0,4,7,9],
+  "6/9":[0,4,7,9,14],
+
+  min7:[0,3,7,10],
+  min9:[0,3,7,10,14],
+  min6:[0,3,7,9],
+
+  dom7:[0,4,7,10],
+  dom9:[0,4,7,10,14],
+  dom13:[0,4,7,10,14,21],
+
+  sus:[0,5,7,10],
+  "7sus":[0,5,7,10,14],
+
+  halfdim:[0,3,6,10],
+  dim7:[0,3,6,9],
+};
+
+function clamp(n,a,b){ return Math.max(a, Math.min(b,n)); }
+function rint(a,b){ return Math.floor(a + Math.random()*(b-a+1)); }
+function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+function chance(p){ return Math.random() < p; }
+function pc(n){ return ((n%12)+12)%12; }
+function noteName(p){ return NOTE_NAMES[pc(p)]; }
+
+function weightedPick(opts){
+  const sum = opts.reduce((s,o)=>s+o.w,0);
+  let t = Math.random()*sum;
+  for (const o of opts){ t -= o.w; if (t<=0) return o.v; }
+  return opts[opts.length-1].v;
+}
+
+function chordName(ch){
+  const base = `${noteName(ch.root)}${ch.symbol}`;
+  return (ch.slash!=null) ? `${base}/${noteName(ch.slash)}` : base;
+}
+function chordTonesPCs(ch){
+  return [...new Set(ch.intervals.map(i=>pc(ch.root+i)))];
+}
+
+function macroToWeights(chaos){
+  const c = clamp(chaos,0,100)/100;
+  return {
+    keyStability: Math.round(85 - c*75),
+    functional:   Math.round(80 - c*70),
+    rootChaos:    Math.round(15 + c*80),
+    qualityChaos: Math.round(15 + c*75),
+    tension:      Math.round(10 + c*80),
+    memoryKill:   Math.round(40 + c*50),
+  };
+}
+
+function pickKeyMode(chaos){
+  const c = clamp(chaos,0,100)/100;
+  return weightedPick([
+    {v:"ionian", w: 55 - c*15},
+    {v:"dorian", w: 16 + c*10},
+    {v:"mixo",   w: 16 + c*10},
+    {v:"lydian", w:  7 + c*8},
+    {v:"aeolian",w:  5 + c*6},
+    {v:"locrian",w:  1 + c*5},
+  ]);
+}
+
+/* Limiters */
+function getChordLimiterState(){
+  return {
+    qMaj7: document.getElementById("qMaj7").checked,
+    qMin7: document.getElementById("qMin7").checked,
+    qDom7: document.getElementById("qDom7").checked,
+    qDim7: document.getElementById("qDim7").checked,
+    qHalfDim: document.getElementById("qHalfDim").checked,
+    qSus: document.getElementById("qSus").checked,
+
+    x9: document.getElementById("x9").checked,
+    x11: document.getElementById("x11").checked,
+    x13: document.getElementById("x13").checked,
+    x6: document.getElementById("x6").checked,
+
+    tAlt: document.getElementById("tAlt").checked,
+    tSlash: document.getElementById("tSlash").checked,
+    tChrom: document.getElementById("tChrom").checked,
+  };
+}
+
+function buildQualityOptions(limit){
+  const opts = [];
+
+  if (limit.qMaj7){
+    opts.push({v:{symbol:"maj7", family:"maj", key:"maj7", display:"maj7"}, w:22});
+    if (limit.x9) opts.push({v:{symbol:"maj9", family:"maj", key:"maj9", display:"maj9"}, w:12});
+    if (limit.x6) opts.push({v:{symbol:"6/9", family:"maj", key:"6/9", display:"6/9"}, w:10});
+    if (limit.x6) opts.push({v:{symbol:"maj6", family:"maj", key:"maj6", display:"6"}, w:7});
+  }
+
+  if (limit.qMin7){
+    opts.push({v:{symbol:"min7", family:"min", key:"min7", display:"m7"}, w:20});
+    if (limit.x9) opts.push({v:{symbol:"min9", family:"min", key:"min9", display:"m9"}, w:12});
+    if (limit.x6) opts.push({v:{symbol:"min6", family:"min", key:"min6", display:"m6"}, w:8});
+  }
+
+  if (limit.qDom7){
+    opts.push({v:{symbol:"dom7", family:"dom", key:"dom7", display:"7"}, w:22});
+    if (limit.x9) opts.push({v:{symbol:"dom9", family:"dom", key:"dom9", display:"9"}, w:14});
+    if (limit.x13) opts.push({v:{symbol:"dom13", family:"dom", key:"dom13", display:"13"}, w:12});
+  }
+
+  if (limit.qHalfDim) opts.push({v:{symbol:"halfdim", family:"hdim", key:"halfdim", display:"ø7"}, w:10});
+  if (limit.qDim7)    opts.push({v:{symbol:"dim7", family:"dim", key:"dim7", display:"dim7"}, w:8});
+
+  if (limit.qSus){
+    opts.push({v:{symbol:"sus", family:"sus", key:"sus", display:"sus"}, w:6});
+    if (limit.x9) opts.push({v:{symbol:"7sus", family:"sus", key:"7sus", display:"7sus"}, w:6});
+  }
+
+  if (!opts.length) opts.push({v:{symbol:"dom7", family:"dom", key:"dom7", display:"7"}, w:1});
+  return opts;
+}
+
+/* chord-local scale */
+function chordScaleModeForChord(ch){
+  if (ch.family === "maj") return "ionian";
+  if (ch.family === "min") return "dorian";
+  if (ch.family === "dom") return "mixo";
+  if (ch.family === "sus") return "mixo";
+  if (ch.family === "hdim") return "locrian";
+  if (ch.family === "dim") return "locrian";
+  return "mixo";
+}
+function scalePCsForChordLocal(ch){
+  const mode = chordScaleModeForChord(ch);
+  const base = SCALES[mode] || SCALES.mixo;
+  const pcs = new Set();
+  base.forEach(i => pcs.add(pc(ch.root + i)));
+  chordTonesPCs(ch).forEach(p=>pcs.add(p)); // ensure dots always on blue
+  return { pcs:[...pcs], mode };
+}
+
+/* Generator */
+function genChart({bars, chaos, rootMode, weights, limiter}){
+  let keyRoot = rint(0,11);
+  let keyMode = pickKeyMode(chaos);
+  let orbitRoot = keyRoot;
+
+  const qualityPool = buildQualityOptions(limiter);
+
+  const memory = { lastRoots:[], lastQuals:[] };
+  function remember(root, qualKey){
+    memory.lastRoots.unshift(root); if(memory.lastRoots.length>7) memory.lastRoots.pop();
+    memory.lastQuals.unshift(qualKey); if(memory.lastQuals.length>7) memory.lastQuals.pop();
+  }
+  function memoryBlocks(root, qualKey){
+    const kill = clamp(weights.memoryKill,0,100)/100;
+    if (kill <= 0.05) return false;
+    const blockRoot = memory.lastRoots.includes(root) && chance(kill*0.85);
+    const blockQual = memory.lastQuals.includes(qualKey) && chance(kill*0.65);
+    return blockRoot || blockQual;
+  }
+
+  const DEG = { I:0, ii:2, iii:4, IV:5, V:7, VI:9, viiø:11, bVII:10, bVI:8, i:0, iiø:2 };
+  const funcCells = [
+    ["ii","V","I","I"],
+    ["I","VI","ii","V"],
+    ["iii","VI","ii","V"],
+    ["I","IV","bVII","I"],
+    ["i","bVI","iiø","V"],
+  ];
+  function degreeToRoot(deg, baseRoot){ return pc(baseRoot + (DEG[deg] ?? rint(0,11))); }
+
+  function chooseNextRoot(prevRoot, i){
+    const c = clamp(weights.rootChaos,0,100)/100;
+    let cling = clamp(clamp(weights.keyStability,0,100)/100 * (1 - (chaos/100)*0.65), 0, 1);
+
+    if (rootMode === "keyed") cling = Math.max(cling, 0.78);
+    if (rootMode === "freefall") cling = Math.min(cling, 0.10);
+
+    if (rootMode === "drifting" && chance((chaos/100)*0.25)){
+      keyRoot = pc(keyRoot + pick([1,2,3,5,7,10,11]) * (chance(.5)?1:-1));
+      keyMode = pickKeyMode(chaos);
+    }
+    if (rootMode === "orbiting" && chance((chaos/100)*0.18)){
+      orbitRoot = pc(orbitRoot + pick([2,3,5,7,9,10]) * (chance(.5)?1:-1));
+    }
+
+    const funcBias = clamp(weights.functional,0,100)/100;
+    const useFunctional = chance(funcBias * (1 - (chaos/100)*0.55));
+    if (useFunctional && i % 4 === 0 && limiter.tChrom){
+      const cell = pick(funcCells);
+      const base = (rootMode==="orbiting") ? orbitRoot : keyRoot;
+      return degreeToRoot(cell[0], base);
+    }
+
+    const jumpsSane = [2,5,7,10,3,4,9,8,1,11];
+    const jumpsWild = [0,1,2,3,4,5,6,7,8,9,10,11];
+
+    const anchor = chance(cling);
+
+    if (anchor){
+      const base = (rootMode==="orbiting") ? orbitRoot : keyRoot;
+      const scale = SCALES[keyMode] || SCALES.ionian;
+      let target = pc(base + pick(scale));
+      if (limiter.tChrom && chance(c*0.25)) target = pc(target + (chance(.5)?1:-1));
+      return target;
+    } else {
+      if (prevRoot == null) return rint(0,11);
+      const pool = chance(c) ? jumpsWild : jumpsSane;
+      const step = pick(pool);
+      if (pool !== jumpsWild || chance(0.6)){
+        return pc(prevRoot + step * (chance(.5)?1:-1));
+      } else {
+        return rint(0,11);
+      }
+    }
+  }
+
+  function chooseQuality(){
+    const qC = clamp(weights.qualityChaos,0,100)/100;
+    const tweaked = qualityPool.map(o=>{
+      const boost = (chance(qC*0.55) ? (1 + Math.random()*0.35) : 1);
+      return {v:o.v, w:o.w*boost};
+    });
+    return weightedPick(tweaked);
+  }
+
+  const out = [];
+  let prevRoot = null;
+
+  for (let i=0;i<bars;i++){
+    let root = chooseNextRoot(prevRoot, i);
+    let q = chooseQuality();
+
+    let guard=0;
+    while (memoryBlocks(root, q.key) && guard<8){
+      root = chooseNextRoot(prevRoot, i);
+      q = chooseQuality();
+      guard++;
+    }
+
+    let intervals = (CHORDS[q.symbol] || CHORDS.dom7).slice();
+    let label = q.display;
+
+    const tC = clamp(weights.tension,0,100)/100;
+    const canAlt = limiter.tAlt && (q.family === "dom") && chance(tC*0.55) && chance((chaos/100)*0.75);
+    if (canAlt){
+      label = (label === "7" ? "7alt" : (label === "9" ? "9alt" : label + "alt"));
+      if (!intervals.includes(14)) intervals.push(14);
+      if (chance(0.55)) intervals.push(13);
+      if (chance(0.35)) intervals.push(15);
+      if (chance(0.35)) intervals.push(18);
+    }
+
+    let slash = null;
+    if (limiter.tSlash && rootMode !== "keyed"){
+      const slashChance = clamp((chaos/100)*0.30, 0, 0.30);
+      if (chance(slashChance)){
+        slash = pc(root + pick([2,5,7,9,10]) * (chance(.5)?1:-1));
+        if (slash === root) slash = pc(root+7);
+      }
+    }
+
+    out.push({ root, family:q.family, symbol:label, intervals, slash });
+    remember(root, q.key);
+    prevRoot = root;
+  }
+
+  const showKey = !(rootMode === "freefall" || clamp(weights.keyStability,0,100) < 25);
+  return { chart: out, keyRoot, keyMode, showKey };
+}
+
+/* UI refs */
+const els = {
+  pillLine: document.getElementById("pillLine"),
+  leadKey: document.getElementById("leadKey"),
+  metaBars: document.getElementById("metaBars"),
+  metaTempo: document.getElementById("metaTempo"),
+  metaSwing: document.getElementById("metaSwing"),
+  metaChaos: document.getElementById("metaChaos"),
+  msg: document.getElementById("msg"),
+
+  sheet: document.getElementById("sheet"),
+
+  pianoSvg: document.getElementById("pianoSvg"),
+  pianoTop: document.getElementById("pianoTop"),
+  pianoHint: document.getElementById("pianoHint"),
+
+  btnGenerate: document.getElementById("btnGenerate"),
+  btnCopy: document.getElementById("btnCopy"),
+  btnPlay: document.getElementById("btnPlay"),
+
+  barsSel: document.getElementById("barsSel"),
+  tempo: document.getElementById("tempo"),
+  tempoNum: document.getElementById("tempoNum"),
+  swing: document.getElementById("swing"),
+  swingNum: document.getElementById("swingNum"),
+  chaos: document.getElementById("chaos"),
+  chaosNum: document.getElementById("chaosNum"),
+  rootMode: document.getElementById("rootMode"),
+  bandMode: document.getElementById("bandMode"),
+
+  bassPreset: document.getElementById("bassPreset"),
+  keysPreset: document.getElementById("keysPreset"),
+  drumsPreset: document.getElementById("drumsPreset"),
+  drumsLevel: document.getElementById("drumsLevel"),
+  drumsLevelNum: document.getElementById("drumsLevelNum"),
+};
+
+let state = {
+  bars: 8,
+  tempo: 120,
+  swing: 60,
+  chaos: 50,
+  rootMode: "keyed",
+  bandMode: "comp",
+  weights: macroToWeights(50),
+  limiter: getChordLimiterState(),
+  chart: [],
+  keyRoot: 0,
+  keyMode: "ionian",
+  showKey: true,
+  activeIndex: 0,
+};
+
+function syncMeta(){
+  els.metaBars.textContent = state.bars;
+  els.metaTempo.textContent = state.tempo;
+  els.metaSwing.textContent = state.swing;
+  els.metaChaos.textContent = state.chaos;
+}
+
+function setHeaderLine(){
+  const modeLabel = (state.keyMode || "ionian").toUpperCase();
+  const line = state.showKey ? `${noteName(state.keyRoot)} · ${modeLabel}` : `FREE · ${state.rootMode.toUpperCase()}`;
+  els.pillLine.textContent = line;
+  els.leadKey.textContent = line;
+}
+
+function renderSheet(){
+  els.sheet.innerHTML = "";
+  state.chart.forEach((ch,i)=>{
+    const div = document.createElement("div");
+    div.className = "bar" + (i===state.activeIndex ? " active" : "");
+    div.innerHTML = `<div class="sym">${chordName(ch)}</div><div class="num">${i+1}</div>`;
+
+    // Tap => focus + update piano + (preview play chord immediately when not actively running)
+    div.addEventListener("click", async ()=>{
+      state.activeIndex = i;
+      renderSheet();
+      updatePianoForActive();
+
+      // If playing, jump transport (audio+UI stay locked)
+      if (player.isPlaying){
+        player.jumpToBar(i);
+        els.msg.textContent = `Jumped to: ${chordName(ch)}`;
+      } else {
+        await player.previewChord(state.chart[i]); // plays chord when you tap
+        els.msg.textContent = `Preview: ${chordName(ch)}`;
+      }
+    });
+
+    els.sheet.appendChild(div);
+  });
+}
+
+/* SVG keyboard */
+const KEYBOARD = (() => {
+  const baseMidi = 48;
+  const total = 24;
+  const whiteMidi = [];
+  for (let i=0;i<total;i++){
+    const m = baseMidi + i;
+    if (WHITE_PCS.has(pc(m))) whiteMidi.push(m);
+  }
+
+  function buildLayout(){
+    const W=1000, H=240;
+    const whiteCount = whiteMidi.length;
+    const wW = W / whiteCount;
+
+    const whiteKeys = whiteMidi.map((m,idx)=>({ midi:m, pc:pc(m), x:idx*wW, w:wW, h:H }));
+    const blackKeys = [];
+    const blackW = wW * 0.62;
+    const blackH = H * 0.62;
+
+    for (let i=0;i<total;i++){
+      const m = baseMidi+i;
+      if (WHITE_PCS.has(pc(m))) continue;
+      let prev = m-1;
+      while (prev>=baseMidi && !WHITE_PCS.has(pc(prev))) prev--;
+      const whiteIdx = whiteMidi.indexOf(prev);
+      if (whiteIdx < 0) continue;
+      const x = (whiteIdx+1)*wW - blackW/2;
+      blackKeys.push({midi:m, pc:pc(m), x, w:blackW, h:blackH});
+    }
+
+    const keyCenters = new Map();
+    for (const k of whiteKeys) keyCenters.set(k.midi, {x:k.x+k.w/2, y:H*0.18});
+    for (const k of blackKeys) keyCenters.set(k.midi, {x:k.x+k.w/2, y:blackH*0.22});
+
+    function centersForPC(p){
+      const centers=[];
+      for (let i=0;i<total;i++){
+        const m = baseMidi+i;
+        if (pc(m)===p) centers.push(keyCenters.get(m));
+      }
+      return centers.filter(Boolean);
+    }
+
+    return {W,H,whiteKeys,blackKeys,centersForPC};
+  }
+  return buildLayout();
+})();
+
+let pianoKeyElsByPC = new Map();
+
+function renderPianoBase(){
+  const svg = els.pianoSvg;
+  svg.innerHTML = "";
+  svg.setAttribute("viewBox", `0 0 ${KEYBOARD.W} ${KEYBOARD.H}`);
+
+  pianoKeyElsByPC = new Map();
+
+  const css = getComputedStyle(document.documentElement);
+  const whiteFill = css.getPropertyValue("--keyWhite").trim();
+  const blackFill = css.getPropertyValue("--keyBlack").trim();
+  const whiteStroke = css.getPropertyValue("--keyBorder").trim();
+  const blackStroke = css.getPropertyValue("--keyBlackBorder").trim();
+
+  function addKeyToMap(p, node){
+    if (!pianoKeyElsByPC.has(p)) pianoKeyElsByPC.set(p, []);
+    pianoKeyElsByPC.get(p).push(node);
+  }
+
+  for (const k of KEYBOARD.whiteKeys){
+    const r = document.createElementNS("http://www.w3.org/2000/svg","rect");
+    r.setAttribute("x", k.x); r.setAttribute("y", 0);
+    r.setAttribute("width", k.w); r.setAttribute("height", k.h);
+    r.setAttribute("rx", 10); r.setAttribute("ry", 10);
+    r.setAttribute("fill", whiteFill);
+    r.setAttribute("stroke", whiteStroke);
+    r.setAttribute("stroke-width", 1);
+    r.setAttribute("data-kind","white");
+    r.setAttribute("data-pc", k.pc);
+    svg.appendChild(r);
+    addKeyToMap(k.pc, r);
+  }
+
+  for (const k of KEYBOARD.blackKeys){
+    const r = document.createElementNS("http://www.w3.org/2000/svg","rect");
+    r.setAttribute("x", k.x); r.setAttribute("y", 0);
+    r.setAttribute("width", k.w); r.setAttribute("height", k.h);
+    r.setAttribute("rx", 9); r.setAttribute("ry", 9);
+    r.setAttribute("fill", blackFill);
+    r.setAttribute("stroke", blackStroke);
+    r.setAttribute("stroke-width", 1);
+    r.setAttribute("data-kind","black");
+    r.setAttribute("data-pc", k.pc);
+    svg.appendChild(r);
+    addKeyToMap(k.pc, r);
+  }
+
+  const g = document.createElementNS("http://www.w3.org/2000/svg","g");
+  g.setAttribute("id","overlayLayer");
+  svg.appendChild(g);
+}
+
+function resetKeyFills(){
+  const css = getComputedStyle(document.documentElement);
+  const whiteFill = css.getPropertyValue("--keyWhite").trim();
+  const blackFill = css.getPropertyValue("--keyBlack").trim();
+  const whiteStroke = css.getPropertyValue("--keyBorder").trim();
+  const blackStroke = css.getPropertyValue("--keyBlackBorder").trim();
+
+  for (const arr of pianoKeyElsByPC.values()){
+    for (const el of arr){
+      const kind = el.getAttribute("data-kind");
+      el.setAttribute("fill", kind==="black" ? blackFill : whiteFill);
+      el.setAttribute("stroke", kind==="black" ? blackStroke : whiteStroke);
+      el.setAttribute("stroke-width", "1");
+    }
+  }
+}
+
+function fillScaleKeys(scalePCs){
+  const css = getComputedStyle(document.documentElement);
+  const blue = css.getPropertyValue("--accent").trim();
+
+  for (const p of scalePCs){
+    const arr = pianoKeyElsByPC.get(p) || [];
+    for (const el of arr){
+      el.setAttribute("fill", blue);
+      el.setAttribute("stroke", "rgba(255,255,255,0.18)");
+      el.setAttribute("stroke-width", "1");
+    }
+  }
+}
+
+function clearPianoOverlays(){
+  const g = els.pianoSvg.querySelector("#overlayLayer");
+  if (g) g.innerHTML = "";
+}
+
+function dotAt(x,y,color){
+  const c = document.createElementNS("http://www.w3.org/2000/svg","circle");
+  c.setAttribute("cx", x);
+  c.setAttribute("cy", y);
+  c.setAttribute("r", 9);
+  c.setAttribute("fill", color);
+  c.setAttribute("stroke", "rgba(0,0,0,0.35)");
+  c.setAttribute("stroke-width", 3);
+  return c;
+}
+
+function updatePianoForActive(){
+  const ch = state.chart[state.activeIndex];
+  if (!ch) return;
+
+  const { pcs:scalePCs, mode } = scalePCsForChordLocal(ch);
+
+  resetKeyFills();
+  fillScaleKeys(scalePCs);
+
+  clearPianoOverlays();
+
+  const chordPCs = chordTonesPCs(ch);
+  const rootPC = pc(ch.root);
+
+  const g = els.pianoSvg.querySelector("#overlayLayer");
+  const css = getComputedStyle(document.documentElement);
+  const green = css.getPropertyValue("--good").trim();
+  const purple = css.getPropertyValue("--chord").trim();
+
+  KEYBOARD.centersForPC(rootPC).forEach(c=> g.appendChild(dotAt(c.x, c.y, green)));
+  chordPCs.filter(p=>p!==rootPC).forEach(p=>{
+    KEYBOARD.centersForPC(p).forEach(c=> g.appendChild(dotAt(c.x, c.y, purple)));
+  });
+
+  const modeLabel = (mode==="mixo") ? "Mixolydian" :
+                    (mode==="ionian") ? "Ionian" :
+                    (mode==="dorian") ? "Dorian" :
+                    (mode==="locrian") ? "Locrian" : mode;
+
+  const chordScaleName = `${noteName(ch.root)} ${modeLabel}`;
+  document.getElementById("pianoTop").textContent = chordScaleName;
+  document.getElementById("pianoHint").textContent = `${chordName(ch)} · scale: ${chordScaleName}`;
+}
+
+/* Copy chart */
+function copyChart(){
+  const bars = state.chart.map(ch => chordName(ch));
+  let out = "";
+  for (let i=0;i<bars.length;i++){
+    if (i%4===0) out += (i===0 ? "" : "\n");
+    out += `| ${bars[i].padEnd(8," ")} `;
+    if (i%4===3) out += "|";
+  }
+  if (navigator.clipboard?.writeText){
+    navigator.clipboard.writeText(out).then(()=>{ els.msg.textContent = "Copied chart to clipboard."; })
+      .catch(()=>{ els.msg.textContent = "Copy failed (clipboard permission)."; });
+  }
+}
+
+/* Controls wiring */
+function linkRangeAndNumber(rangeEl, numEl, onChange){
+  rangeEl.addEventListener("input", ()=>{
+    numEl.value = rangeEl.value;
+    onChange(Number(rangeEl.value));
+  });
+  numEl.addEventListener("change", ()=>{
+    const v = clamp(Number(numEl.value), Number(rangeEl.min||-1e9), Number(rangeEl.max||1e9));
+    numEl.value = v;
+    rangeEl.value = v;
+    onChange(v);
+  });
+}
+
+linkRangeAndNumber(document.getElementById("tempo"), document.getElementById("tempoNum"), (v)=>{
+  state.tempo = v|0; syncMeta();
+  if (player.isPlaying) player.setTempo(state.tempo, state.swing);
+});
+linkRangeAndNumber(document.getElementById("swing"), document.getElementById("swingNum"), (v)=>{
+  state.swing = v|0; syncMeta();
+  if (player.isPlaying) player.setTempo(state.tempo, state.swing);
+});
+linkRangeAndNumber(document.getElementById("chaos"), document.getElementById("chaosNum"), (v)=>{
+  state.chaos = v|0;
+  const macro = macroToWeights(state.chaos);
+  for (const k of Object.keys(macro)){
+    state.weights[k] = Math.round(state.weights[k]*0.55 + macro[k]*0.45);
+  }
+  syncMeta();
+});
+linkRangeAndNumber(document.getElementById("drumsLevel"), document.getElementById("drumsLevelNum"), (v)=>{
+  player.setDrumsLevel((v|0)/100);
+});
+
+document.getElementById("barsSel").addEventListener("change", ()=>{ state.bars = Number(document.getElementById("barsSel").value); syncMeta(); });
+document.getElementById("rootMode").addEventListener("change", ()=>{ state.rootMode = document.getElementById("rootMode").value; });
+document.getElementById("bandMode").addEventListener("change", ()=>{ state.bandMode = document.getElementById("bandMode").value; if (player.isPlaying) player.setBandMode(state.bandMode); });
+
+document.getElementById("bassPreset").addEventListener("change", ()=> player.setPresets(
+  document.getElementById("bassPreset").value,
+  document.getElementById("keysPreset").value,
+  document.getElementById("drumsPreset").value
+));
+document.getElementById("keysPreset").addEventListener("change", ()=> player.setPresets(
+  document.getElementById("bassPreset").value,
+  document.getElementById("keysPreset").value,
+  document.getElementById("drumsPreset").value
+));
+document.getElementById("drumsPreset").addEventListener("change", ()=> player.setPresets(
+  document.getElementById("bassPreset").value,
+  document.getElementById("keysPreset").value,
+  document.getElementById("drumsPreset").value
+));
+
+document.getElementById("btnCopy").addEventListener("click", copyChart);
+
+function renderAll(){
+  syncMeta();
+  setHeaderLine();
+  renderSheet();
+  updatePianoForActive();
+}
+
+function generateAndRender(){
+  state.limiter = getChordLimiterState();
+  const res = genChart({
+    bars: state.bars,
+    chaos: state.chaos,
+    rootMode: state.rootMode,
+    weights: state.weights,
+    limiter: state.limiter
+  });
+  state.chart = res.chart;
+  state.keyRoot = res.keyRoot;
+  state.keyMode = res.keyMode;
+  state.showKey = res.showKey;
+  state.activeIndex = 0;
+
+  renderAll();
+  els.msg.textContent = "Generated new chart.";
+
+  if (player.isPlaying){
+    player.setChart(state.chart);
+    player.jumpToBar(0);
+  }
+}
+
+document.getElementById("btnGenerate").addEventListener("click", generateAndRender);
+
+["qMaj7","qMin7","qDom7","qDim7","qHalfDim","qSus","x9","x11","x13","x6","tAlt","tSlash","tChrom"]
+  .forEach(id=>{
+    document.getElementById(id).addEventListener("change", ()=> generateAndRender());
+  });
+
+/* Band player */
+const player = (() => {
+  let ctx=null, master=null, musicBus=null, drumBus=null;
+  let isPlaying=false, isPaused=false;
+  let tempo=120, swing=60, bandMode="comp", chart=[];
+  let bassPreset="upright", keysPreset="ep", drumsPreset="jazz", drumsLevel=0.55;
+
+  // transport
+  let startTime=0, timer=null, currentBar=0;
+  const lookahead=0.18, interval=25;
+
+  // separate queues to keep UI perfectly in sync with bar start
+  let audioEvents=[];  // scheduled slightly ahead
+  let uiEvents=[];     // executed ONLY when time has reached event time
+
+  function now(){ return ctx ? ctx.currentTime : 0; }
+  function beatSec(){ return 60/tempo; }
+  function swingRatio(){
+    const s = clamp(swing,50,75);
+    // 50 => straight (0.5), 75 => heavy swing (~0.70)
+    return clamp(0.5 + (s-50)*(0.20/25), 0.5, 0.70);
+  }
+
+  function ensure(){
+    if (ctx) return;
+    ctx = new (window.AudioContext || window.webkitAudioContext)();
+    master = ctx.createGain(); master.gain.value = 0.95;
+    musicBus = ctx.createGain();
+    drumBus = ctx.createGain(); drumBus.gain.value = drumsLevel;
+
+    const masterLP = ctx.createBiquadFilter();
+    masterLP.type="lowpass"; masterLP.frequency.value = 14000;
+
+    musicBus.connect(masterLP);
+    drumBus.connect(masterLP);
+    masterLP.connect(master);
+    master.connect(ctx.destination);
+  }
+
+  function midiToHz(m){ return 440*Math.pow(2,(m-69)/12); }
+
+  function mkEnv(g, t0, a, d, s, r, peak){
+    g.gain.cancelScheduledValues(t0);
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.linearRampToValueAtTime(peak, t0 + a);
+    g.gain.linearRampToValueAtTime(peak*s, t0 + a + d);
+    g.gain.linearRampToValueAtTime(0.0001, t0 + a + d + r);
+  }
+
+  function mkNoiseNode(){
+    const bufferSize = 2 * ctx.sampleRate;
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i=0;i<bufferSize;i++) data[i] = (Math.random()*2-1);
+    const src = ctx.createBufferSource();
+    src.buffer = buffer;
+    src.loop = true;
+    return src;
+  }
+
+  function voicingForChord(ch){
+    const pcs = chordTonesPCs(ch);
+    const rootPC = pc(ch.root);
+    const base = 60;
+    const mids = [];
+    for (const p of pcs){
+      let best=null;
+      for (let oct=-2;oct<=2;oct++){
+        const m = (12*(Math.floor(base/12)+oct)) + p;
+        if (m<50 || m>80) continue;
+        const dist = Math.abs(m-base);
+        if (!best || dist<best.dist) best={m,dist};
+      }
+      if (best) mids.push(best.m);
+    }
+    mids.sort((a,b)=>a-b);
+    let voiced = mids.length>5 ? mids.filter((_,i)=>i%2===0) : mids;
+    if (!voiced.some(m=>pc(m)===rootPC)) voiced.unshift(48+rootPC);
+    return voiced;
+  }
+
+  function bassMidiForChord(ch){
+    const r = (ch.slash!=null) ? ch.slash : ch.root;
+    return 36 + pc(r);
+  }
+
+  function playBass(midi, t0){
+    const hz = midiToHz(midi);
+    const g = ctx.createGain(); g.gain.value = 0.0001;
+    const out = ctx.createGain(); out.gain.value = 1.0;
+    const filt = ctx.createBiquadFilter(); filt.type="lowpass";
+    let osc1 = ctx.createOscillator();
+    let osc2 = ctx.createOscillator();
+    osc2.detune.value = 3;
+
+    if (bassPreset === "upright"){
+      osc1.type="triangle"; osc2.type="sine";
+      filt.frequency.value = 900; out.gain.value = 0.95;
+    } else if (bassPreset === "round"){
+      osc1.type="sine"; osc2.type="triangle";
+      filt.frequency.value = 1200; out.gain.value = 0.90;
+    } else if (bassPreset === "sub"){
+      osc1.type="sine"; osc2.type="sine";
+      filt.frequency.value = 700; out.gain.value = 1.05;
+    } else {
+      osc1.type="square"; osc2.type="triangle";
+      filt.frequency.value = 1500; out.gain.value = 0.85;
+    }
+
+    osc1.frequency.setValueAtTime(hz, t0);
+    osc2.frequency.setValueAtTime(hz, t0);
+    osc1.frequency.exponentialRampToValueAtTime(hz*0.995, t0+0.10);
+
+    osc1.connect(filt); osc2.connect(filt);
+    filt.connect(g); g.connect(out); out.connect(musicBus);
+
+    if (bassPreset === "pluck") mkEnv(g, t0, 0.002, 0.06, 0.10, 0.10, 0.18);
+    else mkEnv(g, t0, 0.008, 0.12, 0.15, 0.18, 0.16);
+
+    osc1.start(t0); osc2.start(t0);
+    osc1.stop(t0+0.5); osc2.stop(t0+0.5);
+  }
+
+  function playKeys(mids, t0){
+    const g = ctx.createGain(); g.gain.value = 0.0001;
+    const filt = ctx.createBiquadFilter(); filt.type="lowpass";
+    const pan = ctx.createStereoPanner(); pan.pan.value = (Math.random()*0.16 - 0.08);
+
+    let baseCut = 2400, typeA="triangle", typeB="sine";
+    let peak=0.10, a=0.008, d=0.20, s=0.12, r=0.18;
+
+    if (keysPreset === "ep"){
+      baseCut = 2600; typeA="triangle"; typeB="sine"; peak=0.095; a=0.008; d=0.22; s=0.10; r=0.18;
+    } else if (keysPreset === "piano"){
+      baseCut = 3400; typeA="triangle"; typeB="triangle"; peak=0.085; a=0.004; d=0.14; s=0.08; r=0.12;
+    } else if (keysPreset === "organ"){
+      baseCut = 5200; typeA="sine"; typeB="sine"; peak=0.075; a=0.010; d=0.10; s=0.55; r=0.12;
+    } else {
+      baseCut = 1800; typeA="sine"; typeB="triangle"; peak=0.070; a=0.030; d=0.30; s=0.65; r=0.35;
+    }
+
+    filt.frequency.setValueAtTime(baseCut, t0);
+
+    const dets = [-4,-2,2,4];
+    for (let i=0;i<mids.length;i++){
+      const o1 = ctx.createOscillator();
+      const o2 = ctx.createOscillator();
+      o1.type = typeA; o2.type = typeB;
+      o1.detune.setValueAtTime(dets[i % dets.length], t0);
+      o2.detune.setValueAtTime(-dets[i % dets.length], t0);
+
+      const hz = midiToHz(mids[i]);
+      o1.frequency.setValueAtTime(hz, t0);
+      o2.frequency.setValueAtTime(hz, t0);
+
+      o1.connect(filt); o2.connect(filt);
+      o1.start(t0); o2.start(t0);
+      o1.stop(t0+0.8); o2.stop(t0+0.8);
+    }
+
+    filt.connect(g); g.connect(pan); pan.connect(musicBus);
+    mkEnv(g, t0, a, d, s, r, peak);
+  }
+
+  function playDrums(t0, kind, accent=1.0){
+    const g = ctx.createGain(); g.gain.value = 0.0001;
+
+    // "more jazz" defaults (ride-forward)
+    let hatCut=12000, snCut=7000, rideCut=11000;
+    let snAmp=0.10, hatAmp=0.06, kickAmp=0.10, rideAmp=0.075;
+
+    // small preset tweaks
+    if (drumsPreset === "brushes"){
+      rideCut=9000; snCut=5200;
+      rideAmp=0.055; snAmp=0.075; hatAmp=0.05; kickAmp=0.07;
+    } else if (drumsPreset === "tight"){
+      rideCut=10500; snCut=7800;
+      rideAmp=0.06; snAmp=0.095; hatAmp=0.055; kickAmp=0.095;
+    } else if (drumsPreset === "lofi"){
+      rideCut=6800; snCut=4200;
+      rideAmp=0.055; snAmp=0.085; hatAmp=0.045; kickAmp=0.09;
+    }
+
+    const noise = mkNoiseNode();
+    const nf = ctx.createBiquadFilter(); nf.type="highpass"; nf.frequency.value = 650;
+    const lp = ctx.createBiquadFilter(); lp.type = "lowpass";
+    const out = ctx.createGain(); out.gain.value = drumsLevel;
+
+    noise.connect(nf); nf.connect(lp); lp.connect(g); g.connect(out); out.connect(drumBus);
+
+    const t = t0;
+
+    if (kind === "hat"){
+      lp.frequency.setValueAtTime(hatCut, t);
+      mkEnv(g, t, 0.001, 0.025, 0.05, 0.03, hatAmp*accent);
+      noise.start(t); noise.stop(t+0.07); return;
+    }
+
+    if (kind === "snare"){
+      lp.frequency.setValueAtTime(snCut, t);
+      mkEnv(g, t, 0.001, 0.08, 0.12, 0.10, snAmp*accent);
+      noise.start(t); noise.stop(t+0.16); return;
+    }
+
+    if (kind === "ride"){
+      // ping + wash (more cymbal presence)
+      const ping = ctx.createOscillator(); ping.type="sine";
+      ping.frequency.setValueAtTime(1750 + Math.random()*120, t);
+      const pg = ctx.createGain(); pg.gain.value = 0.0001;
+      ping.connect(pg); pg.connect(out);
+
+      mkEnv(pg, t, 0.001, 0.02, 0.12, 0.02, rideAmp*accent);
+
+      lp.frequency.setValueAtTime(rideCut, t);
+      mkEnv(g, t, 0.001, 0.02, 0.12, 0.03, rideAmp*0.30*accent);
+
+      noise.start(t); noise.stop(t+0.11);
+      ping.start(t); ping.stop(t+0.12);
+      return;
+    }
+
+    if (kind === "crash"){
+      lp.frequency.setValueAtTime(11500, t);
+      mkEnv(g, t, 0.001, 0.06, 0.25, 0.18, 0.10*accent);
+      noise.start(t); noise.stop(t+0.45);
+      return;
+    }
+
+    if (kind === "kick"){
+      const o = ctx.createOscillator(); o.type="sine";
+      const kg = ctx.createGain(); kg.gain.value = 0.0001;
+
+      o.frequency.setValueAtTime(140, t);
+      o.frequency.exponentialRampToValueAtTime(55, t+0.08);
+
+      o.connect(kg); kg.connect(out);
+
+      kg.gain.setValueAtTime(0.0001, t);
+      kg.gain.linearRampToValueAtTime(kickAmp*accent, t+0.004);
+      kg.gain.linearRampToValueAtTime(kickAmp*0.2*accent, t+0.09);
+      kg.gain.linearRampToValueAtTime(0.0001, t+0.14);
+
+      noise.start(t); noise.stop(t+0.06);
+
+      o.start(t); o.stop(t+0.16);
+      return;
+    }
+  }
+
+  function addAudio(e){
+    audioEvents.push(e);
+  }
+  function addUI(e){
+    uiEvents.push(e);
+  }
+  function sortQueues(){
+    audioEvents.sort((a,b)=>a.t-b.t);
+    uiEvents.sort((a,b)=>a.t-b.t);
+  }
+
+  // jazz ride pattern with swingy 8ths + hat chicks on 2&4 + comp
+  function scheduleBar(ch, tBar, idx){
+    const beat = beatSec();
+    const barLen = beat*4;
+    const sr = swingRatio(); // where the "and" sits within each beat
+
+    // UI update EXACTLY on bar start
+    addUI({t:tBar, kind:"ui", idx});
+
+    // bass: 4-on-the-floor walkish (still simple)
+    const bassTimes=[tBar, tBar+beat, tBar+beat*2, tBar+beat*3];
+    for (const tt of bassTimes) addAudio({t:tt, kind:"bass", midi:bassMidiForChord(ch)});
+
+    // keys comp: 2 stabs per bar
+    const compTimes=[tBar+beat*1 + beat*0.03, tBar+beat*3 + beat*0.03];
+    const voiced = voicingForChord(ch);
+    for (const tt of compTimes) addAudio({t:tt, kind:"keys", mids:voiced});
+
+    // DRUMS (more cymbals)
+    // ride: 8th note swing pattern (ding-ding-da-ding feel)
+    for (let b=0;b<4;b++){
+      const down = tBar + beat*b;
+      const and  = down + beat*sr;
+      // accent 2 and 4 slightly
+      const accDown = (b===1 || b===3) ? 1.15 : 1.0;
+      const accAnd  = 0.85;
+
+      addAudio({t:down, kind:"drum", drum:"ride", accent:accDown});
+      addAudio({t:and,  kind:"drum", drum:"ride", accent:accAnd});
+
+      // occasional skip / extra tick for jazziness
+      if (chance(0.18)) addAudio({t:down + beat*0.75, kind:"drum", drum:"ride", accent:0.55});
+    }
+
+    // hat chicks on 2 & 4
+    addAudio({t:tBar+beat*1, kind:"drum", drum:"hat", accent:1.15});
+    addAudio({t:tBar+beat*3, kind:"drum", drum:"hat", accent:1.15});
+
+    // feathered kick
+    if (chance(0.75)) addAudio({t:tBar, kind:"drum", drum:"kick", accent:0.55});
+    if (chance(0.55)) addAudio({t:tBar+beat*2, kind:"drum", drum:"kick", accent:0.55});
+    if (chance(0.22)) addAudio({t:tBar+beat*0.5, kind:"drum", drum:"kick", accent:0.40});
+
+    // snare comp (mostly light)
+    if (chance(0.45)) addAudio({t:tBar+beat*1 + beat*sr, kind:"drum", drum:"snare", accent:0.55});
+    if (chance(0.35)) addAudio({t:tBar+beat*2 + beat*0.25, kind:"drum", drum:"snare", accent:0.45});
+    if (chance(0.28)) addAudio({t:tBar+beat*3 + beat*sr, kind:"drum", drum:"snare", accent:0.55});
+
+    // occasional crash at phrase starts (bar 1, 5, 9...) / or when jumping
+    if (idx % 4 === 0 && chance(0.30)) addAudio({t:tBar, kind:"drum", drum:"crash", accent:0.75});
+
+    return tBar + barLen;
+  }
+
+  function processAudioEvents(){
+    const tNow = now();
+    while (audioEvents.length && audioEvents[0].t < tNow + lookahead){
+      const e = audioEvents.shift();
+      if (e.kind==="bass") playBass(e.midi, e.t);
+      else if (e.kind==="keys") playKeys(e.mids, e.t);
+      else playDrums(e.t, e.drum, e.accent ?? 1.0);
+    }
+  }
+
+  function processUIEvents(){
+    const tNow = now();
+    while (uiEvents.length && uiEvents[0].t <= tNow){
+      const e = uiEvents.shift();
+      if (e.kind === "ui"){
+        // This is the ONLY place the "current chord" advances while playing
+        state.activeIndex = e.idx;
+        renderSheet();
+        updatePianoForActive();
+      }
+    }
+  }
+
+  function scheduleAhead(){
+    if (!isPlaying || isPaused) return;
+    const tNow = now();
+    if (startTime===0) startTime = tNow + 0.05;
+
+    // schedule far enough ahead
+    while (startTime < tNow + lookahead*2){
+      const idx = currentBar % chart.length;
+      const ch = chart[idx];
+
+      startTime = scheduleBar(ch, startTime, idx);
+      currentBar++;
+    }
+
+    sortQueues();
+  }
+
+  function tick(){
+    scheduleAhead();
+    processUIEvents();
+    processAudioEvents();
+  }
+
+  async function start(){
+    ensure();
+    await ctx.resume();
+    isPlaying=true; isPaused=false;
+    tempo = state.tempo;
+    swing = state.swing;
+    bandMode = state.bandMode;
+    chart = state.chart.slice();
+
+    audioEvents=[]; uiEvents=[];
+    startTime=0;
+    currentBar = state.activeIndex || 0;
+
+    if (timer) clearInterval(timer);
+    timer = setInterval(tick, interval);
+  }
+
+  function togglePause(){
+    if (!isPlaying) return;
+    isPaused = !isPaused;
+    if (!isPaused){
+      audioEvents=[]; uiEvents=[];
+      startTime = now() + 0.05;
+    }
+  }
+
+  function stop(){
+    isPlaying=false; isPaused=false;
+    if (timer) clearInterval(timer);
+    timer=null;
+    audioEvents=[]; uiEvents=[];
+    startTime=0;
+  }
+
+  function jumpToBar(i){
+    if (!isPlaying) return;
+    state.activeIndex = i;
+    renderSheet();
+    updatePianoForActive();
+
+    currentBar = i;
+    audioEvents=[]; uiEvents=[];
+    startTime = now() + 0.05;
+  }
+
+  // NEW: play the tapped chord immediately (works when not playing)
+  async function previewChord(ch){
+    ensure();
+    await ctx.resume();
+    if (!ch) return;
+
+    const t0 = now() + 0.01;
+
+    // little "band hit": keys voicing + bass, tiny ride tick
+    const voiced = voicingForChord(ch);
+    playKeys(voiced, t0);
+    playBass(bassMidiForChord(ch), t0);
+
+    // short cymbal tick so it feels responsive (optional)
+    playDrums(t0, "ride", 0.75);
+  }
+
+  function setTempoFn(t,s){ tempo=t; swing=s; }
+  function setBandModeFn(m){ bandMode=m; }
+  function setChartFn(c){ chart=c.slice(); }
+  function setPresets(b,k,d){ bassPreset=b; keysPreset=k; drumsPreset=d; }
+  function setDrumsLevel(l){ drumsLevel = clamp(l,0,1); if (drumBus) drumBus.gain.value = drumsLevel; }
+
+  return {
+    get isPlaying(){return isPlaying;},
+    get isPaused(){return isPaused;},
+    start, stop, togglePause, jumpToBar,
+    previewChord,
+    setTempo:setTempoFn, setBandMode:setBandModeFn, setChart:setChartFn, setPresets, setDrumsLevel
+  };
+})();
+
+document.getElementById("btnPlay").addEventListener("click", async ()=>{
+  if (!player.isPlaying){
+    await player.start();
+    document.getElementById("btnPlay").textContent = "Pause";
+    els.msg.textContent = "Band on.";
+  } else {
+    player.togglePause();
+    document.getElementById("btnPlay").textContent = player.isPaused ? "Play" : "Pause";
+    els.msg.textContent = player.isPaused ? "Paused." : "Playing.";
+  }
+});
+
+document.addEventListener("visibilitychange", ()=>{
+  if (document.hidden && player.isPlaying){
+    player.stop();
+    document.getElementById("btnPlay").textContent = "Play";
+    els.msg.textContent = "Stopped (tab hidden).";
+  }
+});
+
+/* Init */
+function setPresetsFromUI(){
+  player.setPresets(
+    document.getElementById("bassPreset").value,
+    document.getElementById("keysPreset").value,
+    document.getElementById("drumsPreset").value
+  );
+  player.setDrumsLevel((Number(document.getElementById("drumsLevel").value)||55)/100);
+}
+ 
+renderPianoBase();
+syncMeta();
+setPresetsFromUI();
+generateAndRender();
+</script>
+</body>
+</html>
