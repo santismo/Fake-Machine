@@ -6,14 +6,19 @@
   <title>🤖 fakebot</title>
   <style>
     :root{
-      --bg:#0b0f14;
-      --panel:rgba(255,255,255,.05);
-      --panel2:rgba(0,0,0,.20);
-      --ink:#e9eef6;
-      --muted:#9aa6b2;
-      --line:rgba(255,255,255,.09);
+      /* Page theme vars */
+      --pageBg:#0b0f14;
+      --pageInk:#e9eef6;
+      --pageMuted:#9aa6b2;
+      --pageLine:rgba(255,255,255,.09);
+      --pagePanel:rgba(255,255,255,.05);
+      --pagePanel2:rgba(0,0,0,.20);
 
-      /* Piano theme (defaults) */
+      --pageGlowA: rgba(122,162,255,.08);
+      --pageGlowB: rgba(182,124,255,.08);
+      --pageGlowC: rgba(63,225,139,.06);
+
+      /* Piano theme */
       --accent:#2f6bff;  /* scale fill */
       --good:#3fe18b;    /* root marker */
       --chord:#b67cff;   /* chord marker */
@@ -23,9 +28,9 @@
       --keyBorder:#c9d3e2;
       --keyBlackBorder:#2a3240;
 
-      /* Scale key outline (for separation between blue keys) */
-      --scaleStrokeAlpha: 0.88;    /* 0..1 */
-      --scaleStrokeWidth: 2.2;     /* px */
+      /* Fixed thin black outline for scale keys */
+      --scaleStrokeAlpha: 0.88;
+      --scaleStrokeWidth: 2.2;
 
       --radius:16px;
       --tap:44px;
@@ -36,41 +41,50 @@
     html,body{height:100%}
     body{
       margin:0;
-      background:
-        radial-gradient(1200px 800px at 30% 10%, rgba(122,162,255,.08), transparent 55%),
-        radial-gradient(900px 600px at 90% 30%, rgba(182,124,255,.08), transparent 55%),
-        var(--bg);
-      color:var(--ink);
+      color:var(--pageInk);
       font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
       -webkit-font-smoothing: antialiased;
       overflow-x:hidden;
       touch-action: manipulation;
+      background: var(--pageBg);
+    }
+    body::before{
+      content:"";
+      position:fixed;
+      inset:0;
+      z-index:-1;
+      background:
+        radial-gradient(1200px 800px at 30% 10%, var(--pageGlowA), transparent 55%),
+        radial-gradient(900px 600px at 90% 30%, var(--pageGlowB), transparent 55%),
+        radial-gradient(1100px 700px at 55% 95%, var(--pageGlowC), transparent 60%),
+        linear-gradient(180deg, var(--pageBg), var(--pageBg));
+      background-repeat:no-repeat;
     }
 
     button, input, select, label {font:inherit}
     button { -webkit-tap-highlight-color: transparent; }
     input[type="range"]{width:100%}
-
     .app{max-width:1100px;margin:0 auto;padding:14px 12px 22px;}
 
     .header{
-      padding:12px 12px;border:1px solid var(--line);border-radius: var(--radius);
-      background: var(--panel);box-shadow: var(--shadow);margin-bottom:12px;
+      padding:12px 12px;border:1px solid var(--pageLine);border-radius: var(--radius);
+      background: var(--pagePanel);box-shadow: var(--shadow);margin-bottom:12px;
     }
     .headerTop{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;flex-wrap:wrap;}
     h1{margin:0;font-size:18px;font-weight:900;letter-spacing:.2px;}
-    .sub{margin-top:2px;color:var(--muted);font-size:12px;}
+    .sub{margin-top:2px;color:var(--pageMuted);font-size:12px;}
     .statusLine{margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
     .pill{
-      padding:6px 10px;border:1px solid var(--line);border-radius:999px;
-      background: rgba(0,0,0,.18);color: var(--muted);font-size:12px;
+      padding:6px 10px;border:1px solid var(--pageLine);border-radius:999px;
+      background: rgba(0,0,0,.18);color: var(--pageMuted);font-size:12px;
       user-select:none;white-space:nowrap;
     }
-    .pill strong{color:var(--ink);font-weight:900}
+    .pill strong{color:var(--pageInk);font-weight:900}
+    .msg{margin-top:10px;font-size:12px;color: var(--pageMuted);user-select:none;}
 
     .card{
-      border:1px solid var(--line);border-radius: var(--radius);
-      background: var(--panel);box-shadow: var(--shadow);
+      border:1px solid var(--pageLine);border-radius: var(--radius);
+      background: var(--pagePanel);box-shadow: var(--shadow);
       overflow:hidden;margin-bottom:12px;
     }
     .cardHead{
@@ -78,7 +92,7 @@
       padding:12px 12px;border-bottom:1px solid rgba(255,255,255,.06);
       background: rgba(0,0,0,.12);
     }
-    .title{font-size:12px;color:var(--muted);letter-spacing:.2px;user-select:none;}
+    .title{font-size:12px;color:var(--pageMuted);letter-spacing:.2px;user-select:none;}
     .cardBody{padding:12px}
 
     .controls{display:grid;grid-template-columns: repeat(6, minmax(0,1fr));gap:10px;}
@@ -87,13 +101,13 @@
 
     .control{
       padding:10px;border-radius:14px;border:1px solid rgba(255,255,255,.08);
-      background: var(--panel2);min-width:0;
+      background: var(--pagePanel2);min-width:0;
     }
     .control label{display:block;font-size:11px;color: rgba(154,166,178,.88);margin-bottom:6px;user-select:none;}
     .inline{display:flex;align-items:center;gap:8px;min-width:0;}
     input[type="number"], select{
       width: 98px;min-height: 38px;background: rgba(0,0,0,.25);
-      border:1px solid rgba(255,255,255,.10);color: var(--ink);
+      border:1px solid rgba(255,255,255,.10);color: var(--pageInk);
       border-radius: 10px;padding: 8px 8px;outline:none;
     }
     select{width:100%}
@@ -103,9 +117,11 @@
       padding: 10px 12px;border-radius: 12px;
       border: 1px solid rgba(255,255,255,.10);
       background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
-      color: var(--ink);cursor:pointer;
+      color: var(--pageInk);cursor:pointer;
       display:inline-flex;align-items:center;justify-content:center;gap:8px;
-      transition: transform .06s ease, border-color .15s ease;width:100%;
+      transition: transform .06s ease, border-color .15s ease,width .15s ease;
+      width:100%;
+      user-select:none;
     }
     .btn:active{transform: translateY(1px)}
     .btn.primary{
@@ -155,7 +171,7 @@
     .chip input{transform: scale(1.1)}
     .chip span{font-size:13px;color: rgba(233,238,246,.92)}
 
-    .legend{display:flex;gap:10px;flex-wrap:wrap;align-items:center;color: var(--muted);font-size:12px;user-select:none;margin-bottom:10px;}
+    .legend{display:flex;gap:10px;flex-wrap:wrap;align-items:center;color: var(--pageMuted);font-size:12px;user-select:none;margin-bottom:10px;}
     .dotLegend{display:inline-flex;align-items:center;gap:6px;}
     .sw{width:10px;height:10px;border-radius:999px;border:1px solid rgba(255,255,255,.15);}
     .sw.scale{background: var(--accent); border-color: rgba(47,107,255,.95)}
@@ -165,7 +181,6 @@
     .pianoBox{border:1px solid rgba(255,255,255,.10);border-radius: 16px;background: rgba(0,0,0,.18);overflow:hidden;}
     svg{display:block;width:100%;height:auto}
     .hint{margin-top:10px;color: rgba(154,166,178,.85);font-size:12px;line-height:1.2;user-select:none;}
-    .msg{margin-top:10px;font-size:12px;color: var(--muted);user-select:none;}
 
     /* Advanced settings modal */
     .modalBack{
@@ -208,11 +223,12 @@
       min-height: 38px;
       padding:8px 10px;
       cursor:pointer;
-      color: var(--ink);
+      color: var(--pageInk);
       display:inline-flex;align-items:center;gap:8px;
+      user-select:none;
     }
     .splitLine{height:1px;background: rgba(255,255,255,.10);margin:12px 0;}
-    .modalSubTitle{font-size:12px;color: var(--muted);margin:0 0 8px 2px;}
+    .modalSubTitle{font-size:12px;color: var(--pageMuted);margin:0 0 8px 2px;}
     .modalGrid{display:grid;grid-template-columns: 1fr 1fr; gap:10px;}
     @media (max-width: 560px){ .modalGrid{grid-template-columns: 1fr;} }
     .miniCtl{
@@ -225,7 +241,6 @@
     .miniRow{display:flex;gap:8px;align-items:center;}
     .miniRow input[type="range"]{flex:1}
     .miniRow input[type="number"]{width:86px}
-    .hidden{display:none !important;}
   </style>
 </head>
 
@@ -238,20 +253,21 @@
           <h1>🤖 fakebot</h1>
           <div class="sub">random charts · band · keyboard display</div>
         </div>
+
         <div style="min-width:220px; width:min(420px,100%);">
-          <button class="btn ghost" id="btnCopy" style="width:32%; display:inline-flex;">Copy</button>
-          <button class="btn" id="btnDefaults" style="width:32%; display:inline-flex; margin:0 1%;">Defaults</button>
-          <button class="btn primary" id="btnPlay" style="width:32%; display:inline-flex; float:right;">Play</button>
+          <button class="btn ghost" id="btnCopy" style="width:32%; display:inline-flex;" title="Copy chart">📋</button>
+          <button class="btn" id="btnDefaults" style="width:32%; display:inline-flex; margin:0 1%;" title="Defaults">↩️</button>
+          <button class="btn primary" id="btnPlay" style="width:32%; display:inline-flex; float:right;" title="Play">▶️</button>
           <div style="clear:both"></div>
         </div>
       </div>
 
       <div class="statusLine">
         <span class="pill" id="pillLine">—</span>
-        <span class="pill">Bars: <strong id="metaBars">4</strong></span>
-        <span class="pill">Tempo: <strong id="metaTempo">120</strong></span>
-        <span class="pill">Swing: <strong id="metaSwing">60</strong></span>
-        <span class="pill">Chaos: <strong id="metaChaos">50</strong></span>
+        <span class="pill">Bars: <strong id="metaBars">8</strong></span>
+        <span class="pill">Tempo: <strong id="metaTempo">140</strong></span>
+        <span class="pill">Swing: <strong id="metaSwing">58</strong></span>
+        <span class="pill">Chaos: <strong id="metaChaos">35</strong></span>
         <span class="pill" id="metaHalves" style="display:none;">½-bars: <strong id="metaHalvesVal">0</strong></span>
       </div>
 
@@ -293,7 +309,7 @@
       <div class="cardHead">
         <div class="title">Controls</div>
         <button class="gearBtn" id="btnGear" aria-label="Advanced settings" title="Advanced settings">
-          ⚙️ <span style="font-size:12px;color:var(--muted);">Advanced</span>
+          ⚙️ <span style="font-size:12px;color:var(--pageMuted);">Advanced</span>
         </button>
       </div>
 
@@ -303,36 +319,34 @@
           <div class="control" data-ctl="generate">
             <label>Generate</label>
             <div class="inline" style="gap:6px">
-              <button class="btn primary tiny" id="btnGenerate" style="flex:1">🎰</button>
-              <button class="btn tiny" id="btnRandom" style="flex:1">🎲</button>
-              <button class="btn tiny" id="btnDefaults2" style="flex:1">↩︎</button>
+              <button class="btn primary tiny" id="btnGenerate" style="flex:1" title="Generate">🎰</button>
+              <button class="btn tiny" id="btnRandomAll" style="flex:1" title="Randomize everything">🎲</button>
+              <button class="btn tiny" id="btnDefaults2" style="flex:1" title="Defaults">↩️</button>
             </div>
+          </div>
+
+          <div class="control" data-ctl="songLoader">
+            <label>Song shapes (50)</label>
+            <select id="songSelect"></select>
+            <div class="msg" style="margin:6px 0 0 0;">Original “standard-like” forms (reharm-ish templates), not copied charts.</div>
           </div>
 
           <div class="control" data-ctl="genre">
             <label>Genre preset</label>
-            <select id="genrePreset">
-              <option value="jazzSwing" selected>Jazz Swing (default)</option>
-              <option value="bebop">Bebop Burner</option>
-              <option value="balladJazz">Jazz Ballad</option>
-              <option value="modalJazz">Modal / Spiritual</option>
-              <option value="bossa">Bossa Nova</option>
-              <option value="afroCuban">Afro-Cuban</option>
-              <option value="funk">Funk</option>
-              <option value="hiphop">Hip-Hop</option>
-              <option value="house">House</option>
-              <option value="dnb">Drum & Bass</option>
-              <option value="ambient">Ambient Minimal</option>
-              <option value="free">Free / Broken</option>
-            </select>
-            <div class="msg" style="margin:6px 0 0 0;">yeah</div>
+            <select id="genrePreset"></select>
+          </div>
+
+          <div class="control" data-ctl="progLogic">
+            <label>Progression logic</label>
+            <select id="progressionLogic"></select>
+            <div class="msg" style="margin:6px 0 0 0;">Biases the generator’s decisions (not canned progressions).</div>
           </div>
 
           <div class="control" data-ctl="bars">
             <label>Bars (2–16)</label>
             <div class="inline">
-              <input id="bars" type="range" min="2" max="16" value="4">
-              <input id="barsNum" type="number" min="2" max="16" value="4">
+              <input id="bars" type="range" min="2" max="16" value="8">
+              <input id="barsNum" type="number" min="2" max="16" value="8">
             </div>
           </div>
 
@@ -345,51 +359,35 @@
               </label>
             </div>
             <div class="inline">
-              <input id="halfDensity" type="range" min="0" max="100" value="40">
-              <input id="halfDensityNum" type="number" min="0" max="100" value="40">
+              <input id="halfDensity" type="range" min="0" max="100" value="22">
+              <input id="halfDensityNum" type="number" min="0" max="100" value="22">
             </div>
             <div class="msg" style="margin:6px 0 0 0;">Density %</div>
-          </div>
-
-          <div class="control" data-ctl="compStyle">
-            <label>Keys play style</label>
-            <select id="compStyle">
-              <option value="twoStabs" selected>2 stabs (default)</option>
-              <option value="fourComp">4-to-the-bar</option>
-              <option value="charleston">Charleston</option>
-              <option value="anticipations">Anticipations</option>
-              <option value="pushPull">Push / pull</option>
-              <option value="sparse">Sparse sync</option>
-              <option value="arpeggio">Arpeggio flutter</option>
-              <option value="sustain">Sustain pad</option>
-              <option value="montuno">Montuno (latin)</option>
-              <option value="clav">Clav comp (funk)</option>
-              <option value="houseChop">House chops</option>
-            </select>
           </div>
 
           <div class="control" data-ctl="tempo">
             <label>Tempo</label>
             <div class="inline">
-              <input id="tempo" type="range" min="60" max="220" value="120">
-              <input id="tempoNum" type="number" min="40" max="300" value="120">
+              <input id="tempo" type="range" min="60" max="220" value="140">
+              <input id="tempoNum" type="number" min="40" max="300" value="140">
             </div>
           </div>
 
           <div class="control" data-ctl="swing">
             <label>Swing</label>
             <div class="inline">
-              <input id="swing" type="range" min="50" max="75" value="60">
-              <input id="swingNum" type="number" min="50" max="80" value="60">
+              <input id="swing" type="range" min="50" max="75" value="58">
+              <input id="swingNum" type="number" min="50" max="80" value="58">
             </div>
           </div>
 
           <div class="control" data-ctl="chaos">
             <label>Chaos</label>
             <div class="inline">
-              <input id="chaos" type="range" min="0" max="100" value="50">
-              <input id="chaosNum" type="number" min="0" max="100" value="50">
+              <input id="chaos" type="range" min="0" max="100" value="35">
+              <input id="chaosNum" type="number" min="0" max="100" value="35">
             </div>
+            <div class="msg" style="margin:6px 0 0 0;">More = weirder roots/qualities/tension + more drift.</div>
           </div>
 
           <div class="control" data-ctl="rootMode">
@@ -408,14 +406,39 @@
               <option value="swing" selected>Swing ride</option>
               <option value="brushBallad">Brush ballad</option>
               <option value="bossa">Bossa</option>
+              <option value="samba">Samba</option>
               <option value="afroCuban">Afro-Cuban</option>
               <option value="funk">Funk</option>
+              <option value="disco">Disco</option>
+              <option value="rock">Rock</option>
+              <option value="shuffle">Shuffle</option>
               <option value="hiphop">Hip-hop</option>
               <option value="house">House</option>
+              <option value="techno">Techno</option>
               <option value="dnb">DnB</option>
               <option value="breaks">Breakbeat</option>
               <option value="ambient">Ambient ticks</option>
               <option value="free">Free cymbals</option>
+            </select>
+          </div>
+
+          <div class="control" data-ctl="compStyle">
+            <label>Keys play style</label>
+            <select id="compStyle">
+              <option value="twoStabs" selected>2 stabs</option>
+              <option value="fourComp">4-to-the-bar</option>
+              <option value="charleston">Charleston</option>
+              <option value="anticipations">Anticipations</option>
+              <option value="pushPull">Push / pull</option>
+              <option value="sparse">Sparse sync</option>
+              <option value="arpeggio">Arp flutter</option>
+              <option value="sustain">Sustain pad</option>
+              <option value="montuno">Montuno (latin)</option>
+              <option value="clav">Clav comp (funk)</option>
+              <option value="rockChugs">Rock chugs</option>
+              <option value="discoChop">Disco chop</option>
+              <option value="neoSoulPush">Neo-soul pushes</option>
+              <option value="edmStab">EDM stabs</option>
             </select>
           </div>
 
@@ -432,6 +455,8 @@
               <option value="reese">Reese</option>
               <option value="squareBass">Square bass</option>
               <option value="wobble">Wobble</option>
+              <option value="pickBass">Pick bass</option>
+              <option value="muted">Muted</option>
             </select>
           </div>
 
@@ -450,6 +475,8 @@
               <option value="vibes">Vibes</option>
               <option value="choirPad">Choir pad</option>
               <option value="noisePad">Noise pad</option>
+              <option value="guitarish">Guitar-ish</option>
+              <option value="clavBright">Clav bright</option>
             </select>
           </div>
 
@@ -459,6 +486,8 @@
               <option value="jazz" selected>Jazz kit</option>
               <option value="brushes">Brushes</option>
               <option value="tight">Tight</option>
+              <option value="rock">Rock kit</option>
+              <option value="disco">Disco kit</option>
               <option value="lofi">Lo-fi</option>
               <option value="minimal">Minimal clicks</option>
               <option value="electro">Electro</option>
@@ -466,6 +495,7 @@
               <option value="trap">Trap hats</option>
               <option value="perc">Perc kit</option>
               <option value="dnb">DnB kit</option>
+              <option value="techno">Techno kit</option>
             </select>
           </div>
 
@@ -477,7 +507,7 @@
             </div>
           </div>
 
-          <!-- NEW: Fill + Complexity per instrument -->
+          <!-- Fill + Complexity per instrument -->
           <div class="control" data-ctl="keysFeel">
             <label>Keys: complexity / fills</label>
             <div class="inline" style="margin-bottom:8px;">
@@ -485,10 +515,9 @@
               <input id="keysComplexNum" type="number" min="0" max="100" value="55">
             </div>
             <div class="inline">
-              <input id="keysFill" type="range" min="0" max="100" value="35">
-              <input id="keysFillNum" type="number" min="0" max="100" value="35">
+              <input id="keysFill" type="range" min="0" max="100" value="30">
+              <input id="keysFillNum" type="number" min="0" max="100" value="30">
             </div>
-            <div class="msg" style="margin:6px 0 0 0;">mhm</div>
           </div>
 
           <div class="control" data-ctl="bassFeel">
@@ -498,23 +527,21 @@
               <input id="bassComplexNum" type="number" min="0" max="100" value="55">
             </div>
             <div class="inline">
-              <input id="bassFill" type="range" min="0" max="100" value="30">
-              <input id="bassFillNum" type="number" min="0" max="100" value="30">
+              <input id="bassFill" type="range" min="0" max="100" value="25">
+              <input id="bassFillNum" type="number" min="0" max="100" value="25">
             </div>
-            <div class="msg" style="margin:6px 0 0 0;">oooh</div>
           </div>
 
           <div class="control" data-ctl="drumsFeel">
             <label>Drums: complexity / fills</label>
             <div class="inline" style="margin-bottom:8px;">
-              <input id="drumsComplex" type="range" min="0" max="100" value="60">
-              <input id="drumsComplexNum" type="number" min="0" max="100" value="60">
+              <input id="drumsComplex" type="range" min="0" max="100" value="65">
+              <input id="drumsComplexNum" type="number" min="0" max="100" value="65">
             </div>
             <div class="inline">
               <input id="drumsFill" type="range" min="0" max="100" value="40">
               <input id="drumsFillNum" type="number" min="0" max="100" value="40">
             </div>
-            <div class="msg" style="margin:6px 0 0 0;">pshh</div>
           </div>
 
         </div>
@@ -567,7 +594,7 @@
           </div>
         </div>
 
-        <div class="msg" style="margin-top:12px;">🎶</div>
+        <div class="msg" style="margin-top:12px;">Tip: pick limiters first, then Generate 🎰.</div>
       </div>
     </section>
 
@@ -583,24 +610,23 @@
           <button class="btn primary small" id="btnCloseAdv">Done</button>
         </div>
       </div>
+
       <div class="modalBody">
-        <div class="msg" style="margin:0 0 10px 0;">Menu order (main sections). Theme + marker style + theme sliders live here.</div>
+        <div class="msg" style="margin:0 0 10px 0;">Menu order (main sections). Page theme + piano theme live here.</div>
         <div id="orderList"></div>
 
         <div class="splitLine"></div>
-        <div class="modalSubTitle">Piano display theme</div>
 
+        <div class="modalSubTitle">Themes</div>
         <div class="modalGrid">
           <div class="miniCtl">
-            <label>Piano theme</label>
-            <select id="pianoTheme">
-              <option value="classic" selected>Classic</option>
-              <option value="neon">Neon</option>
-              <option value="mono">Mono</option>
-              <option value="pastel">Pastel</option>
-            </select>
+            <label>Page theme</label>
+            <select id="pageTheme"></select>
           </div>
-
+          <div class="miniCtl">
+            <label>Piano theme</label>
+            <select id="pianoTheme"></select>
+          </div>
           <div class="miniCtl">
             <label>Tone markers</label>
             <select id="markerStyle">
@@ -609,22 +635,6 @@
               <option value="triangles">Triangles</option>
               <option value="squares">Squares</option>
             </select>
-          </div>
-
-          <div class="miniCtl">
-            <label>Scale key outline width</label>
-            <div class="miniRow">
-              <input id="scaleOutlineW" type="range" min="0.8" max="4.0" step="0.1" value="2.2">
-              <input id="scaleOutlineWNum" type="number" min="0.8" max="4.0" step="0.1" value="2.2">
-            </div>
-          </div>
-
-          <div class="miniCtl">
-            <label>Scale key outline darkness</label>
-            <div class="miniRow">
-              <input id="scaleOutlineA" type="range" min="0" max="100" step="1" value="88">
-              <input id="scaleOutlineANum" type="number" min="0" max="100" step="1" value="88">
-            </div>
           </div>
         </div>
 
@@ -635,18 +645,30 @@
 
 <script>
 /* =========================================================
-   UPDATED (per your request):
-   ✅ Removed SoundFont option entirely (minimal synth only)
-   ✅ Dozens of minimalist “sounds” (keys + bass + drums)
-   ✅ Genre presets that set groove + typical tempo/swing + default fill/complexity
-   ✅ Per-instrument Fill Amount + Complexity sliders
-   ✅ Lots of randomized “fill shapes” so it doesn’t repeat the same fill
-   ✅ Groove styles expanded across jazz + many genres (drums + bass + keys respond)
+   fakebot — SINGLE-FILE BUILD (no missing references)
+   - Lead sheet + Piano always render
+   - Tap audition works after play/pause
+   - Band playback stays synced with UI
+   - 50 “standard-like” song shapes (original templates)
    ========================================================= */
 
+/* ---------- Core helpers ---------- */
 const NOTE_NAMES = ["C","C#","D","Eb","E","F","F#","G","Ab","A","Bb","B"];
 const WHITE_PCS = new Set([0,2,4,5,7,9,11]);
+const pc = (n)=>((n%12)+12)%12;
+const clamp = (n,a,b)=>Math.max(a,Math.min(b,n));
+const rint = (a,b)=>Math.floor(a + Math.random()*(b-a+1));
+const pick = (arr)=>arr[Math.floor(Math.random()*arr.length)];
+const chance = (p)=>Math.random()<p;
+const noteName = (p)=>NOTE_NAMES[pc(p)];
+function weightedPick(opts){
+  const sum = opts.reduce((s,o)=>s+o.w,0);
+  let t = Math.random()*sum;
+  for (const o of opts){ t -= o.w; if (t<=0) return o.v; }
+  return opts[opts.length-1].v;
+}
 
+/* ---------- Scales / chords ---------- */
 const SCALES = {
   ionian:[0,2,4,5,7,9,11],
   dorian:[0,2,3,5,7,9,10],
@@ -659,7 +681,6 @@ const SCALES = {
   lydianDom:[0,2,4,6,7,9,10],
   altered:[0,1,3,4,6,8,10],
 };
-
 const CHORDS = {
   maj7:[0,4,7,11],
   maj9:[0,4,7,11,14],
@@ -690,20 +711,6 @@ const CHORDS = {
   dim7:[0,3,6,9],
 };
 
-function clamp(n,a,b){ return Math.max(a, Math.min(b,n)); }
-function rint(a,b){ return Math.floor(a + Math.random()*(b-a+1)); }
-function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
-function chance(p){ return Math.random() < p; }
-function pc(n){ return ((n%12)+12)%12; }
-function noteName(p){ return NOTE_NAMES[pc(p)]; }
-
-function weightedPick(opts){
-  const sum = opts.reduce((s,o)=>s+o.w,0);
-  let t = Math.random()*sum;
-  for (const o of opts){ t -= o.w; if (t<=0) return o.v; }
-  return opts[opts.length-1].v;
-}
-
 function chordName(ch){
   const base = `${noteName(ch.root)}${ch.symbol}`;
   return (ch.slash!=null) ? `${base}/${noteName(ch.slash)}` : base;
@@ -712,136 +719,23 @@ function chordTonesPCs(ch){
   return [...new Set(ch.intervals.map(i=>pc(ch.root+i)))];
 }
 
-function macroToWeights(chaos){
-  const c = clamp(chaos,0,100)/100;
-  return {
-    keyStability: Math.round(85 - c*75),
-    functional:   Math.round(80 - c*70),
-    rootChaos:    Math.round(15 + c*80),
-    qualityChaos: Math.round(15 + c*75),
-    tension:      Math.round(10 + c*80),
-    memoryKill:   Math.round(40 + c*50),
-  };
-}
-
-function pickKeyMode(chaos){
-  const c = clamp(chaos,0,100)/100;
-  return weightedPick([
-    {v:"ionian", w: 55 - c*15},
-    {v:"dorian", w: 16 + c*10},
-    {v:"mixo",   w: 16 + c*10},
-    {v:"lydian", w:  7 + c*8},
-    {v:"aeolian",w:  5 + c*6},
-    {v:"locrian",w:  1 + c*5},
-  ]);
-}
-
-/* Limiters */
-function getChordLimiterState(){
-  return {
-    qMaj7: document.getElementById("qMaj7").checked,
-    qMin7: document.getElementById("qMin7").checked,
-    qDom7: document.getElementById("qDom7").checked,
-    qDim7: document.getElementById("qDim7").checked,
-    qHalfDim: document.getElementById("qHalfDim").checked,
-    qSus: document.getElementById("qSus").checked,
-    qMinMaj: document.getElementById("qMinMaj").checked,
-
-    x9: document.getElementById("x9").checked,
-    x11: document.getElementById("x11").checked,
-    x13: document.getElementById("x13").checked,
-    x6: document.getElementById("x6").checked,
-    xAdd9: document.getElementById("xAdd9").checked,
-    xSharp11: document.getElementById("xSharp11").checked,
-    xMin11: document.getElementById("xMin11").checked,
-
-    tAlt: document.getElementById("tAlt").checked,
-    tSlash: document.getElementById("tSlash").checked,
-    tChrom: document.getElementById("tChrom").checked,
-    tB9: document.getElementById("tB9").checked,
-    tSharp9: document.getElementById("tSharp9").checked,
-  };
-}
-function setChordLimiterState(s){
-  for (const k of Object.keys(s)){
-    const el = document.getElementById(k);
-    if (el && el.type === "checkbox") el.checked = !!s[k];
-  }
-}
-
-function buildQualityOptions(limit){
-  const opts = [];
-
-  if (limit.qMaj7){
-    opts.push({v:{symbol:"maj7", family:"maj", key:"maj7", display:"maj7"}, w:22});
-    if (limit.x9) opts.push({v:{symbol:"maj9", family:"maj", key:"maj9", display:"maj9"}, w:12});
-    if (limit.x6) opts.push({v:{symbol:"6/9", family:"maj", key:"6/9", display:"6/9"}, w:10});
-    if (limit.x6) opts.push({v:{symbol:"maj6", family:"maj", key:"maj6", display:"6"}, w:7});
-    if (limit.xAdd9) opts.push({v:{symbol:"add9", family:"maj", key:"add9", display:"add9"}, w:7});
-    if (limit.xSharp11 || limit.x11) opts.push({v:{symbol:"maj9sharp11", family:"maj", key:"maj9sharp11", display:"maj9(#11)"}, w:7});
-  }
-
-  if (limit.qMin7){
-    opts.push({v:{symbol:"min7", family:"min", key:"min7", display:"m7"}, w:20});
-    if (limit.x9) opts.push({v:{symbol:"min9", family:"min", key:"min9", display:"m9"}, w:12});
-    if (limit.x6) opts.push({v:{symbol:"min6", family:"min", key:"min6", display:"m6"}, w:8});
-    if (limit.xMin11 || limit.x11) opts.push({v:{symbol:"min11", family:"min", key:"min11", display:"m11"}, w:8});
-  }
-
-  if (limit.qDom7){
-    opts.push({v:{symbol:"dom7", family:"dom", key:"dom7", display:"7"}, w:22});
-    if (limit.x9) opts.push({v:{symbol:"dom9", family:"dom", key:"dom9", display:"9"}, w:14});
-    if (limit.x11) opts.push({v:{symbol:"dom11", family:"dom", key:"dom11", display:"11"}, w:9});
-    if (limit.x13) opts.push({v:{symbol:"dom13", family:"dom", key:"dom13", display:"13"}, w:12});
-    if (limit.tB9) opts.push({v:{symbol:"dom7b9", family:"dom", key:"dom7b9", display:"7(b9)"}, w:7});
-    if (limit.tSharp9) opts.push({v:{symbol:"dom7sharp9", family:"dom", key:"dom7sharp9", display:"7(#9)"}, w:7});
-  }
-
-  if (limit.qMinMaj){
-    opts.push({v:{symbol:"minMaj7", family:"minmaj", key:"minMaj7", display:"mMaj7"}, w:7});
-    if (limit.x9) opts.push({v:{symbol:"minMaj9", family:"minmaj", key:"minMaj9", display:"mMaj9"}, w:5});
-  }
-
-  if (limit.qHalfDim) opts.push({v:{symbol:"halfdim", family:"hdim", key:"halfdim", display:"ø7"}, w:10});
-  if (limit.qDim7)    opts.push({v:{symbol:"dim7", family:"dim", key:"dim7", display:"dim7"}, w:8});
-  if (limit.qSus){
-    opts.push({v:{symbol:"sus", family:"sus", key:"sus", display:"sus"}, w:6});
-    if (limit.x9) opts.push({v:{symbol:"7sus", family:"sus", key:"7sus", display:"7sus"}, w:6});
-  }
-
-  if (!opts.length) opts.push({v:{symbol:"dom7", family:"dom", key:"dom7", display:"7"}, w:1});
-  return opts;
-}
-
-/* chord-local scale */
+/* ---------- Chord-local scale selection (context-aware) ---------- */
 function candidatesForChord(ch){
-  const hasSharp11 = chordTonesPCs(ch).includes(pc(ch.root + 6)) || ch.symbol.includes("#11");
-  if (ch.family === "maj"){
-    return hasSharp11 ? ["lydian","ionian"] : ["ionian","lydian"];
-  }
-  if (ch.family === "min"){
-    return ["dorian","aeolian","phryg"];
-  }
-  if (ch.family === "minmaj"){
-    return ["melodicMinor","dorian","aeolian"];
-  }
+  const hasSharp11 = chordTonesPCs(ch).includes(pc(ch.root + 6)) || (ch.symbol||"").includes("#11");
+  if (ch.family === "maj") return hasSharp11 ? ["lydian","ionian"] : ["ionian","lydian"];
+  if (ch.family === "min") return ["dorian","aeolian","phryg"];
+  if (ch.family === "minmaj") return ["melodicMinor","dorian","aeolian"];
   if (ch.family === "dom"){
     const hasSharp11Dom = chordTonesPCs(ch).includes(pc(ch.root+6));
     return hasSharp11Dom ? ["lydianDom","mixo","altered"] : ["mixo","lydianDom","altered"];
   }
-  if (ch.family === "sus"){
-    return ["mixo","dorian"];
-  }
-  if (ch.family === "hdim" || ch.family === "dim"){
-    return ["locrian"];
-  }
+  if (ch.family === "sus") return ["mixo","dorian"];
+  if (ch.family === "hdim" || ch.family === "dim") return ["locrian"];
   return ["mixo"];
 }
-
 function scoreModeForContext(ch, mode, prevCh, nextCh){
   const scale = SCALES[mode] || SCALES.mixo;
   const scalePC = new Set(scale.map(i=>pc(ch.root+i)));
-
   const ctxPCs = [];
   if (prevCh) ctxPCs.push(...chordTonesPCs(prevCh));
   if (nextCh) ctxPCs.push(...chordTonesPCs(nextCh));
@@ -849,9 +743,7 @@ function scoreModeForContext(ch, mode, prevCh, nextCh){
   if (nextCh && nextCh.slash!=null) ctxPCs.push(pc(nextCh.slash));
 
   let score = 0;
-  for (const p of ctxPCs){
-    if (scalePC.has(p)) score += 2;
-  }
+  for (const p of ctxPCs) if (scalePC.has(p)) score += 2;
 
   if (mode==="ionian") score += 1.2;
   if (mode==="dorian") score += 1.1;
@@ -870,7 +762,6 @@ function scoreModeForContext(ch, mode, prevCh, nextCh){
   }
   return score;
 }
-
 function chooseChordLocalMode(ch, prevCh, nextCh){
   const cand = candidatesForChord(ch);
   let best = cand[0], bestScore = -1e9;
@@ -880,46 +771,266 @@ function chooseChordLocalMode(ch, prevCh, nextCh){
   }
   return best;
 }
-
 function scalePCsForChordLocal(ch, prevCh, nextCh){
   const mode = chooseChordLocalMode(ch, prevCh, nextCh);
   const base = SCALES[mode] || SCALES.mixo;
-
-  const pcs = new Set();
-  base.forEach(i => pcs.add(pc(ch.root + i)));
-  chordTonesPCs(ch).forEach(p=>pcs.add(p));
-  if (ch.slash!=null) pcs.add(pc(ch.slash));
-
-  return { pcs:[...pcs], mode };
+  const pcsSet = new Set();
+  base.forEach(i => pcsSet.add(pc(ch.root + i)));
+  chordTonesPCs(ch).forEach(p=>pcsSet.add(p));
+  if (ch.slash!=null) pcsSet.add(pc(ch.slash));
+  return { pcs:[...pcsSet], mode };
 }
 
-/* chart generator */
-function genChartBars({bars, chaos, rootMode, weights, limiter, halfEnabled, halfDensity}){
+/* ---------- Limiters ---------- */
+function getChordLimiterState(){
+  return {
+    qMaj7: document.getElementById("qMaj7").checked,
+    qMin7: document.getElementById("qMin7").checked,
+    qDom7: document.getElementById("qDom7").checked,
+    qDim7: document.getElementById("qDim7").checked,
+    qHalfDim: document.getElementById("qHalfDim").checked,
+    qSus: document.getElementById("qSus").checked,
+    qMinMaj: document.getElementById("qMinMaj").checked,
+    x9: document.getElementById("x9").checked,
+    x11: document.getElementById("x11").checked,
+    x13: document.getElementById("x13").checked,
+    x6: document.getElementById("x6").checked,
+    xAdd9: document.getElementById("xAdd9").checked,
+    xSharp11: document.getElementById("xSharp11").checked,
+    xMin11: document.getElementById("xMin11").checked,
+    tAlt: document.getElementById("tAlt").checked,
+    tSlash: document.getElementById("tSlash").checked,
+    tChrom: document.getElementById("tChrom").checked,
+    tB9: document.getElementById("tB9").checked,
+    tSharp9: document.getElementById("tSharp9").checked,
+  };
+}
+function setChordLimiterState(s){
+  for (const k of Object.keys(s)){
+    const el = document.getElementById(k);
+    if (el && el.type === "checkbox") el.checked = !!s[k];
+  }
+}
+function buildQualityOptions(limit){
+  const opts = [];
+  if (limit.qMaj7){
+    opts.push({v:{symbol:"maj7", family:"maj", key:"maj7", display:"maj7"}, w:22});
+    if (limit.x9) opts.push({v:{symbol:"maj9", family:"maj", key:"maj9", display:"maj9"}, w:12});
+    if (limit.x6) opts.push({v:{symbol:"6/9", family:"maj", key:"6/9", display:"6/9"}, w:10});
+    if (limit.x6) opts.push({v:{symbol:"maj6", family:"maj", key:"maj6", display:"6"}, w:7});
+    if (limit.xAdd9) opts.push({v:{symbol:"add9", family:"maj", key:"add9", display:"add9"}, w:7});
+    if (limit.xSharp11 || limit.x11) opts.push({v:{symbol:"maj9sharp11", family:"maj", key:"maj9sharp11", display:"maj9(#11)"}, w:7});
+  }
+  if (limit.qMin7){
+    opts.push({v:{symbol:"min7", family:"min", key:"min7", display:"m7"}, w:20});
+    if (limit.x9) opts.push({v:{symbol:"min9", family:"min", key:"min9", display:"m9"}, w:12});
+    if (limit.x6) opts.push({v:{symbol:"min6", family:"min", key:"min6", display:"m6"}, w:8});
+    if (limit.xMin11 || limit.x11) opts.push({v:{symbol:"min11", family:"min", key:"min11", display:"m11"}, w:8});
+  }
+  if (limit.qDom7){
+    opts.push({v:{symbol:"dom7", family:"dom", key:"dom7", display:"7"}, w:22});
+    if (limit.x9) opts.push({v:{symbol:"dom9", family:"dom", key:"dom9", display:"9"}, w:14});
+    if (limit.x11) opts.push({v:{symbol:"dom11", family:"dom", key:"dom11", display:"11"}, w:9});
+    if (limit.x13) opts.push({v:{symbol:"dom13", family:"dom", key:"dom13", display:"13"}, w:12});
+    if (limit.tB9) opts.push({v:{symbol:"dom7b9", family:"dom", key:"dom7b9", display:"7(b9)"}, w:7});
+    if (limit.tSharp9) opts.push({v:{symbol:"dom7sharp9", family:"dom", key:"dom7sharp9", display:"7(#9)"}, w:7});
+  }
+  if (limit.qMinMaj){
+    opts.push({v:{symbol:"minMaj7", family:"minmaj", key:"minMaj7", display:"mMaj7"}, w:7});
+    if (limit.x9) opts.push({v:{symbol:"minMaj9", family:"minmaj", key:"minMaj9", display:"mMaj9"}, w:5});
+  }
+  if (limit.qHalfDim) opts.push({v:{symbol:"halfdim", family:"hdim", key:"halfdim", display:"ø7"}, w:10});
+  if (limit.qDim7)    opts.push({v:{symbol:"dim7", family:"dim", key:"dim7", display:"dim7"}, w:8});
+  if (limit.qSus){
+    opts.push({v:{symbol:"sus", family:"sus", key:"sus", display:"sus"}, w:6});
+    if (limit.x9) opts.push({v:{symbol:"7sus", family:"sus", key:"7sus", display:"7sus"}, w:6});
+  }
+  if (!opts.length) opts.push({v:{symbol:"dom7", family:"dom", key:"dom7", display:"7"}, w:1});
+  return opts;
+}
+
+/* ---------- Progression logic ---------- */
+const DEG = { I:0, ii:2, iii:4, IV:5, V:7, VI:9, vii:11, bVII:10, bVI:8, bIII:3, bII:1, i:0 };
+const FUNCTION_CELLS = [
+  ["ii","V","I","I"],
+  ["I","VI","ii","V"],
+  ["iii","VI","ii","V"],
+  ["I","IV","bVII","I"],
+  ["i","bVI","ii","V"],
+];
+function degreeToRoot(deg, baseRoot){ return pc(baseRoot + (DEG[deg] ?? rint(0,11))); }
+
+function macroToWeights(chaos){
+  const c = clamp(chaos,0,100)/100;
+  return {
+    keyStability: Math.round(85 - c*75),
+    functional:   Math.round(80 - c*70),
+    rootChaos:    Math.round(15 + c*80),
+    qualityChaos: Math.round(15 + c*75),
+    tension:      Math.round(10 + c*80),
+    memoryKill:   Math.round(40 + c*50),
+  };
+}
+function pickKeyMode(chaos){
+  const c = clamp(chaos,0,100)/100;
+  return weightedPick([
+    {v:"ionian", w: 55 - c*15},
+    {v:"dorian", w: 16 + c*10},
+    {v:"mixo",   w: 16 + c*10},
+    {v:"lydian", w:  7 + c*8},
+    {v:"aeolian",w:  5 + c*6},
+    {v:"locrian",w:  1 + c*5},
+  ]);
+}
+
+function makeLogicCtx({keyRoot, keyMode, orbitRoot, prevRoot, barIndex, halfIndex, chaos, weights}){
+  const c = clamp(chaos,0,100)/100;
+  return { keyRoot, keyMode, orbitRoot, prevRoot, barIndex, halfIndex, chaos, c, weights };
+}
+function logic_chooseFunctionalRoot(ctx, baseRoot){
+  const cell = pick(FUNCTION_CELLS);
+  const idx = ctx.barIndex % 4;
+  const deg = cell[idx] || "I";
+  return degreeToRoot(deg, baseRoot);
+}
+function logic_chooseRockRoot(ctx, baseRoot){
+  const diat = SCALES.ionian;
+  const pool = [...diat.map(i=>pc(baseRoot+i)), pc(baseRoot+DEG.bVII), pc(baseRoot+DEG.bVI)];
+  const prev = ctx.prevRoot ?? baseRoot;
+  const scored = pool.map(r=>{
+    const dist = Math.min(pc(r-prev), pc(prev-r));
+    const fifthish = (pc(r-prev)===7 || pc(prev-r)===7) ? 0.6 : 1.0;
+    return { r, w: (1.2/(1+dist)) * fifthish };
+  });
+  return weightedPick(scored.map(o=>({v:o.r, w:o.w})));
+}
+function logic_chooseDiscoRoot(ctx, baseRoot){
+  const cell = ["I","VI","ii","V"];
+  const deg = cell[ctx.barIndex % 4];
+  if (chance(0.15 + ctx.c*0.15)) return logic_chooseRockRoot(ctx, baseRoot);
+  return degreeToRoot(deg, baseRoot);
+}
+function logic_chooseBluesRoot(ctx, baseRoot){
+  const pos = ctx.barIndex % 12;
+  let deg = "I";
+  if (pos>=4 && pos<=5) deg = "IV";
+  if (pos===7) deg = "IV";
+  if (pos===8) deg = "V";
+  if (pos===9) deg = "IV";
+  if (pos===11) deg = chance(0.55) ? "V" : "bVII";
+  let r = degreeToRoot(deg, baseRoot);
+  if (chance(0.18 + ctx.c*0.25)) r = pc(r + (chance(.5)?1:-1));
+  return r;
+}
+function logic_chooseJazzFunctionalRoot(ctx, baseRoot){
+  const useFunc = chance(clamp(ctx.weights.functional,0,100)/100 * (1 - ctx.c*0.55));
+  if (useFunc && ctx.halfIndex===0){
+    const r = logic_chooseFunctionalRoot(ctx, baseRoot);
+    if (chance(0.18 + ctx.c*0.35)) return pc(r + pick([1,2,11]));
+    return r;
+  }
+  const prev = ctx.prevRoot ?? baseRoot;
+  const moves = [
+    {v: pc(prev+7), w: 1.6},
+    {v: pc(prev-7), w: 0.9},
+    {v: pc(prev+2), w: 0.8},
+    {v: pc(prev-2), w: 0.8},
+    {v: pc(prev+1), w: 0.7 + ctx.c*0.8},
+    {v: pc(prev-1), w: 0.7 + ctx.c*0.8},
+  ];
+  return weightedPick(moves);
+}
+function logic_chooseNeoSoulRoot(ctx, baseRoot){
+  const prev = ctx.prevRoot ?? baseRoot;
+  const pool = [
+    {v: pc(prev+1), w: 1.5},{v: pc(prev-1), w: 1.5},
+    {v: pc(prev+3), w: 1.1},{v: pc(prev-3), w: 1.1},
+    {v: pc(prev+6), w: 0.9},{v: pc(prev-6), w: 0.9},
+    {v: logic_chooseFunctionalRoot(ctx, baseRoot), w: 1.0},
+  ];
+  return weightedPick(pool);
+}
+function logic_chooseFusionRoot(ctx, baseRoot){
+  const prev = ctx.prevRoot ?? baseRoot;
+  const pool = [
+    {v: pc(prev+2), w: 1.3},{v: pc(prev-2), w: 1.3},
+    {v: pc(prev+5), w: 0.9},{v: pc(prev-5), w: 0.9},
+    {v: pc(prev+1), w: 0.9 + ctx.c*0.8},{v: pc(prev-1), w: 0.9 + ctx.c*0.8},
+    {v: logic_chooseJazzFunctionalRoot(ctx, baseRoot), w: 1.1},
+  ];
+  return weightedPick(pool);
+}
+
+/* ---------- Progression logic presets for weights ---------- */
+const PROGRESSION_LOGICS = {
+  none: { name:"None (fully random)", apply:(w)=>({...w}) },
+  jazzFunctional: { name:"Jazz: functional gravity", apply:(w,chaos)=>{
+    const c=clamp(chaos,0,100)/100;
+    return {...w, functional:clamp(w.functional+18,0,100), keyStability:clamp(w.keyStability+10,0,100),
+      rootChaos:clamp(w.rootChaos-10,0,100), tension:clamp(w.tension+(8+10*c),0,100), qualityChaos:clamp(w.qualityChaos+6,0,100)};
+  }},
+  jazzModal: { name:"Jazz: modal centers", apply:(w,chaos)=>{
+    const c=clamp(chaos,0,100)/100;
+    return {...w, functional:clamp(w.functional-18,0,100), keyStability:clamp(w.keyStability+12,0,100),
+      rootChaos:clamp(w.rootChaos-10,0,100), tension:clamp(w.tension+(3+8*c),0,100), qualityChaos:clamp(w.qualityChaos+6,0,100)};
+  }},
+  latinTurns: { name:"Latin: turnarounds + cycles", apply:(w,chaos)=>{
+    const c=clamp(chaos,0,100)/100;
+    return {...w, functional:clamp(w.functional+10,0,100), keyStability:clamp(w.keyStability+8,0,100),
+      rootChaos:clamp(w.rootChaos-6,0,100), tension:clamp(w.tension+(10+6*c),0,100), qualityChaos:clamp(w.qualityChaos+6,0,100)};
+  }},
+  bluesLogic: { name:"Blues: tension & release", apply:(w,chaos)=>{
+    const c=clamp(chaos,0,100)/100;
+    return {...w, functional:clamp(w.functional+12,0,100), keyStability:clamp(w.keyStability+18,0,100),
+      rootChaos:clamp(w.rootChaos-16,0,100), tension:clamp(w.tension+(6+8*c),0,100), qualityChaos:clamp(w.qualityChaos-4,0,100)};
+  }},
+  rockLogic: { name:"Rock: diatonic + borrowed", apply:(w,chaos)=>{
+    const c=clamp(chaos,0,100)/100;
+    return {...w, functional:clamp(w.functional-8,0,100), keyStability:clamp(w.keyStability+20,0,100),
+      rootChaos:clamp(w.rootChaos-10,0,100), tension:clamp(w.tension+(2+6*c),0,100), qualityChaos:clamp(w.qualityChaos+2,0,100)};
+  }},
+  discoLogic: { name:"Disco: bright loops", apply:(w,chaos)=>{
+    const c=clamp(chaos,0,100)/100;
+    return {...w, functional:clamp(w.functional+2,0,100), keyStability:clamp(w.keyStability+18,0,100),
+      rootChaos:clamp(w.rootChaos-12,0,100), tension:clamp(w.tension+(4+6*c),0,100), qualityChaos:clamp(w.qualityChaos+6,0,100)};
+  }},
+  neoSoulLogic: { name:"Neo-Soul: slippery voiceleading", apply:(w,chaos)=>{
+    const c=clamp(chaos,0,100)/100;
+    return {...w, functional:clamp(w.functional-10,0,100), keyStability:clamp(w.keyStability+10,0,100),
+      rootChaos:clamp(w.rootChaos+6,0,100), tension:clamp(w.tension+(8+10*c),0,100), qualityChaos:clamp(w.qualityChaos+10,0,100)};
+  }},
+  fusionLogic: { name:"Fusion: planing + side-slips", apply:(w,chaos)=>{
+    const c=clamp(chaos,0,100)/100;
+    return {...w, functional:clamp(w.functional+6,0,100), keyStability:clamp(w.keyStability+6,0,100),
+      rootChaos:clamp(w.rootChaos+10,0,100), tension:clamp(w.tension+(10+12*c),0,100), qualityChaos:clamp(w.qualityChaos+12,0,100)};
+  }},
+  edmLogic: { name:"EDM: loop-centric", apply:(w,chaos)=>{
+    const c=clamp(chaos,0,100)/100;
+    return {...w, functional:clamp(w.functional-18,0,100), keyStability:clamp(w.keyStability+26,0,100),
+      rootChaos:clamp(w.rootChaos-18,0,100), tension:clamp(w.tension-2+6*c,0,100), qualityChaos:clamp(w.qualityChaos-8+10*c,0,100),
+      memoryKill:clamp(w.memoryKill+12,0,100)};
+  }},
+};
+
+/* ---------- Generator ---------- */
+function genChartBars({bars, chaos, rootMode, weights, limiter, halfEnabled, halfDensity, progressionLogic}){
   let keyRoot = rint(0,11);
   let keyMode = pickKeyMode(chaos);
   let orbitRoot = keyRoot;
-
   const qualityPool = buildQualityOptions(limiter);
 
   const density = clamp(halfDensity,0,100)/100;
   const barSplit = [];
   for (let i=0;i<bars;i++){
     if (!halfEnabled) barSplit.push(false);
-    else {
-      const p = (i===0) ? density*0.6 : density;
-      barSplit.push(chance(p));
-    }
+    else barSplit.push(chance((i===0 ? density*0.6 : density)));
   }
   const halvesCount = barSplit.filter(Boolean).length;
 
   const slotPlan = [];
   for (let b=0;b<bars;b++){
-    if (!barSplit[b]){
-      slotPlan.push({barIndex:b, halfIndex:0, beats:4});
-    } else {
-      slotPlan.push({barIndex:b, halfIndex:0, beats:2});
-      slotPlan.push({barIndex:b, halfIndex:1, beats:2});
-    }
+    if (!barSplit[b]) slotPlan.push({barIndex:b, halfIndex:0, beats:4});
+    else { slotPlan.push({barIndex:b, halfIndex:0, beats:2}); slotPlan.push({barIndex:b, halfIndex:1, beats:2}); }
   }
 
   const memory = { lastRoots:[], lastQuals:[] };
@@ -934,16 +1045,14 @@ function genChartBars({bars, chaos, rootMode, weights, limiter, halfEnabled, hal
     const blockQual = memory.lastQuals.includes(qualKey) && chance(kill*0.65);
     return blockRoot || blockQual;
   }
-
-  const DEG = { I:0, ii:2, iii:4, IV:5, V:7, VI:9, viiø:11, bVII:10, bVI:8, i:0, iiø:2 };
-  const funcCells = [
-    ["ii","V","I","I"],
-    ["I","VI","ii","V"],
-    ["iii","VI","ii","V"],
-    ["I","IV","bVII","I"],
-    ["i","bVI","iiø","V"],
-  ];
-  function degreeToRoot(deg, baseRoot){ return pc(baseRoot + (DEG[deg] ?? rint(0,11))); }
+  function chooseQuality(){
+    const qC = clamp(weights.qualityChaos,0,100)/100;
+    const tweaked = qualityPool.map(o=>{
+      const boost = (chance(qC*0.55) ? (1 + Math.random()*0.35) : 1);
+      return {v:o.v, w:o.w*boost};
+    });
+    return weightedPick(tweaked);
+  }
 
   function chooseNextRoot(prevRoot, meta){
     const c = clamp(weights.rootChaos,0,100)/100;
@@ -959,14 +1068,28 @@ function genChartBars({bars, chaos, rootMode, weights, limiter, halfEnabled, hal
     if (rootMode === "orbiting" && chance((chaos/100)*0.18)){
       orbitRoot = pc(orbitRoot + pick([2,3,5,7,9,10]) * (chance(.5)?1:-1));
     }
+    const base = (rootMode==="orbiting") ? orbitRoot : keyRoot;
 
+    const ctx = makeLogicCtx({keyRoot, keyMode, orbitRoot, prevRoot, barIndex: meta.barIndex, halfIndex: meta.halfIndex, chaos, weights});
+    const logicId = progressionLogic || "none";
+    if (logicId !== "none"){
+      if (logicId==="jazzFunctional") return logic_chooseJazzFunctionalRoot(ctx, base);
+      if (logicId==="jazzModal") return chance(0.75) ? pc(base + pick(SCALES.dorian)) : logic_chooseJazzFunctionalRoot(ctx, base);
+      if (logicId==="latinTurns") return chance(0.65) ? logic_chooseFunctionalRoot(ctx, base) : logic_chooseJazzFunctionalRoot(ctx, base);
+      if (logicId==="bluesLogic") return logic_chooseBluesRoot(ctx, base);
+      if (logicId==="rockLogic") return logic_chooseRockRoot(ctx, base);
+      if (logicId==="discoLogic") return logic_chooseDiscoRoot(ctx, base);
+      if (logicId==="neoSoulLogic") return logic_chooseNeoSoulRoot(ctx, base);
+      if (logicId==="fusionLogic") return logic_chooseFusionRoot(ctx, base);
+      if (logicId==="edmLogic") return chance(0.72) ? logic_chooseDiscoRoot(ctx, base) : logic_chooseRockRoot(ctx, base);
+    }
+
+    // fallback original random behavior
     const funcBias = clamp(weights.functional,0,100)/100;
     const useFunctional = chance(funcBias * (1 - (chaos/100)*0.55));
     const isBarStart = (meta.halfIndex===0);
     if (useFunctional && isBarStart && (meta.barIndex % 4 === 0) && limiter.tChrom){
-      const cell = pick(funcCells);
-      const base = (rootMode==="orbiting") ? orbitRoot : keyRoot;
-      return degreeToRoot(cell[0], base);
+      return logic_chooseFunctionalRoot(ctx, base);
     }
 
     const jumpsSane = [2,5,7,10,3,4,9,8,1,11];
@@ -974,7 +1097,6 @@ function genChartBars({bars, chaos, rootMode, weights, limiter, halfEnabled, hal
     const anchor = chance(cling);
 
     if (anchor){
-      const base = (rootMode==="orbiting") ? orbitRoot : keyRoot;
       const scale = SCALES[keyMode] || SCALES.ionian;
       let target = pc(base + pick(scale));
       if (limiter.tChrom && chance(c*0.25)) target = pc(target + (chance(.5)?1:-1));
@@ -983,21 +1105,9 @@ function genChartBars({bars, chaos, rootMode, weights, limiter, halfEnabled, hal
       if (prevRoot == null) return rint(0,11);
       const pool = chance(c) ? jumpsWild : jumpsSane;
       const step = pick(pool);
-      if (pool !== jumpsWild || chance(0.6)){
-        return pc(prevRoot + step * (chance(.5)?1:-1));
-      } else {
-        return rint(0,11);
-      }
+      if (pool !== jumpsWild || chance(0.6)) return pc(prevRoot + step * (chance(.5)?1:-1));
+      return rint(0,11);
     }
-  }
-
-  function chooseQuality(){
-    const qC = clamp(weights.qualityChaos,0,100)/100;
-    const tweaked = qualityPool.map(o=>{
-      const boost = (chance(qC*0.55) ? (1 + Math.random()*0.35) : 1);
-      return {v:o.v, w:o.w*boost};
-    });
-    return weightedPick(tweaked);
   }
 
   const slots = [];
@@ -1056,7 +1166,48 @@ function genChartBars({bars, chaos, rootMode, weights, limiter, halfEnabled, hal
   return { bars: barsOut, keyRoot, keyMode, showKey, halvesCount };
 }
 
-/* UI refs */
+/* ---------- Themes ---------- */
+const PAGE_THEMES = {
+  obsidian: { name:"Obsidian (default)", bg:"#0b0f14", a:"rgba(122,162,255,.08)", b:"rgba(182,124,255,.08)", c:"rgba(63,225,139,.05)",
+    ink:"#e9eef6", muted:"#9aa6b2", panel:"rgba(255,255,255,.05)", panel2:"rgba(0,0,0,.20)", line:"rgba(255,255,255,.09)" },
+  midnight: { name:"Midnight", bg:"#060812", a:"rgba(0,183,255,.08)", b:"rgba(255,77,255,.07)", c:"rgba(255,255,255,.03)",
+    ink:"#eef3ff", muted:"#9aa6b2", panel:"rgba(255,255,255,.045)", panel2:"rgba(0,0,0,.22)", line:"rgba(255,255,255,.085)" },
+  parchment:{ name:"Parchment", bg:"#f4f1ea", a:"rgba(47,107,255,.10)", b:"rgba(182,124,255,.10)", c:"rgba(63,225,139,.06)",
+    ink:"#1b2230", muted:"#4b5566", panel:"rgba(0,0,0,.04)", panel2:"rgba(0,0,0,.06)", line:"rgba(0,0,0,.12)" },
+  terminal: { name:"Terminal", bg:"#020604", a:"rgba(0,255,154,.10)", b:"rgba(0,183,255,.06)", c:"rgba(255,255,255,.03)",
+    ink:"#c9ffe8", muted:"#7ad4b0", panel:"rgba(0,255,154,.04)", panel2:"rgba(0,0,0,.32)", line:"rgba(0,255,154,.10)" },
+  sunset: { name:"Sunset", bg:"#0a0610", a:"rgba(255,120,80,.10)", b:"rgba(255,77,255,.08)", c:"rgba(122,162,255,.07)",
+    ink:"#f6efff", muted:"#b8a7c6", panel:"rgba(255,255,255,.05)", panel2:"rgba(0,0,0,.22)", line:"rgba(255,255,255,.09)" },
+};
+function applyPageTheme(themeId){
+  const t = PAGE_THEMES[themeId] || PAGE_THEMES.obsidian;
+  document.documentElement.style.setProperty("--pageBg", t.bg);
+  document.documentElement.style.setProperty("--pageInk", t.ink);
+  document.documentElement.style.setProperty("--pageMuted", t.muted);
+  document.documentElement.style.setProperty("--pagePanel", t.panel);
+  document.documentElement.style.setProperty("--pagePanel2", t.panel2);
+  document.documentElement.style.setProperty("--pageLine", t.line);
+  document.documentElement.style.setProperty("--pageGlowA", t.a);
+  document.documentElement.style.setProperty("--pageGlowB", t.b);
+  document.documentElement.style.setProperty("--pageGlowC", t.c);
+  state.pageTheme = themeId;
+  try{ localStorage.setItem("fm_page_theme", themeId); }catch{}
+}
+
+const PIANO_THEMES = {
+  classic:{ name:"Classic", vars:{ "--accent":"#2f6bff","--good":"#3fe18b","--chord":"#b67cff","--keyWhite":"#f2f5fb","--keyBlack":"#161b23","--keyBorder":"#c9d3e2","--keyBlackBorder":"#2a3240" } },
+  neon:{ name:"Neon", vars:{ "--accent":"#00b7ff","--good":"#00ff9a","--chord":"#ff4dff","--keyWhite":"#e9f7ff","--keyBlack":"#0b0f14","--keyBorder":"rgba(233,247,255,.45)","--keyBlackBorder":"rgba(255,255,255,.16)" } },
+  mono:{ name:"Mono", vars:{ "--accent":"#d7dde6","--good":"#ffffff","--chord":"#b9c2cf","--keyWhite":"#f5f7fb","--keyBlack":"#0f131a","--keyBorder":"#cfd6e2","--keyBlackBorder":"#2a3240" } },
+  pastel:{ name:"Pastel", vars:{ "--accent":"#7aa2ff","--good":"#7fffd4","--chord":"#ffb3e6","--keyWhite":"#f7fbff","--keyBlack":"#141826","--keyBorder":"rgba(255,255,255,.25)","--keyBlackBorder":"rgba(255,255,255,.12)" } },
+};
+function applyPianoTheme(id){
+  const t = PIANO_THEMES[id] || PIANO_THEMES.classic;
+  for (const k of Object.keys(t.vars)) document.documentElement.style.setProperty(k, t.vars[k]);
+  state.pianoTheme = id;
+  try{ localStorage.setItem("fm_piano_theme", id); }catch{}
+}
+
+/* ---------- UI refs ---------- */
 const els = {
   pillLine: document.getElementById("pillLine"),
   leadKey: document.getElementById("leadKey"),
@@ -1069,20 +1220,20 @@ const els = {
   msg: document.getElementById("msg"),
 
   sheet: document.getElementById("sheet"),
-
   pianoSvg: document.getElementById("pianoSvg"),
   pianoTop: document.getElementById("pianoTop"),
   pianoHint: document.getElementById("pianoHint"),
 
   btnGenerate: document.getElementById("btnGenerate"),
-  btnRandom: document.getElementById("btnRandom"),
+  btnRandomAll: document.getElementById("btnRandomAll"),
   btnCopy: document.getElementById("btnCopy"),
   btnPlay: document.getElementById("btnPlay"),
   btnDefaults: document.getElementById("btnDefaults"),
   btnDefaults2: document.getElementById("btnDefaults2"),
 
+  songSelect: document.getElementById("songSelect"),
   genrePreset: document.getElementById("genrePreset"),
-  grooveStyle: document.getElementById("grooveStyle"),
+  progressionLogic: document.getElementById("progressionLogic"),
 
   bars: document.getElementById("bars"),
   barsNum: document.getElementById("barsNum"),
@@ -1099,6 +1250,7 @@ const els = {
   chaosNum: document.getElementById("chaosNum"),
   rootMode: document.getElementById("rootMode"),
 
+  grooveStyle: document.getElementById("grooveStyle"),
   bassPreset: document.getElementById("bassPreset"),
   keysPreset: document.getElementById("keysPreset"),
   drumsPreset: document.getElementById("drumsPreset"),
@@ -1120,45 +1272,43 @@ const els = {
   drumsFill: document.getElementById("drumsFill"),
   drumsFillNum: document.getElementById("drumsFillNum"),
 
-  controlsGrid: document.getElementById("controlsGrid"),
   btnGear: document.getElementById("btnGear"),
-
   advBack: document.getElementById("advBack"),
   orderList: document.getElementById("orderList"),
   btnCloseAdv: document.getElementById("btnCloseAdv"),
   btnResetMenu: document.getElementById("btnResetMenu"),
 
+  pageTheme: document.getElementById("pageTheme"),
   pianoTheme: document.getElementById("pianoTheme"),
   markerStyle: document.getElementById("markerStyle"),
-  scaleOutlineW: document.getElementById("scaleOutlineW"),
-  scaleOutlineWNum: document.getElementById("scaleOutlineWNum"),
-  scaleOutlineA: document.getElementById("scaleOutlineA"),
-  scaleOutlineANum: document.getElementById("scaleOutlineANum"),
 };
 
-/* Defaults */
+/* ---------- Defaults/state ---------- */
 const DEFAULTS = {
-  bars: 4,
-  halfEnabled: false,
-  halfDensity: 40,
-  tempo: 120,
-  swing: 60,
-  chaos: 50,
+  bars: 8,
+  halfEnabled: true,
+  halfDensity: 22,
+  tempo: 140,
+  swing: 58,
+  chaos: 35,
   rootMode: "keyed",
+
+  progressionLogic: "jazzFunctional",
   genrePreset: "jazzSwing",
+
   grooveStyle: "swing",
-  compStyle: "twoStabs",
+  compStyle: "fourComp",
 
   bassPreset: "upright",
-  keysPreset: "ep",
+  keysPreset: "piano",
   drumsPreset: "jazz",
   drumsLevel: 55,
 
   keysComplex: 55,
-  keysFill: 35,
+  keysFill: 30,
   bassComplex: 55,
-  bassFill: 30,
-  drumsComplex: 60,
+  bassFill: 25,
+  drumsComplex: 65,
   drumsFill: 40,
 
   limiter: {
@@ -1168,10 +1318,9 @@ const DEFAULTS = {
     tAlt:false, tSlash:false, tChrom:false, tB9:false, tSharp9:false,
   },
 
-  pianoTheme: "classic",
+  pageTheme: "obsidian",
+  pianoTheme: "neon",
   markerStyle: "dots",
-  scaleStrokeWidth: 2.2,
-  scaleStrokeAlphaPct: 88,
 };
 
 let state = {
@@ -1183,9 +1332,16 @@ let state = {
   chaos: DEFAULTS.chaos,
   rootMode: DEFAULTS.rootMode,
 
+  progressionLogic: DEFAULTS.progressionLogic,
   genrePreset: DEFAULTS.genrePreset,
+
   grooveStyle: DEFAULTS.grooveStyle,
   compStyle: DEFAULTS.compStyle,
+
+  bassPreset: DEFAULTS.bassPreset,
+  keysPreset: DEFAULTS.keysPreset,
+  drumsPreset: DEFAULTS.drumsPreset,
+  drumsLevel: DEFAULTS.drumsLevel,
 
   keysComplex: DEFAULTS.keysComplex,
   keysFill: DEFAULTS.keysFill,
@@ -1205,1868 +1361,1933 @@ let state = {
   activeBar: 0,
   activeHalf: 0,
 
+  pageTheme: DEFAULTS.pageTheme,
   pianoTheme: DEFAULTS.pianoTheme,
   markerStyle: DEFAULTS.markerStyle,
+
+  fillShapeKeys:"pyramid",
+  fillShapeBass:"pulse2",
+  fillShapeDrums:"stutter",
 };
 
-function syncMeta(halvesCount=0){
-  els.metaBars.textContent = state.bars;
-  els.metaTempo.textContent = state.tempo;
-  els.metaSwing.textContent = state.swing;
-  els.metaChaos.textContent = state.chaos;
-  if (state.halfEnabled && halvesCount>0){
-    els.metaHalves.style.display = "";
-    els.metaHalvesVal.textContent = halvesCount;
-  } else {
-    els.metaHalves.style.display = "none";
-    els.metaHalvesVal.textContent = "0";
+/* ---------- Genre presets (lots) ---------- */
+const GENRE_PRESETS = {
+  jazzSwing:{ name:"Jazz Swing (default)", tempo:[120,180], swing:[58,66], groove:"swing", comp:"fourComp",
+    bass:"upright", keys:"piano", drums:"jazz", kC:55,kF:30,bC:55,bF:25,dC:65,dF:40, halfOn:true, halfDen:[15,35], logic:"jazzFunctional" },
+  bebop:{ name:"Bebop Burner", tempo:[200,260], swing:[60,70], groove:"swing", comp:"fourComp",
+    bass:"upright", keys:"ep", drums:"jazz", kC:75,kF:35,bC:75,bF:25,dC:80,dF:50, halfOn:true, halfDen:[30,65], logic:"jazzFunctional" },
+  hardBop:{ name:"Hard Bop / Blue Note", tempo:[140,210], swing:[58,66], groove:"swing", comp:"pushPull",
+    bass:"round", keys:"organ", drums:"jazz", kC:65,kF:35,bC:65,bF:30,dC:70,dF:45, halfOn:true, halfDen:[20,50], logic:"jazzFunctional" },
+  cool:{ name:"Cool / West Coast", tempo:[110,150], swing:[55,62], groove:"brushBallad", comp:"sparse",
+    bass:"round", keys:"ep", drums:"brushes", kC:45,kF:20,bC:45,bF:15,dC:45,dF:20, halfOn:false, halfDen:[0,25], logic:"jazzModal" },
+  balladJazz:{ name:"Jazz Ballad", tempo:[60,95], swing:[52,58], groove:"brushBallad", comp:"sustain",
+    bass:"upright", keys:"pad", drums:"brushes", kC:35,kF:15,bC:35,bF:10,dC:35,dF:18, halfOn:false, halfDen:[0,20], logic:"jazzModal" },
+  modalJazz:{ name:"Modal / Spiritual", tempo:[90,140], swing:[52,60], groove:"free", comp:"sustain",
+    bass:"round", keys:"pad", drums:"jazz", kC:50,kF:25,bC:50,bF:20,dC:60,dF:45, halfOn:true, halfDen:[10,30], logic:"jazzModal" },
+
+  latinBossa:{ name:"Bossa Nova", tempo:[120,160], swing:[50,54], groove:"bossa", comp:"montuno",
+    bass:"round", keys:"vibes", drums:"perc", kC:70,kF:45,bC:65,bF:35,dC:75,dF:55, halfOn:true, halfDen:[30,65], logic:"latinTurns" },
+  latinSamba:{ name:"Samba", tempo:[160,210], swing:[50,54], groove:"samba", comp:"montuno",
+    bass:"round", keys:"vibes", drums:"perc", kC:80,kF:55,bC:75,bF:45,dC:85,dF:60, halfOn:true, halfDen:[35,70], logic:"latinTurns" },
+  afroCuban:{ name:"Afro-Cuban", tempo:[120,190], swing:[50,54], groove:"afroCuban", comp:"montuno",
+    bass:"round", keys:"clavBright", drums:"perc", kC:75,kF:55,bC:70,bF:45,dC:85,dF:65, halfOn:true, halfDen:[40,75], logic:"latinTurns" },
+  latinBolero:{ name:"Bolero", tempo:[80,115], swing:[50,54], groove:"bossa", comp:"sustain",
+    bass:"round", keys:"piano", drums:"perc", kC:40,kF:18,bC:40,bF:15,dC:45,dF:25, halfOn:false, halfDen:[0,25], logic:"latinTurns" },
+
+  funk:{ name:"Funk", tempo:[90,120], swing:[50,56], groove:"funk", comp:"clav",
+    bass:"fmBass", keys:"clavBright", drums:"tight", kC:75,kF:55,bC:80,bF:45,dC:80,dF:60, halfOn:true, halfDen:[10,35], logic:"neoSoulLogic" },
+  disco:{ name:"Disco", tempo:[112,128], swing:[50,54], groove:"disco", comp:"discoChop",
+    bass:"squareBass", keys:"organ", drums:"house", kC:55,kF:35,bC:60,bF:25,dC:60,dF:35, halfOn:true, halfDen:[8,22], logic:"discoLogic" },
+  rockClassic:{ name:"Classic Rock", tempo:[95,145], swing:[50,54], groove:"rock", comp:"rockChugs",
+    bass:"pickBass", keys:"piano", drums:"rock", kC:55,kF:30,bC:55,bF:25,dC:65,dF:40, halfOn:true, halfDen:[10,28], logic:"rockLogic" },
+  rockAlt:{ name:"Alt / Indie Rock", tempo:[90,135], swing:[50,54], groove:"breaks", comp:"pushPull",
+    bass:"round", keys:"guitarish", drums:"rock", kC:45,kF:25,bC:45,bF:20,dC:55,dF:35, halfOn:false, halfDen:[0,18], logic:"rockLogic" },
+
+  bluesShuffle:{ name:"Blues Shuffle", tempo:[85,120], swing:[58,70], groove:"shuffle", comp:"fourComp",
+    bass:"upright", keys:"ep", drums:"jazz", kC:55,kF:35,bC:60,bF:30,dC:65,dF:50, halfOn:true, halfDen:[10,28], logic:"bluesLogic" },
+  bluesSlow:{ name:"Slow Blues", tempo:[60,85], swing:[55,65], groove:"shuffle", comp:"sustain",
+    bass:"round", keys:"ep", drums:"brushes", kC:35,kF:18,bC:35,bF:15,dC:40,dF:25, halfOn:false, halfDen:[0,18], logic:"bluesLogic" },
+
+  neoSoul:{ name:"Neo-Soul", tempo:[70,110], swing:[50,60], groove:"hiphop", comp:"neoSoulPush",
+    bass:"sub", keys:"pad", drums:"lofi", kC:70,kF:55,bC:65,bF:50,dC:65,dF:55, halfOn:true, halfDen:[10,35], logic:"neoSoulLogic" },
+  hiphop:{ name:"Hip-Hop", tempo:[70,100], swing:[50,58], groove:"hiphop", comp:"sparse",
+    bass:"sub", keys:"pad", drums:"lofi", kC:35,kF:25,bC:45,bF:30,dC:45,dF:35, halfOn:false, halfDen:[0,18], logic:"edmLogic" },
+  house:{ name:"House", tempo:[120,130], swing:[50,54], groove:"house", comp:"edmStab",
+    bass:"squareBass", keys:"pad", drums:"house", kC:55,kF:35,bC:55,bF:25,dC:60,dF:35, halfOn:true, halfDen:[5,20], logic:"edmLogic" },
+  techno:{ name:"Techno", tempo:[125,145], swing:[50,52], groove:"techno", comp:"edmStab",
+    bass:"reese", keys:"fm", drums:"techno", kC:60,kF:45,bC:65,bF:35,dC:70,dF:50, halfOn:true, halfDen:[5,18], logic:"edmLogic" },
+  dnb:{ name:"Drum & Bass", tempo:[165,190], swing:[50,52], groove:"dnb", comp:"arpeggio",
+    bass:"reese", keys:"chip", drums:"dnb", kC:75,kF:55,bC:85,bF:45,dC:85,dF:55, halfOn:true, halfDen:[10,28], logic:"edmLogic" },
+  breaks:{ name:"Breakbeat", tempo:[120,150], swing:[50,56], groove:"breaks", comp:"pushPull",
+    bass:"round", keys:"fm", drums:"electro", kC:65,kF:45,bC:65,bF:35,dC:70,dF:50, halfOn:true, halfDen:[10,25], logic:"edmLogic" },
+  ambient:{ name:"Ambient Minimal", tempo:[60,95], swing:[50,54], groove:"ambient", comp:"sustain",
+    bass:"sub", keys:"noisePad", drums:"minimal", kC:25,kF:10,bC:25,bF:10,dC:20,dF:10, halfOn:false, halfDen:[0,12], logic:"jazzModal" },
+  fusion:{ name:"Jazz-Rock Fusion", tempo:[110,170], swing:[50,58], groove:"funk", comp:"clav",
+    bass:"fmBass", keys:"fm", drums:"tight", kC:80,kF:55,bC:80,bF:45,dC:80,dF:60, halfOn:true, halfDen:[18,40], logic:"fusionLogic" },
+  free:{ name:"Free / Broken", tempo:[80,200], swing:[50,70], groove:"free", comp:"pushPull",
+    bass:"wobble", keys:"glass", drums:"minimal", kC:90,kF:65,bC:90,bF:65,dC:90,dF:70, halfOn:true, halfDen:[25,70], logic:"none" },
+};
+
+/* ---------- Song shapes (50) - original templates (roman-ish) ---------- */
+function makeSongLibrary(){
+  // These are “standard-like” FORM TEMPLATES: AABA, blues variants, rhythm-ish turns,
+  // minor key turns, modal vamps, tritoney bridges, etc. They are NOT copied charts.
+  // Each can reharmonize itself via your current limiter pool.
+  const L = {};
+  const add = (id,title,tempo,swing,chartText)=>{ L[id]={title,tempo,swing,chartText}; };
+
+  add("none","None (use generator)",null,null,null);
+
+  // AABA-ish (8-bar A, 8-bar B, 8-bar A) compressed to 16 for this UI.
+  add("shape01","Shape 01 — Bright AABA-ish (16)",170,62,`
+| I, VI | ii, V | I | IV |
+| iii | VI | ii | V |
+| bIII | bVI | ii | V |
+| I | VI | ii | V |
+`.trim());
+
+  add("shape02","Shape 02 — Minor turnaround (16)",160,62,`
+| i | iv | bVII | VI7 |
+| iiø | V7 | i | i |
+| bIII | bVI | iiø | V7 |
+| i | V7 | i | i |
+`.trim());
+
+  add("shape03","Shape 03 — Modal center + sidestep (12)",120,56,`
+| i | i | bVII | bVII |
+| IV | IV | i | i |
+| bII | bII | i | i |
+`.trim());
+
+  add("shape04","Shape 04 — “Rhythm-ish” loop (16)",200,64,`
+| I | VI | ii | V |
+| I | VI | ii | V |
+| IV | iv | I | VI |
+| ii | V | I | V |
+`.trim());
+
+  add("shape05","Shape 05 — Ballad cadences (8)",78,55,`
+| I | iii | vi | ii |
+| IV | V | I | I |
+`.trim());
+
+  add("shape06","Shape 06 — Bluesy minor (12)",130,60,`
+| i | i | iv | iv |
+| i | bVI | V7 | V7 |
+| iv | iv | i | V7 |
+`.trim());
+
+  add("shape07","Shape 07 — “Cycle” with surprises (16)",180,62,`
+| I | VI | ii | V |
+| iii | VI | ii | V |
+| bVII | VI | ii | V |
+| I | bII | I | V |
+`.trim());
+
+  add("shape08","Shape 08 — Latin turnarounds (16)",160,52,`
+| I | IV | iii | VI |
+| ii | V | I | I |
+| i | bVI | iiø | V7 |
+| I | V | I | I |
+`.trim());
+
+  add("shape09","Shape 09 — Funk loop (8)",104,52,`
+| i | bIII | IV | bVII |
+| i | bIII | IV | V |
+`.trim());
+
+  add("shape10","Shape 10 — Tritone bridge vibe (16)",170,60,`
+| I | VI | ii | V |
+| I | bII | I | V |
+| bVI | bII | V | I |
+| iii | VI | ii | V |
+`.trim());
+
+  // Generate a bunch more by variations (still original templates)
+  const bases = [
+    {name:"AABA-ish Alt", tempo:180, swing:62, txt:`
+| I | VI | ii | V |
+| I | IV | iii | VI |
+| bIII | bVI | ii | V |
+| I | V | I | I |
+`.trim()},
+    {name:"Minor AABA-ish", tempo:170, swing:62, txt:`
+| i | VI7 | iiø | V7 |
+| i | iv | bVII | VI7 |
+| bIII | bVI | iiø | V7 |
+| i | V7 | i | i |
+`.trim()},
+    {name:"Modal w/ cadence", tempo:130, swing:56, txt:`
+| i | i | i | i |
+| bVII | bVII | IV | IV |
+| i | bII | i | V |
+`.trim()},
+    {name:"Bright Loop", tempo:124, swing:52, txt:`
+| I | V | vi | IV |
+| I | V | ii | V |
+`.trim()},
+    {name:"Planing / fusion", tempo:150, swing:54, txt:`
+| I | bII | bIII | bII |
+| I | bVI | V | I |
+`.trim()},
+    {name:"Shuffle bluesy", tempo:110, swing:66, txt:`
+| I7 | IV7 | I7 | I7 |
+| IV7 | IV7 | I7 | V7 |
+| IV7 | I7 | V7 | I7 |
+`.trim()},
+  ];
+
+  let idx = 11;
+  for (let i=0;i<40;i++){
+    const b = bases[i % bases.length];
+    const id = `shape${String(idx).padStart(2,"0")}`;
+    add(id, `Shape ${String(idx).padStart(2,"0")} — ${b.name}`, b.tempo + (i%3===0? -10 : i%3===1? 0 : 10), b.swing, b.txt);
+    idx++;
   }
+
+  return L;
 }
+const SONG_LIBRARY = makeSongLibrary();
 
-function setHeaderLine(){
-  const modeLabel = (state.keyMode || "ionian").toUpperCase();
-  const line = state.showKey ? `${noteName(state.keyRoot)} · ${modeLabel}` : `FREE · ${state.rootMode.toUpperCase()}`;
-  const halfInfo = state.halfEnabled ? ` · random ½-bars (${state.halfDensity}%)` : "";
-  els.pillLine.textContent = `${line}${halfInfo} · ${state.grooveStyle.toUpperCase()}`;
-  els.leadKey.textContent  = `${line}${halfInfo}`;
-}
+// --- Populate Song Shapes dropdown + hook change -> load ---
+(function initSongShapesUI() {
+  // build options
+  els.songSelect.innerHTML = "";
+  const ids = Object.keys(SONG_LIBRARY);
+  
+  // put "none" first, then the rest
+  ids.sort((a, b) => {
+    if (a === "none") return -1;
+    if (b === "none") return 1;
+    return a.localeCompare(b);
+  });
+  
+  for (const id of ids) {
+    const opt = document.createElement("option");
+    opt.value = id;
+    opt.textContent = SONG_LIBRARY[id].title || id;
+    els.songSelect.appendChild(opt);
+  }
+  
+  // default selection
+  els.songSelect.value = "none";
+  
+  // change handler
+  els.songSelect.addEventListener("change", () => {
+    const id = els.songSelect.value;
+    loadSongById(id);
+  });
+})();
 
-/* Lead sheet */
-function renderSheet(){
-  els.sheet.innerHTML = "";
+/* ---------- Roman chart parsing to “real” chords in current key ---------- */
+function parseRomanChartToBars(text, keyRootPc){
+  const DEGREE = { "I":0,"ii":2,"iii":4,"IV":5,"V":7,"VI":9,"vii":11, "bVII":10,"bVI":8,"bIII":3,"bII":1, "i":0 };
+  const rawBars = text.replace(/\r/g,"").split("|").map(s=>s.trim()).filter(Boolean);
 
-  for (let bar=0; bar<state.bars; bar++){
-    const barObj = state.chartBars[bar];
-    const chords = barObj?.chords || [];
+  const limiter = getChordLimiterState();
+  const qPool = buildQualityOptions(limiter);
 
-    const div = document.createElement("div");
-    const isActiveBar = (state.activeBar === bar);
-    div.className = "bar" + (isActiveBar ? " active" : "");
+  function chooseQualityForRoman(roman){
+    const core = roman.replace(/\s+/g,"");
+    const isLower = /^[a-z]/.test(core.replace(/^b/,""));
+    const isDom = /V/.test(core.replace(/^b/,"")) && !isLower;
+    let wantFamily = "maj";
+    if (isLower) wantFamily = "min";
+    if (isDom) wantFamily = "dom";
+    const candidates = qPool.filter(o=>o.v.family===wantFamily);
+    return candidates.length ? weightedPick(candidates) : weightedPick(qPool);
+  }
 
-    const num = `<div class="num">${bar+1}</div>`;
-    if (chords.length<=1){
-      const ch = chords[0];
-      div.innerHTML = `<div class="sym">${ch ? chordName(ch) : "—"}</div>${num}`;
-      div.addEventListener("click", async ()=>{ await focusBarHalf(bar, 0, "tap"); });
+  function romanToRoot(roman){
+    const core = roman.replace(/\s+/g,"");
+    const flat = core.startsWith("b");
+    const base = core.replace(/^b/,"").replace(/[^IViv]+/g,"");
+    const deg = DEGREE[flat ? ("b"+base) : base];
+    if (deg==null) return null;
+    return pc(keyRootPc + deg);
+  }
+
+  const barsOut = [];
+  for (const cell of rawBars){
+    const halves = cell.split(",").map(s=>s.trim()).filter(Boolean);
+    if (halves.length<=1){
+      const roman = halves[0] || "I";
+      const root = romanToRoot(roman) ?? keyRootPc;
+      const q = chooseQualityForRoman(roman).v;
+      barsOut.push({ split:false, chords:[{ root, family:q.family, symbol:q.display, intervals:(CHORDS[q.symbol]||CHORDS.dom7).slice(), slash:null }] });
     } else {
-      const chA = chords[0], chB = chords[1];
-      div.innerHTML = `
-        <div class="sym">${chA ? chordName(chA) : "—"}</div>
-        <div class="sym sym2">${chB ? chordName(chB) : "—"}</div>
-        ${num}
-        <div class="halfHit" aria-hidden="true">
-          <button type="button" data-half="0" title="First half"></button>
-          <button type="button" data-half="1" title="Second half"></button>
-        </div>
-      `;
-      div.querySelectorAll("button[data-half]").forEach(btn=>{
-        btn.addEventListener("click", async (e)=>{
-          e.stopPropagation();
-          const half = Number(btn.getAttribute("data-half")||0);
-          await focusBarHalf(bar, half, "tap");
-        });
+      const a = halves[0], b = halves[1];
+      const rootA = romanToRoot(a) ?? keyRootPc;
+      const rootB = romanToRoot(b) ?? keyRootPc;
+      const qa = chooseQualityForRoman(a).v;
+      const qb = chooseQualityForRoman(b).v;
+      barsOut.push({
+        split:true,
+        chords:[
+          { root:rootA, family:qa.family, symbol:qa.display, intervals:(CHORDS[qa.symbol]||CHORDS.dom7).slice(), slash:null },
+          { root:rootB, family:qb.family, symbol:qb.display, intervals:(CHORDS[qb.symbol]||CHORDS.dom7).slice(), slash:null },
+        ]
       });
-      div.addEventListener("click", async ()=>{ await focusBarHalf(bar, 0, "tap"); });
+    }
+  }
+  return barsOut;
+}
+function loadSongById(songId){
+  const s = SONG_LIBRARY[songId] || SONG_LIBRARY.none;
+  if (!s || !s.chartText){
+    els.msg.textContent = "Song shapes: none (generator mode).";
+    return;
+  }
+  // pick a key center if none exists yet
+  if (state.keyRoot == null) state.keyRoot = rint(0, 11);
+  const keyRootPc = state.keyRoot;
+
+  if (s.tempo){
+    state.tempo = s.tempo|0;
+    els.tempo.value = state.tempo; els.tempoNum.value = state.tempo;
+  }
+  if (s.swing!=null){
+    state.swing = s.swing|0;
+    els.swing.value = state.swing; els.swingNum.value = state.swing;
+  }
+  player.setTempo(state.tempo, state.swing);
+
+  const bars = parseRomanChartToBars(s.chartText, keyRootPc);
+
+  state.chartBars = bars;
+  state.bars = bars.length;
+  els.bars.value = state.bars; els.barsNum.value = state.bars;
+
+  state.activeBar = 0; state.activeHalf = 0;
+  renderAll();
+
+    // Always update player chart, even if not currently playing
+  player.setChart(state.chartBars);
+  player.jumpTo(0, 0);
+  
+  // If already playing, keep it rolling from the start of the loaded form
+  if (player.isPlaying) {
+    // no extra needed; jumpTo above already moved it
+  }
+  els.msg.textContent = `Loaded: ${s.title}`;
+}
+
+/* ---------- Fill shapes (random “types of fills” so it doesn’t repeat) ---------- */
+  const FILL_SHAPES = {
+    none:(t)=>0,
+    rampUp:(t)=>t,
+    rampDown:(t)=>1-t,
+    pyramid:(t)=>(t<0.5 ? (t*2) : (2*(1-t))),
+    pulse2:(t)=>(Math.sin(t*Math.PI*2)*0.5+0.5),
+    pulse3:(t)=>(Math.sin(t*Math.PI*3)*0.5+0.5),
+    stutter:(t)=>(t<0.2?1: t<0.4?0: t<0.6?1: t<0.8?0:1),
+    randomWalk:(()=>{
+      let v=Math.random();
+      return ()=>{ v=clamp(v + (Math.random()-.5)*0.35,0,1); return v; };
+    })(),
+  };
+
+  function pickFillShapeId(){
+    const ids = ["pyramid","pulse2","pulse3","rampUp","rampDown","stutter","none"];
+    return pick(ids);
+  }
+
+  /* ---------- WebAudio: shared engine (tap audition always works) ---------- */
+  const audio = (() => {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    const ctx = new AC();
+    const master = ctx.createGain();
+    master.gain.value = 0.9;
+    master.connect(ctx.destination);
+
+    // simple safety limiter-ish
+    const comp = ctx.createDynamicsCompressor();
+    comp.threshold.value = -18;
+    comp.knee.value = 18;
+    comp.ratio.value = 4;
+    comp.attack.value = 0.005;
+    comp.release.value = 0.12;
+    master.disconnect();
+    master.connect(comp);
+    comp.connect(ctx.destination);
+
+    function now(){ return ctx.currentTime; }
+    async function ensure(){ if (ctx.state !== "running") await ctx.resume(); }
+
+    function envGain(g, t0, a=0.006, d=0.14, s=0.0, r=0.12, peak=1.0){
+      g.gain.cancelScheduledValues(t0);
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.linearRampToValueAtTime(peak, t0 + a);
+      g.gain.linearRampToValueAtTime(Math.max(0.0001, peak*s), t0 + a + d);
+      g.gain.linearRampToValueAtTime(0.0001, t0 + a + d + r);
     }
 
-    els.sheet.appendChild(div);
+    function biquad(type, freq, Q=0.7){
+      const f = ctx.createBiquadFilter();
+      f.type = type;
+      f.frequency.value = freq;
+      f.Q.value = Q;
+      return f;
+    }
+
+    function hzFromMidi(m){ return 440 * Math.pow(2, (m-69)/12); }
+
+    // Minimal-ish synth voices (keys/bass)
+    function makeVoice(preset){
+      const g = ctx.createGain();
+      g.gain.value = 0;
+      g.connect(master);
+
+      const chain = [];
+      function connectChain(src){
+        let cur = src;
+        for (const n of chain){ cur.connect(n); cur = n; }
+        cur.connect(g);
+      }
+
+      // default filter
+      const lp = biquad("lowpass", 6000, 0.7);
+      const hp = biquad("highpass", 40, 0.7);
+
+      // subtle chorus-ish via detune on multiple oscs (cheap)
+      function osc(type, det=0){
+        const o = ctx.createOscillator();
+        o.type = type;
+        o.detune.value = det;
+        return o;
+      }
+
+      function addNoise(){
+        const buffer = ctx.createBuffer(1, ctx.sampleRate * 0.15, ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i=0;i<data.length;i++) data[i] = (Math.random()*2-1) * Math.exp(-i/(data.length*0.25));
+        const src = ctx.createBufferSource();
+        src.buffer = buffer;
+        return src;
+      }
+
+      function playNote(midi, t, dur, vel=0.8){
+        const f = hzFromMidi(midi);
+
+        // basic per-preset mapping
+        let types = ["sine"];
+        let dets = [0];
+        let cut = 6000;
+        let atk = 0.006, dec=0.14, rel=0.12;
+        let peak = 0.34 * vel;
+
+        if (preset==="piano"){ types=["triangle","sine"]; dets=[0, -3]; cut=4200; peak=0.38*vel; dec=0.18; rel=0.10; }
+        if (preset==="ep"){ types=["sine","triangle"]; dets=[0, +4]; cut=5000; peak=0.36*vel; dec=0.20; rel=0.12; }
+        if (preset==="organ"){ types=["sine","sine","sine"]; dets=[0,+2,-2]; cut=9000; peak=0.26*vel; atk=0.004; dec=0.04; rel=0.08; }
+        if (preset==="pad"){ types=["sine","triangle"]; dets=[0,+6]; cut=2500; peak=0.22*vel; atk=0.03; dec=0.10; rel=0.22; }
+        if (preset==="fm"){ types=["sine","sine"]; dets=[0,+7]; cut=5200; peak=0.28*vel; dec=0.12; rel=0.10; }
+        if (preset==="chip"){ types=["square","square"]; dets=[0,+10]; cut=6500; peak=0.16*vel; dec=0.09; rel=0.07; }
+        if (preset==="bell"){ types=["sine","sine"]; dets=[0,+19]; cut=7200; peak=0.22*vel; dec=0.16; rel=0.18; }
+        if (preset==="glass"){ types=["triangle","sine"]; dets=[0,+14]; cut=6800; peak=0.22*vel; dec=0.12; rel=0.16; }
+        if (preset==="pluck2"){ types=["triangle","triangle"]; dets=[0,+9]; cut=5600; peak=0.24*vel; dec=0.10; rel=0.10; }
+        if (preset==="vibes"){ types=["sine","triangle"]; dets=[0,+12]; cut=7000; peak=0.24*vel; dec=0.14; rel=0.18; }
+        if (preset==="choirPad"){ types=["sine","triangle"]; dets=[0,+5]; cut=2200; peak=0.20*vel; atk=0.04; dec=0.12; rel=0.24; }
+        if (preset==="noisePad"){ types=["sine"]; dets=[0]; cut=1800; peak=0.18*vel; atk=0.05; dec=0.10; rel=0.28; }
+        if (preset==="guitarish"){ types=["triangle","triangle"]; dets=[0,+3]; cut=4800; peak=0.20*vel; dec=0.08; rel=0.10; }
+        if (preset==="clavBright"){ types=["square","triangle"]; dets=[0,+5]; cut=8000; peak=0.18*vel; dec=0.07; rel=0.06; }
+
+        // bass presets
+        if (preset==="upright"){ types=["sine","triangle"]; dets=[0,+2]; cut=900; peak=0.42*vel; dec=0.12; rel=0.10; }
+        if (preset==="round"){ types=["sine","triangle"]; dets=[0,+1]; cut=1200; peak=0.44*vel; dec=0.12; rel=0.10; }
+        if (preset==="sub"){ types=["sine"]; dets=[0]; cut=700; peak=0.55*vel; dec=0.10; rel=0.10; }
+        if (preset==="pluck"){ types=["triangle"]; dets=[0]; cut=1400; peak=0.42*vel; dec=0.06; rel=0.08; }
+        if (preset==="fmBass"){ types=["sine","sine"]; dets=[0,+7]; cut=1400; peak=0.50*vel; dec=0.08; rel=0.10; }
+        if (preset==="rubber"){ types=["triangle","sine"]; dets=[0,+9]; cut=1000; peak=0.45*vel; dec=0.09; rel=0.10; }
+        if (preset==="acid"){ types=["sawtooth","square"]; dets=[0,+2]; cut=900; peak=0.40*vel; dec=0.08; rel=0.09; }
+        if (preset==="reese"){ types=["sawtooth","sawtooth"]; dets=[-10,+10]; cut=1000; peak=0.34*vel; dec=0.10; rel=0.12; }
+        if (preset==="squareBass"){ types=["square"]; dets=[0]; cut=900; peak=0.40*vel; dec=0.08; rel=0.10; }
+        if (preset==="wobble"){ types=["sawtooth"]; dets=[0]; cut=900; peak=0.35*vel; dec=0.10; rel=0.12; }
+        if (preset==="pickBass"){ types=["square","triangle"]; dets=[0,+3]; cut=1300; peak=0.36*vel; dec=0.07; rel=0.08; }
+        if (preset==="muted"){ types=["triangle"]; dets=[0]; cut=900; peak=0.38*vel; dec=0.05; rel=0.07; }
+
+        lp.frequency.setValueAtTime(cut, t);
+        hp.frequency.setValueAtTime(40, t);
+
+        // build chain
+        chain.length = 0;
+        chain.push(hp, lp);
+
+        // voice
+        const sum = ctx.createGain();
+        sum.gain.value = 1;
+        connectChain(sum);
+
+        const oscs = [];
+        for (let i=0;i<types.length;i++){
+          const o = osc(types[i], dets[i]||0);
+          o.frequency.setValueAtTime(f, t);
+          o.start(t);
+          o.stop(t + Math.max(0.05, dur + 0.25));
+          o.connect(sum);
+          oscs.push(o);
+        }
+
+        // tiny transient for some presets
+        if (preset==="piano" || preset==="ep" || preset==="clavBright" || preset==="pluck" || preset==="pluck2" || preset==="guitarish"){
+          const n = addNoise();
+          const ng = ctx.createGain();
+          ng.gain.value = 0.12 * vel;
+          const nlp = biquad("lowpass", preset==="clavBright" ? 6000 : 3500, 0.7);
+          n.connect(nlp); nlp.connect(ng); ng.connect(sum);
+          n.start(t); n.stop(t + 0.07);
+        }
+
+        envGain(g, t, atk, dec, 0.0, rel, peak);
+      }
+
+      return { playNote };
+    }
+
+    // drums (very lightweight synthesis)
+    function makeDrums(preset){
+      function noiseBuf(len){
+        const buffer = ctx.createBuffer(1, ctx.sampleRate * len, ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i=0;i<data.length;i++) data[i] = (Math.random()*2-1);
+        return buffer;
+      }
+      const noise = noiseBuf(0.25);
+      const noise2 = noiseBuf(0.08);
+
+      function hitNoise(t, len, amp, hpFreq, lpFreq){
+        const src = ctx.createBufferSource();
+        src.buffer = (len<0.12)?noise2:noise;
+        const g = ctx.createGain();
+        const hp = biquad("highpass", hpFreq, 0.7);
+        const lp = biquad("lowpass", lpFreq, 0.7);
+        g.gain.value = 0.0001;
+        src.connect(hp); hp.connect(lp); lp.connect(g); g.connect(master);
+
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.linearRampToValueAtTime(amp, t+0.002);
+        g.gain.exponentialRampToValueAtTime(0.0001, t+len);
+
+        src.start(t);
+        src.stop(t+len+0.02);
+      }
+
+      function kick(t, vel){
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.type = "sine";
+        o.frequency.setValueAtTime(120, t);
+        o.frequency.exponentialRampToValueAtTime(45, t+0.09);
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.linearRampToValueAtTime((preset==="techno"?0.95:0.75)*vel, t+0.003);
+        g.gain.exponentialRampToValueAtTime(0.0001, t+0.15);
+        o.connect(g); g.connect(master);
+        o.start(t); o.stop(t+0.18);
+      }
+
+      function snare(t, vel){
+        hitNoise(t, preset==="brushes"?0.12:0.09, (preset==="jazz"?0.20:0.28)*vel, preset==="brushes"?200:700, 7000);
+        // body tone
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.type = "triangle";
+        o.frequency.setValueAtTime(190, t);
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.linearRampToValueAtTime((preset==="jazz"?0.12:0.16)*vel, t+0.003);
+        g.gain.exponentialRampToValueAtTime(0.0001, t+0.12);
+        o.connect(g); g.connect(master);
+        o.start(t); o.stop(t+0.14);
+      }
+
+      function hat(t, vel, open=false){
+        const len = open ? 0.12 : 0.045;
+        const ampBase =
+          preset==="trap" ? 0.22 :
+          preset==="lofi" ? 0.14 :
+          preset==="minimal" ? 0.10 :
+          preset==="house" ? 0.18 :
+          preset==="dnb" ? 0.20 :
+          preset==="techno" ? 0.18 :
+          0.16;
+        hitNoise(t, len, ampBase*vel, 4500, 12000);
+      }
+
+      function ride(t, vel){
+        const amp = preset==="jazz" ? 0.14 : 0.10;
+        hitNoise(t, 0.08, amp*vel, 2500, 10500);
+      }
+
+      function brush(t, vel){
+        // swish
+        hitNoise(t, 0.16, 0.11*vel, 1800, 8000);
+      }
+
+      function tom(t, vel){
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.type = "sine";
+        o.frequency.setValueAtTime(160, t);
+        o.frequency.exponentialRampToValueAtTime(90, t+0.12);
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.linearRampToValueAtTime(0.28*vel, t+0.003);
+        g.gain.exponentialRampToValueAtTime(0.0001, t+0.20);
+        o.connect(g); g.connect(master);
+        o.start(t); o.stop(t+0.22);
+      }
+
+      return { kick, snare, hat, ride, brush, tom };
+    }
+
+    return { ctx, ensure, now, makeVoice, makeDrums };
+  })();
+
+  /* ---------- Player / Transport (UI synced) ---------- */
+  const player = (() => {
+    let keysVoice = audio.makeVoice(state.keysPreset);
+    let bassVoice = audio.makeVoice(state.bassPreset);
+    let drums = audio.makeDrums(state.drumsPreset);
+
+    let tempo = DEFAULTS.tempo;
+    let swing = DEFAULTS.swing; // 50..75
+    let isPlaying = false;
+
+    // scheduling
+    const lookahead = 0.12;
+    const intervalMs = 25;
+    let timer = null;
+
+    // chart + position
+    let chart = [];
+    let barIndex = 0;
+    let halfIndex = 0;
+    let stepInHalf = 0;     // 0..(subdiv-1)
+    let nextNoteTime = 0;
+
+    function setTempo(t, sw){
+      tempo = clamp(t, 30, 320);
+      swing = clamp(sw, 50, 80);
+    }
+    function beatDur(){ return 60 / tempo; }
+    function swingFactor(){ return (swing - 50) / 25; } // 0..1
+    function swungStepTime(step, stepsPerBeat){
+      // apply swing to 8th-note grid (stepsPerBeat=2)
+      // for higher grids, only swing the 2nd 8th within each beat.
+      const b = beatDur();
+      const base = b / stepsPerBeat;
+      if (stepsPerBeat < 2) return base;
+      const posInBeat = step % stepsPerBeat;
+      if (stepsPerBeat === 2){
+        // push the "and" later by up to ~18%
+        return posInBeat === 1 ? base * (1.0 + 0.35*swingFactor()) : base * (1.0 - 0.35*swingFactor());
+      } else {
+        // subtle: only bias the midpoint
+        if (posInBeat === Math.floor(stepsPerBeat/2)) return base * (1.0 + 0.20*swingFactor());
+        return base;
+      }
+    }
+
+    function setChart(bars){
+      chart = bars || [];
+    }
+    function jumpTo(b, h){
+      barIndex = clamp(b|0, 0, Math.max(0, chart.length-1));
+      halfIndex = clamp(h|0, 0, 1);
+      stepInHalf = 0;
+      nextNoteTime = audio.now() + 0.03;
+    }
+
+    function refreshVoices(){
+      keysVoice = audio.makeVoice(state.keysPreset);
+      bassVoice = audio.makeVoice(state.bassPreset);
+      drums = audio.makeDrums(state.drumsPreset);
+    }
+
+    function currentChord(){
+      if (!chart.length) return null;
+      const bar = chart[barIndex];
+      if (!bar) return null;
+      if (!bar.split) return bar.chords[0];
+      return bar.chords[halfIndex] || bar.chords[0];
+    }
+
+    // comp patterns (keys)
+    function compPattern(style, beatsInHalf){
+      // returns hit times within the half in beats (0..beatsInHalf)
+      const b = beatsInHalf;
+      if (style==="twoStabs") return [0, b/2];
+      if (style==="fourComp") return (b===2)?[0,1]:[0,1,2,3];
+      if (style==="charleston") return (b===2)?[0,1.5]:[0,1.5,2,3.5];
+      if (style==="anticipations") return (b===2)?[0.75,1.75]:[0.75,1.75,2.75,3.75];
+      if (style==="pushPull") return (b===2)?[0,1.25,1.75]:[0,1.25,1.75,2.75,3.25];
+      if (style==="sparse") return (b===2)?[0.0]:[0,2.5];
+      if (style==="arpeggio") return (b===2)?[0,0.5,1,1.5]:[0,0.5,1,1.5,2,2.5,3,3.5];
+      if (style==="sustain") return [0];
+      if (style==="montuno") return (b===2)?[0,0.75,1.25,1.75]:[0,0.75,1.25,2,2.75,3.25];
+      if (style==="clav") return (b===2)?[0,0.5,1.25,1.5]:[0,0.5,1.25,1.5,2.25,2.5,3.25,3.5];
+      if (style==="rockChugs") return (b===2)?[0,0.5,1,1.5]:[0,0.5,1,1.5,2,2.5,3,3.5];
+      if (style==="discoChop") return (b===2)?[0.5,1.5]:[0.5,1.5,2.5,3.5];
+      if (style==="neoSoulPush") return (b===2)?[0.25,0.75,1.5]:[0.25,0.75,1.5,2.25,2.75,3.5];
+      if (style==="edmStab") return (b===2)?[0,1]:[0,1,2,3];
+      return [0, b/2];
+    }
+
+    // bass patterns
+    function bassPattern(groove, beatsInHalf){
+      const b=beatsInHalf;
+      if (groove==="house"||groove==="techno") return (b===2)?[0,1]:[0,1,2,3];
+      if (groove==="dnb"||groove==="breaks") return (b===2)?[0,1.5]:[0,1.5,2.5,3.5];
+      if (groove==="hiphop"||groove==="ambient") return (b===2)?[0]:[0,2];
+      if (groove==="bossa"||groove==="samba"||groove==="afroCuban") return (b===2)?[0,1.5]:[0,1.5,2,3.5];
+      if (groove==="funk"||groove==="disco") return (b===2)?[0,0.75,1.5]:[0,0.75,1.5,2.25,3.0];
+      // jazz-ish
+      return (b===2)?[0,1]:[0,1,2,3];
+    }
+
+    // drum patterns: step grid in 8ths (2 per beat)
+    function drumGrid(groove){
+      // returns per-half arrays of events: {step, kind, vel}
+      // step is in 8ths within the half (beatsInHalf * 2).
+      return groove;
+    }
+
+    function scheduleNote(t){
+      if (!chart.length) return;
+
+      const bar = chart[barIndex];
+      const beatsInBar = 4;
+      const beatsInHalf = bar && bar.split ? 2 : 4;
+
+      // 8ths grid
+      const stepsPerBeat = 2;
+      const stepsInHalf = beatsInHalf * stepsPerBeat;
+
+      const chord = currentChord();
+      if (!chord) return;
+
+      // UI sync: update active chord at the start of each half
+      if (stepInHalf === 0){
+        state.activeBar = barIndex;
+        state.activeHalf = halfIndex;
+        renderLeadActive();
+        renderPianoForActive();
+      }
+
+      // compute "beat within half" for this step
+      const beatWithinHalf = stepInHalf / stepsPerBeat;
+
+      // Fills / complexity (0..100)
+      const kC = clamp(state.keysComplex,0,100)/100;
+      const kF = clamp(state.keysFill,0,100)/100;
+      const bC = clamp(state.bassComplex,0,100)/100;
+      const bF = clamp(state.bassFill,0,100)/100;
+      const dC = clamp(state.drumsComplex,0,100)/100;
+      const dF = clamp(state.drumsFill,0,100)/100;
+
+      // end-of-half fill likelihood (shape)
+      const tNorm = stepsInHalf<=1 ? 0 : (stepInHalf/(stepsInHalf-1));
+      const kShape = (FILL_SHAPES[state.fillShapeKeys] || FILL_SHAPES.pyramid);
+      const bShape = (FILL_SHAPES[state.fillShapeBass] || FILL_SHAPES.pulse2);
+      const dShape = (FILL_SHAPES[state.fillShapeDrums] || FILL_SHAPES.stutter);
+
+      const kFillNow = kF * (0.25 + 0.75*kShape(tNorm));
+      const bFillNow = bF * (0.25 + 0.75*bShape(tNorm));
+      const dFillNow = dF * (0.25 + 0.75*dShape(tNorm));
+
+      // KEYS: comp hits (on beat positions; add extra if complexity/fills)
+      const hits = compPattern(state.compStyle, beatsInHalf);
+      const isHit = hits.some(h => Math.abs(h - beatWithinHalf) < 0.001);
+      const extraHit = (!isHit && chance((kC*0.10 + kFillNow*0.18) / stepsPerBeat));
+
+      if (isHit || extraHit){
+        // voice chord (simple voicing)
+        const tones = chordTonesPCs(chord);
+        const root = chord.root;
+
+        // spread voicing around middle
+        const baseMidi = 60; // C4
+        const rootMidi = baseMidi + (pc(root) - 0);
+        const sorted = tones.slice().sort((a,b)=>a-b);
+
+        // build 4-5 note voicing
+        const voicing = [];
+        const addTone = (p, oct)=> voicing.push((baseMidi-12) + p + 12*oct);
+
+        // choose octave placement that keeps in range
+        addTone(pc(root), 0);
+        for (let i=1;i<Math.min(sorted.length,4);i++){
+          addTone(sorted[i], i%2===0 ? 0 : 1);
+        }
+        if (chance(kC*0.25)) addTone(sorted[sorted.length-1], 1);
+
+        // velocity based on style
+        let vel = 0.75;
+        if (state.compStyle==="sustain") vel = 0.55;
+        if (state.compStyle==="discoChop" || state.compStyle==="clav") vel = 0.65;
+        vel *= (0.6 + 0.4*kC);
+
+        const durBeats = state.compStyle==="sustain" ? beatsInHalf : (extraHit ? 0.5 : 0.8);
+        const dur = durBeats * beatDur();
+
+        for (const m of voicing){
+          keysVoice.playNote(m, t, dur, vel);
+        }
+      }
+
+      // BASS: walk/ostinato-ish
+      const bassHits = bassPattern(state.grooveStyle, beatsInHalf);
+      const isBass = bassHits.some(h => Math.abs(h - beatWithinHalf) < 0.001);
+      const bassExtra = (!isBass && chance(bC*0.07 + bFillNow*0.12));
+
+      if (isBass || bassExtra){
+        const rootPc = chord.root;
+        const chordPCs = chordTonesPCs(chord);
+
+        // choose bass tone: root most of time, then 5th/3rd with complexity
+        const options = [
+          {v: rootPc, w: 1.4},
+          {v: pc(rootPc+7), w: 0.6 + bC*0.6},
+          {v: chordPCs.includes(pc(rootPc+3)) ? pc(rootPc+3) : pc(rootPc+4), w: 0.5 + bC*0.6},
+          {v: pc(rootPc+10), w: 0.2 + bFillNow*0.6},
+          {v: pc(rootPc+2), w: 0.2 + bFillNow*0.5},
+        ];
+        const tonePc = weightedPick(options);
+        const midi = 36 + tonePc; // C2 area
+        const dur = beatDur() * (isBass ? 0.92 : 0.55);
+        const vel = (0.65 + 0.35*bC) * (isBass ? 0.85 : 0.65);
+        bassVoice.playNote(midi, t, dur, vel);
+      }
+
+      // DRUMS: based on groove (8ths grid)
+      const step = stepInHalf; // 8ths within half
+      const downbeat = (step % (2*2) === 0); // every 2 beats (in 8ths)
+      const onBeat = (step % 2 === 0);
+      const off = !onBeat;
+
+      const drumsLvl = clamp(state.drumsLevel,0,100)/100;
+
+      function doKick(v){ drums.kick(t, v*drumsLvl); }
+      function doSnare(v){ drums.snare(t, v*drumsLvl); }
+      function doHat(v, open=false){ drums.hat(t, v*drumsLvl, open); }
+      function doRide(v){ drums.ride(t, v*drumsLvl); }
+      function doBrush(v){ drums.brush(t, v*drumsLvl); }
+      function doTom(v){ drums.tom(t, v*drumsLvl); }
+
+      // fills (end of half)
+      const fillBoost = dFillNow;
+
+      const g = state.grooveStyle;
+
+      if (g==="swing"){
+        // ride pattern: ding-ding-da-ding
+        if (onBeat) doRide(0.8 + 0.3*dC);
+        if (off && chance(0.55 + dC*0.25)) doRide(0.45 + 0.25*dC);
+        // hats on 2&4 (in 8ths of half: beats 1 and 3 for full bar; adapt)
+        const beat = step/2;
+        if (Math.abs(beat - 1) < 0.001 || Math.abs(beat - 3) < 0.001) doHat(0.35 + 0.25*dC, false);
+        if (chance(0.05 + dC*0.12)) doSnare(0.18 + 0.15*dC);
+        if (chance(0.03 + fillBoost*0.16) && step >= stepsInHalf-2) doTom(0.35 + 0.30*dC);
+      } else if (g==="brushBallad"){
+        if (onBeat) doBrush(0.55 + 0.20*dC);
+        if (chance(0.06 + dC*0.10)) doSnare(0.15 + 0.10*dC);
+        if (chance(0.05 + fillBoost*0.20) && step >= stepsInHalf-2) doBrush(0.65);
+      } else if (g==="bossa"){
+        // clave-ish hats + light snare
+        if (onBeat) doHat(0.35 + 0.25*dC, false);
+        if (step===0 || step===3 || step===5 || step===7) doHat(0.30, false);
+        if (step===2 || step===6) doSnare(0.18 + 0.12*dC);
+        if (chance(0.04 + fillBoost*0.15) && step >= stepsInHalf-2) doTom(0.30);
+      } else if (g==="samba"){
+        if (onBeat) doHat(0.40 + 0.25*dC, chance(0.08 + dC*0.10));
+        if (step===0 || step===4) doKick(0.55 + 0.25*dC);
+        if (step===2 || step===6) doSnare(0.22 + 0.14*dC);
+      } else if (g==="afroCuban"){
+        if (onBeat) doHat(0.35 + 0.25*dC, false);
+        if (step===0 || step===3 || step===5) doSnare(0.20 + 0.15*dC);
+        if (step===0 || step===4) doKick(0.55 + 0.25*dC);
+      } else if (g==="funk"){
+        if (onBeat) doHat(0.32 + 0.35*dC, chance(0.10 + dC*0.15));
+        if (step===0 || step===4) doKick(0.60 + 0.30*dC);
+        if (step===2 || step===6) doSnare(0.35 + 0.25*dC);
+        if (chance(0.05 + fillBoost*0.20) && step >= stepsInHalf-3) doSnare(0.25);
+      } else if (g==="disco"){
+        if (onBeat) doHat(0.40 + 0.25*dC, false);
+        if (step%2===0) doKick(0.65 + 0.20*dC);
+        if (step===2 || step===6) doSnare(0.28 + 0.18*dC);
+      } else if (g==="rock"){
+        if (onBeat) doHat(0.28 + 0.28*dC, false);
+        if (step===0 || step===4) doKick(0.65 + 0.25*dC);
+        if (step===2 || step===6) doSnare(0.40 + 0.20*dC);
+      } else if (g==="shuffle"){
+        // swing hats, shuffle snare
+        if (onBeat) doHat(0.30 + 0.30*dC, false);
+        if (off && chance(0.45 + 0.25*dC)) doHat(0.22, false);
+        if (step===0 || step===4) doKick(0.62 + 0.20*dC);
+        if (step===2 || step===6) doSnare(0.38 + 0.18*dC);
+      } else if (g==="hiphop"){
+        if (onBeat && chance(0.65)) doHat(0.22 + 0.22*dC, false);
+        if (chance(0.22 + 0.25*dC)) doHat(0.18, false);
+        if (step===0 || (chance(0.18 + 0.20*dC) && step===3)) doKick(0.70 + 0.20*dC);
+        if (step===4 || (chance(0.12 + 0.20*dC) && step===6)) doSnare(0.45 + 0.20*dC);
+      } else if (g==="house" || g==="techno"){
+        if (onBeat) doHat(0.25 + 0.20*dC, false);
+        if (step%2===0) doKick(0.80 + 0.15*dC);
+        if (step===2 || step===6) doHat(0.22, true);
+      } else if (g==="dnb"){
+        if (chance(0.65 + 0.25*dC)) doHat(0.22 + 0.20*dC, false);
+        if (step===0 || step===3 || step===4 || step===7) doKick(0.70 + 0.20*dC);
+        if (step===2 || step===6) doSnare(0.55 + 0.20*dC);
+      } else if (g==="breaks"){
+        if (chance(0.55 + 0.25*dC)) doHat(0.22 + 0.22*dC, false);
+        if (step===0 || step===4) doKick(0.70 + 0.20*dC);
+        if (step===2 || step===6) doSnare(0.50 + 0.20*dC);
+        if (chance(0.05 + fillBoost*0.25) && step>=stepsInHalf-3) doSnare(0.30);
+      } else if (g==="ambient"){
+        if (chance(0.12 + 0.25*dC)) doHat(0.10 + 0.10*dC, false);
+        if (chance(0.02 + fillBoost*0.08) && step>=stepsInHalf-2) doHat(0.14, true);
+      } else if (g==="free"){
+        if (chance(0.30 + 0.45*dC)) doRide(0.55);
+        if (chance(0.10 + 0.25*dC)) doSnare(0.25);
+        if (chance(0.10 + 0.20*dC)) doHat(0.22, chance(0.35));
+        if (chance(0.06 + fillBoost*0.22) && step>=stepsInHalf-3) doTom(0.45);
+      }
+
+      // advance step/time
+      const stepDur = swungStepTime(stepInHalf, stepsPerBeat);
+      nextNoteTime += stepDur;
+
+      stepInHalf++;
+      if (stepInHalf >= stepsInHalf){
+        stepInHalf = 0;
+
+        // next half or bar
+        if (bar && bar.split){
+          halfIndex = (halfIndex===0) ? 1 : 0;
+          if (halfIndex===0) barIndex++;
+        } else {
+          barIndex++;
+          halfIndex = 0;
+        }
+
+        if (barIndex >= chart.length){
+          barIndex = 0; halfIndex = 0;
+          // new random fill shapes each loop (reduces repeats)
+          state.fillShapeKeys = pickFillShapeId();
+          state.fillShapeBass = pickFillShapeId();
+          state.fillShapeDrums = pickFillShapeId();
+        }
+      }
+    }
+
+    function scheduler(){
+      const cur = audio.now();
+      while (nextNoteTime < cur + lookahead){
+        scheduleNote(nextNoteTime);
+      }
+    }
+
+    async function start(){
+      await audio.ensure();
+      if (!chart.length) return;
+      if (isPlaying) return;
+
+      refreshVoices();
+      isPlaying = true;
+      nextNoteTime = audio.now() + 0.04;
+
+      timer = setInterval(scheduler, intervalMs);
+    }
+    function stop(){
+      isPlaying = false;
+      if (timer){ clearInterval(timer); timer = null; }
+    }
+
+    return {
+      get isPlaying(){ return isPlaying; },
+      setTempo, setChart, jumpTo, start, stop, refreshVoices,
+      getPosition: ()=>({barIndex, halfIndex}),
+    };
+  })();
+
+  /* ---------- Lead sheet rendering + click audition ---------- */
+  function getChordAt(barIdx, halfIdx){
+    const bar = state.chartBars[barIdx];
+    if (!bar) return null;
+    if (!bar.split) return { chord:bar.chords[0], half:0 };
+    return { chord: bar.chords[halfIdx||0] || bar.chords[0], half: halfIdx||0 };
   }
-}
 
-function getActiveChord(){
-  const barObj = state.chartBars[state.activeBar];
-  const chords = barObj?.chords || [];
-  return chords[Math.min(state.activeHalf, chords.length-1)] || null;
-}
-function getChordByBarHalf(bar, half){
-  const barObj = state.chartBars[bar];
-  const chords = barObj?.chords || [];
-  return chords[Math.min(half, chords.length-1)] || null;
-}
+  function previewChord(ch){
+    if (!ch) return;
+    audio.ensure(); // no await; user gesture will have resumed if needed
+    // short arpeggiated preview
+    const t0 = audio.now() + 0.01;
+    const pcs = chordTonesPCs(ch);
+    const root = ch.root;
 
-async function focusBarHalf(barIndex, halfIndex){
-  barIndex = clamp(barIndex, 0, state.bars-1);
-  const barObj = state.chartBars[barIndex] || {chords:[]};
-  const maxHalf = Math.max(0, (barObj.chords?.length||1)-1);
-  halfIndex = clamp(halfIndex, 0, maxHalf);
+    const base = 60; // C4
+    const midiRoot = base + pc(root);
+    const tones = [];
+    // include root then other chord tones in ascending order
+    tones.push(midiRoot);
+    pcs.slice().sort((a,b)=>a-b).forEach(p=>{
+      if (p!==pc(root)) tones.push(base + p);
+    });
 
-  state.activeBar = barIndex;
-  state.activeHalf = halfIndex;
-
-  renderSheet();
-  updatePianoForActive();
-
-  const target = getActiveChord();
-  if (!target) return;
-
-  if (player.isPlaying && !player.isPaused){
-    player.jumpTo(barIndex, halfIndex);
-    els.msg.textContent = `Jumped to: ${chordName(target)}`;
-  } else {
-    if (player.isPlaying && player.isPaused) player.setResumePos(barIndex, halfIndex);
-    await player.previewChord(target);
-    els.msg.textContent = `Preview: ${chordName(target)}`;
-  }
-}
-
-/* Piano SVG keyboard */
-const KEYBOARD = (() => {
-  const baseMidi = 48;
-  const total = 24;
-  const whiteMidi = [];
-  for (let i=0;i<total;i++){
-    const m = baseMidi + i;
-    if (WHITE_PCS.has(pc(m))) whiteMidi.push(m);
+    const dur = 0.22;
+    let t = t0;
+    for (let i=0;i<tones.length;i++){
+      player.refreshVoices(); // ensures preset changes reflect quickly
+      const kv = audio.makeVoice(state.keysPreset);
+      kv.playNote(tones[i], t, dur, 0.75);
+      t += 0.06;
+    }
   }
 
-  function buildLayout(){
-    const W=1000, H=240;
-    const whiteCount = whiteMidi.length;
-    const wW = W / whiteCount;
+  function renderLead(){
+    els.sheet.innerHTML = "";
+    const bars = state.chartBars || [];
+    for (let i=0;i<bars.length;i++){
+      const bar = bars[i];
+      const d = document.createElement("div");
+      d.className = "bar";
+      d.dataset.i = String(i);
 
-    const whiteKeys = whiteMidi.map((m,idx)=>({ midi:m, pc:pc(m), x:idx*wW, w:wW, h:H }));
-    const blackKeys = [];
-    const blackW = wW * 0.62;
+      const num = document.createElement("div");
+      num.className = "num";
+      num.textContent = String(i+1);
+      d.appendChild(num);
+
+      const sym = document.createElement("div");
+      sym.className = "sym";
+      const mainChord = bar.chords[0];
+      sym.textContent = chordName(mainChord);
+      d.appendChild(sym);
+
+      if (bar.split){
+        const sym2 = document.createElement("div");
+        sym2.className = "sym sym2";
+        sym2.textContent = chordName(bar.chords[1]);
+        d.appendChild(sym2);
+
+        const halfHit = document.createElement("div");
+        halfHit.className = "halfHit";
+
+        const topBtn = document.createElement("button");
+        topBtn.type="button";
+        topBtn.addEventListener("click",(e)=>{
+          e.stopPropagation();
+          setActive(i,0,true);
+        });
+
+        const botBtn = document.createElement("button");
+        botBtn.type="button";
+        botBtn.addEventListener("click",(e)=>{
+          e.stopPropagation();
+          setActive(i,1,true);
+        });
+
+        halfHit.appendChild(topBtn);
+        halfHit.appendChild(botBtn);
+        d.appendChild(halfHit);
+      } else {
+        d.addEventListener("click", ()=> setActive(i,0,true));
+      }
+
+      els.sheet.appendChild(d);
+    }
+    renderLeadActive();
+  }
+
+  function renderLeadActive(){
+    const nodes = els.sheet.querySelectorAll(".bar");
+    nodes.forEach(n=>{
+      const i = Number(n.dataset.i);
+      const active = i===state.activeBar;
+      n.classList.toggle("active", active);
+    });
+  }
+
+  function setActive(barIdx, halfIdx, audition){
+    state.activeBar = clamp(barIdx, 0, Math.max(0,state.chartBars.length-1));
+    state.activeHalf = clamp(halfIdx|0, 0, 1);
+
+    renderLeadActive();
+    renderPianoForActive();
+
+    if (audition){
+      const got = getChordAt(state.activeBar, state.activeHalf);
+      if (got && got.chord) previewChord(got.chord);
+    }
+
+    // If playing, jump transport so audio/UI stays in lockstep.
+    if (player.isPlaying){
+      player.jumpTo(state.activeBar, state.activeHalf);
+    }
+  }
+
+  /* ---------- Piano rendering ---------- */
+  function renderPianoForActive(){
+    const got = getChordAt(state.activeBar, state.activeHalf);
+    const ch = got ? got.chord : null;
+    if (!ch){
+      els.pianoTop.textContent = "—";
+      els.pianoHint.textContent = "—";
+      drawPiano([], [], null, "mixo");
+      return;
+    }
+
+    const prev = (state.activeBar>0) ? getChordAt(state.activeBar-1, 1)?.chord || getChordAt(state.activeBar-1, 0)?.chord : null;
+    const next = (state.activeBar < state.chartBars.length-1) ? getChordAt(state.activeBar+1, 0)?.chord : null;
+
+    const sc = scalePCsForChordLocal(ch, prev, next);
+    const scalePcs = sc.pcs;
+
+    const chordPcs = chordTonesPCs(ch);
+    const rootPc = pc(ch.root);
+
+    els.pianoTop.textContent = `${chordName(ch)}  ·  ${noteName(ch.root)} ${sc.mode}`;
+    els.pianoHint.textContent = `Scale suggestion: ${noteName(ch.root)} ${sc.mode} (auto-picked from context) · chord tones highlighted`;
+
+    drawPiano(scalePcs, chordPcs, rootPc, sc.mode);
+  }
+
+  function drawPiano(scalePcs, chordPcs, rootPc, modeName){
+    const svg = els.pianoSvg;
+    svg.innerHTML = "";
+
+    const marker = state.markerStyle || "dots";
+
+    // build 2 octaves + C (25 white-ish keys in visual)
+    const startMidi = 48; // C3
+    const endMidi = 84;   // C6 (exclusive-ish for drawing)
+    const keys = [];
+    for (let m=startMidi;m<=endMidi;m++){
+      const p = pc(m);
+      const isWhite = WHITE_PCS.has(p);
+      keys.push({m,p,isWhite});
+    }
+
+    // map white positions
+    let whiteIndex = 0;
+    for (const k of keys){
+      if (k.isWhite){
+        k.wx = whiteIndex;
+        whiteIndex++;
+      }
+    }
+    const whiteCount = whiteIndex;
+    const W = 1000;
+    const H = 240;
+    const whiteW = W / whiteCount;
+    const whiteH = H;
+    const blackW = whiteW * 0.62;
     const blackH = H * 0.62;
 
-    for (let i=0;i<total;i++){
-      const m = baseMidi+i;
-      if (WHITE_PCS.has(pc(m))) continue;
-      let prev = m-1;
-      while (prev>=baseMidi && !WHITE_PCS.has(pc(prev))) prev--;
-      const whiteIdx = whiteMidi.indexOf(prev);
-      if (whiteIdx < 0) continue;
-      const x = (whiteIdx+1)*wW - blackW/2;
-      blackKeys.push({midi:m, pc:pc(m), x, w:blackW, h:blackH});
-    }
-
-    const keyCenters = new Map();
-    for (const k of whiteKeys) keyCenters.set(k.midi, {x:k.x+k.w/2, y:H*0.18});
-    for (const k of blackKeys) keyCenters.set(k.midi, {x:k.x+k.w/2, y:blackH*0.22});
-
-    function centersForPC(p){
-      const centers=[];
-      for (let i=0;i<total;i++){
-        const m = baseMidi+i;
-        if (pc(m)===p) centers.push(keyCenters.get(m));
-      }
-      return centers.filter(Boolean);
-    }
-
-    return {W,H,whiteKeys,blackKeys,centersForPC};
-  }
-  return buildLayout();
-})();
-
-let pianoKeyElsByPC = new Map();
-
-function renderPianoBase(){
-  const svg = els.pianoSvg;
-  svg.innerHTML = "";
-  svg.setAttribute("viewBox", `0 0 ${KEYBOARD.W} ${KEYBOARD.H}`);
-
-  pianoKeyElsByPC = new Map();
-
-  const css = getComputedStyle(document.documentElement);
-  const whiteFill = css.getPropertyValue("--keyWhite").trim();
-  const blackFill = css.getPropertyValue("--keyBlack").trim();
-  const whiteStroke = css.getPropertyValue("--keyBorder").trim();
-  const blackStroke = css.getPropertyValue("--keyBlackBorder").trim();
-
-  function addKeyToMap(p, node){
-    if (!pianoKeyElsByPC.has(p)) pianoKeyElsByPC.set(p, []);
-    pianoKeyElsByPC.get(p).push(node);
-  }
-
-  for (const k of KEYBOARD.whiteKeys){
-    const r = document.createElementNS("http://www.w3.org/2000/svg","rect");
-    r.setAttribute("x", k.x); r.setAttribute("y", 0);
-    r.setAttribute("width", k.w); r.setAttribute("height", k.h);
-    r.setAttribute("rx", 10); r.setAttribute("ry", 10);
-    r.setAttribute("fill", whiteFill);
-    r.setAttribute("stroke", whiteStroke);
-    r.setAttribute("stroke-width", 1);
-    r.setAttribute("data-kind","white");
-    r.setAttribute("data-pc", k.pc);
-    els.pianoSvg.appendChild(r);
-    addKeyToMap(k.pc, r);
-  }
-
-  for (const k of KEYBOARD.blackKeys){
-    const r = document.createElementNS("http://www.w3.org/2000/svg","rect");
-    r.setAttribute("x", k.x); r.setAttribute("y", 0);
-    r.setAttribute("width", k.w); r.setAttribute("height", k.h);
-    r.setAttribute("rx", 9); r.setAttribute("ry", 9);
-    r.setAttribute("fill", blackFill);
-    r.setAttribute("stroke", blackStroke);
-    r.setAttribute("stroke-width", 1);
-    r.setAttribute("data-kind","black");
-    r.setAttribute("data-pc", k.pc);
-    els.pianoSvg.appendChild(r);
-    addKeyToMap(k.pc, r);
-  }
-
-  const g = document.createElementNS("http://www.w3.org/2000/svg","g");
-  g.setAttribute("id","overlayLayer");
-  els.pianoSvg.appendChild(g);
-}
-
-function resetKeyFills(){
-  const css = getComputedStyle(document.documentElement);
-  const whiteFill = css.getPropertyValue("--keyWhite").trim();
-  const blackFill = css.getPropertyValue("--keyBlack").trim();
-  const whiteStroke = css.getPropertyValue("--keyBorder").trim();
-  const blackStroke = css.getPropertyValue("--keyBlackBorder").trim();
-
-  for (const arr of pianoKeyElsByPC.values()){
-    for (const el of arr){
-      const kind = el.getAttribute("data-kind");
-      el.setAttribute("fill", kind==="black" ? blackFill : whiteFill);
-      el.setAttribute("stroke", kind==="black" ? blackStroke : whiteStroke);
-      el.setAttribute("stroke-width", "1");
-    }
-  }
-}
-
-function fillScaleKeys(scalePCs){
-  const css = getComputedStyle(document.documentElement);
-  const blue = css.getPropertyValue("--accent").trim();
-  const strokeW = Number(css.getPropertyValue("--scaleStrokeWidth").trim()) || 2.2;
-  const alpha = Number(css.getPropertyValue("--scaleStrokeAlpha").trim()) || 0.88;
-
-  for (const p of scalePCs){
-    const arr = pianoKeyElsByPC.get(p) || [];
-    for (const el of arr){
-      el.setAttribute("fill", blue);
-      el.setAttribute("stroke", `rgba(0,0,0,${clamp(alpha,0,1)})`);
-      el.setAttribute("stroke-width", String(strokeW));
-    }
-  }
-}
-
-function clearPianoOverlays(){
-  const g = els.pianoSvg.querySelector("#overlayLayer");
-  if (g) g.innerHTML = "";
-}
-
-/* marker shapes */
-function markerNode(x,y,color, kind){
-  const style = state.markerStyle || "dots";
-  const stroke = "rgba(0,0,0,0.35)";
-
-  if (style === "rings"){
-    const c = document.createElementNS("http://www.w3.org/2000/svg","circle");
-    c.setAttribute("cx", x);
-    c.setAttribute("cy", y);
-    c.setAttribute("r", kind==="root" ? 10 : 9);
-    c.setAttribute("fill", "transparent");
-    c.setAttribute("stroke", color);
-    c.setAttribute("stroke-width", kind==="root" ? 5 : 4);
-    c.setAttribute("opacity", "0.95");
-    return c;
-  }
-
-  if (style === "triangles"){
-    const s = kind==="root" ? 12 : 11;
-    const pts = `${x},${y-s} ${x-s},${y+s} ${x+s},${y+s}`;
-    const p = document.createElementNS("http://www.w3.org/2000/svg","polygon");
-    p.setAttribute("points", pts);
-    p.setAttribute("fill", color);
-    p.setAttribute("stroke", stroke);
-    p.setAttribute("stroke-width", "3");
-    return p;
-  }
-
-  if (style === "squares"){
-    const s = kind==="root" ? 20 : 18;
-    const r = document.createElementNS("http://www.w3.org/2000/svg","rect");
-    r.setAttribute("x", x - s/2);
-    r.setAttribute("y", y - s/2);
-    r.setAttribute("width", s);
-    r.setAttribute("height", s);
-    r.setAttribute("rx", kind==="root" ? 6 : 5);
-    r.setAttribute("ry", kind==="root" ? 6 : 5);
-    r.setAttribute("fill", color);
-    r.setAttribute("stroke", stroke);
-    r.setAttribute("stroke-width", "3");
-    return r;
-  }
-
-  const c = document.createElementNS("http://www.w3.org/2000/svg","circle");
-  c.setAttribute("cx", x);
-  c.setAttribute("cy", y);
-  c.setAttribute("r", kind==="root" ? 10 : 9);
-  c.setAttribute("fill", color);
-  c.setAttribute("stroke", stroke);
-  c.setAttribute("stroke-width", "3");
-  return c;
-}
-
-function modeLabel(mode){
-  if (mode==="mixo") return "Mixolydian";
-  if (mode==="ionian") return "Ionian";
-  if (mode==="dorian") return "Dorian";
-  if (mode==="locrian") return "Locrian";
-  if (mode==="lydian") return "Lydian";
-  if (mode==="aeolian") return "Aeolian";
-  if (mode==="phryg") return "Phrygian";
-  if (mode==="melodicMinor") return "Melodic Minor";
-  if (mode==="lydianDom") return "Lydian Dominant";
-  if (mode==="altered") return "Altered";
-  return String(mode||"");
-}
-
-function updatePianoForActive(){
-  const ch = getActiveChord();
-  if (!ch) return;
-
-  const prev = getChordByBarHalf(state.activeBar, Math.max(0,state.activeHalf-1)) || (state.activeBar>0 ? getChordByBarHalf(state.activeBar-1, 1) : null);
-  const next = getChordByBarHalf(state.activeBar, state.activeHalf+1) || (state.activeBar<state.bars-1 ? getChordByBarHalf(state.activeBar+1, 0) : null);
-
-  const { pcs:scalePCs, mode } = scalePCsForChordLocal(ch, prev, next);
-
-  resetKeyFills();
-  fillScaleKeys(scalePCs);
-  clearPianoOverlays();
-
-  const chordPCs = chordTonesPCs(ch);
-  const rootPC = pc(ch.root);
-
-  const g = els.pianoSvg.querySelector("#overlayLayer");
-  const css = getComputedStyle(document.documentElement);
-  const green = css.getPropertyValue("--good").trim();
-  const purple = css.getPropertyValue("--chord").trim();
-
-  KEYBOARD.centersForPC(rootPC).forEach(c=> g.appendChild(markerNode(c.x, c.y, green, "root")));
-  chordPCs.filter(p=>p!==rootPC).forEach(p=>{
-    KEYBOARD.centersForPC(p).forEach(c=> g.appendChild(markerNode(c.x, c.y, purple, "tone")));
-  });
-
-  const chordScaleName = `${noteName(ch.root)} ${modeLabel(mode)}`;
-  els.pianoTop.textContent = chordScaleName;
-
-  const halfLetter = (state.chartBars[state.activeBar]?.chords?.length===2) ? (state.activeHalf===0 ? "A" : "B") : "";
-  els.pianoHint.textContent = `${chordName(ch)} · scale: ${chordScaleName} · bar ${state.activeBar+1}${halfLetter ? halfLetter : ""}`;
-}
-
-/* Copy chart */
-function copyChart(){
-  let out = "";
-  for (let bar=0; bar<state.bars; bar++){
-    if (bar%4===0) out += (bar===0 ? "" : "\n");
-    const barObj = state.chartBars[bar] || {chords:[]};
-    const chords = barObj.chords || [];
-
-    let txt = "—";
-    if (chords.length<=1){
-      txt = chords[0] ? chordName(chords[0]) : "—";
-      out += `| ${txt.padEnd(10," ")} `;
-    } else {
-      const a = chords[0] ? chordName(chords[0]) : "—";
-      const b = chords[1] ? chordName(chords[1]) : "—";
-      txt = `${a} , ${b}`;
-      out += `| ${txt.padEnd(18," ")} `;
-    }
-
-    if (bar%4===3) out += "|";
-  }
-
-  if (navigator.clipboard?.writeText){
-    navigator.clipboard.writeText(out)
-      .then(()=>{ els.msg.textContent = "Copied chart to clipboard."; })
-      .catch(()=>{ els.msg.textContent = "Copy failed (clipboard permission)."; });
-  } else {
-    els.msg.textContent = "Clipboard not available.";
-  }
-}
-
-function linkRangeAndNumber(rangeEl, numEl, onChange){
-  rangeEl.addEventListener("input", ()=>{
-    numEl.value = rangeEl.value;
-    onChange(Number(rangeEl.value));
-  });
-  numEl.addEventListener("change", ()=>{
-    const v = clamp(Number(numEl.value), Number(rangeEl.min||-1e9), Number(rangeEl.max||1e9));
-    numEl.value = v;
-    rangeEl.value = v;
-    onChange(v);
-  });
-}
-
-/* wiring */
-linkRangeAndNumber(els.bars, els.barsNum, (v)=>{ state.bars = v|0; generateAndRender(); });
-linkRangeAndNumber(els.halfDensity, els.halfDensityNum, (v)=>{ state.halfDensity = v|0; if (state.halfEnabled) generateAndRender(); });
-
-linkRangeAndNumber(els.tempo, els.tempoNum, (v)=>{
-  state.tempo = v|0;
-  syncMeta(player.lastHalvesCount||0);
-  if (player.isPlaying) player.setTempo(state.tempo, state.swing);
-});
-linkRangeAndNumber(els.swing, els.swingNum, (v)=>{
-  state.swing = v|0;
-  syncMeta(player.lastHalvesCount||0);
-  if (player.isPlaying) player.setTempo(state.tempo, state.swing);
-});
-linkRangeAndNumber(els.chaos, els.chaosNum, (v)=>{
-  state.chaos = v|0;
-  state.weights = macroToWeights(state.chaos);
-  syncMeta(player.lastHalvesCount||0);
-});
-
-linkRangeAndNumber(els.keysComplex, els.keysComplexNum, (v)=>{ state.keysComplex = v|0; if (player.isPlaying) player.setFeel(state); });
-linkRangeAndNumber(els.keysFill, els.keysFillNum, (v)=>{ state.keysFill = v|0; if (player.isPlaying) player.setFeel(state); });
-linkRangeAndNumber(els.bassComplex, els.bassComplexNum, (v)=>{ state.bassComplex = v|0; if (player.isPlaying) player.setFeel(state); });
-linkRangeAndNumber(els.bassFill, els.bassFillNum, (v)=>{ state.bassFill = v|0; if (player.isPlaying) player.setFeel(state); });
-linkRangeAndNumber(els.drumsComplex, els.drumsComplexNum, (v)=>{ state.drumsComplex = v|0; if (player.isPlaying) player.setFeel(state); });
-linkRangeAndNumber(els.drumsFill, els.drumsFillNum, (v)=>{ state.drumsFill = v|0; if (player.isPlaying) player.setFeel(state); });
-
-linkRangeAndNumber(els.drumsLevel, els.drumsLevelNum, (v)=>{ player.setDrumsLevel((v|0)/100); });
-
-els.halfChords.addEventListener("change", ()=>{ state.halfEnabled = !!els.halfChords.checked; generateAndRender(); });
-
-els.compStyle.addEventListener("change", ()=>{
-  state.compStyle = els.compStyle.value;
-  if (player.isPlaying) player.setCompStyle(state.compStyle);
-});
-
-els.grooveStyle.addEventListener("change", ()=>{
-  state.grooveStyle = els.grooveStyle.value;
-  if (player.isPlaying) player.setGroove(state.grooveStyle);
-});
-
-els.rootMode.addEventListener("change", ()=>{ state.rootMode = els.rootMode.value; });
-
-els.bassPreset.addEventListener("change", ()=> player.setPresets(els.bassPreset.value, els.keysPreset.value, els.drumsPreset.value));
-els.keysPreset.addEventListener("change", ()=> player.setPresets(els.bassPreset.value, els.keysPreset.value, els.drumsPreset.value))
-els.drumsPreset.addEventListener("change", ()=> player.setPresets(els.bassPreset.value, els.keysPreset.value, els.drumsPreset.value));
-
-els.btnCopy.addEventListener("click", copyChart);
-
-function renderAll(halvesCount=0){
-  syncMeta(halvesCount);
-  setHeaderLine();
-  renderSheet();
-  updatePianoForActive();
-}
-
-function generateAndRender(){
-  state.limiter = getChordLimiterState();
-
-  const res = genChartBars({
-    bars: state.bars,
-    chaos: state.chaos,
-    rootMode: state.rootMode,
-    weights: state.weights,
-    limiter: state.limiter,
-    halfEnabled: state.halfEnabled,
-    halfDensity: state.halfDensity
-  });
-
-  state.chartBars = res.bars;
-  state.keyRoot = res.keyRoot;
-  state.keyMode = res.keyMode;
-  state.showKey = res.showKey;
-
-  state.activeBar = 0;
-  state.activeHalf = 0;
-
-  renderAll(res.halvesCount);
-  player.lastHalvesCount = res.halvesCount;
-  els.msg.textContent = "Generated new chart.";
-
-  if (player.isPlaying){
-    player.setChart(state.chartBars);
-    player.jumpTo(0, 0);
-  }
-}
-
-els.btnGenerate.addEventListener("click", generateAndRender);
-
-[
-  "qMaj7","qMin7","qDom7","qDim7","qHalfDim","qSus","qMinMaj",
-  "x9","x11","x13","x6","xAdd9","xSharp11","xMin11",
-  "tAlt","tSlash","tChrom","tB9","tSharp9"
-].forEach(id=>{
-  document.getElementById(id).addEventListener("change", ()=> generateAndRender());
-});
-
-/* ========= Genre presets ========= */
-const GENRE_PRESETS = {
-  jazzSwing: {
-    tempo:[110,150], swing:[58,66], groove:"swing", comp:"twoStabs",
-    bass:"upright", keys:"ep", drums:"jazz",
-    keysC:55, keysF:35, bassC:55, bassF:30, drumsC:60, drumsF:40,
-    halfOn:false, halfDen:40
-  },
-  bebop: {
-    tempo:[170,220], swing:[60,68], groove:"swing", comp:"fourComp",
-    bass:"upright", keys:"piano", drums:"tight",
-    keysC:75, keysF:45, bassC:80, bassF:35, drumsC:75, drumsF:55,
-    halfOn:true, halfDen:35
-  },
-  balladJazz: {
-    tempo:[70,92], swing:[52,58], groove:"brushBallad", comp:"sustain",
-    bass:"round", keys:"pad", drums:"brushes",
-    keysC:35, keysF:25, bassC:40, bassF:20, drumsC:35, drumsF:30,
-    halfOn:false, halfDen:25
-  },
-  modalJazz: {
-    tempo:[95,135], swing:[50,56], groove:"ambient", comp:"sparse",
-    bass:"sub", keys:"choirPad", drums:"lofi",
-    keysC:45, keysF:35, bassC:45, bassF:25, drumsC:45, drumsF:35,
-    halfOn:true, halfDen:30
-  },
-  bossa: {
-    tempo:[120,160], swing:[50,54], groove:"bossa", comp:"montuno",
-    bass:"round", keys:"vibes", drums:"perc",
-    keysC:60, keysF:40, bassC:55, bassF:35, drumsC:60, drumsF:40,
-    halfOn:true, halfDen:40
-  },
-  afroCuban: {
-    tempo:[120,180], swing:[50,54], groove:"afroCuban", comp:"montuno",
-    bass:"round", keys:"organ", drums:"perc",
-    keysC:70, keysF:45, bassC:65, bassF:35, drumsC:75, drumsF:55,
-    halfOn:true, halfDen:45
-  },
-  funk: {
-    tempo:[95,125], swing:[50,55], groove:"funk", comp:"clav",
-    bass:"rubber", keys:"clav?__unused", drums:"tight",
-    keysC:75, keysF:55, bassC:75, bassF:45, drumsC:75, drumsF:55,
-    halfOn:true, halfDen:30
-  },
-  hiphop: {
-    tempo:[78,98], swing:[54,62], groove:"hiphop", comp:"sparse",
-    bass:"sub", keys:"noisePad", drums:"lofi",
-    keysC:35, keysF:35, bassC:55, bassF:35, drumsC:60, drumsF:55,
-    halfOn:true, halfDen:25
-  },
-  house: {
-    tempo:[120,132], swing:[50,54], groove:"house", comp:"houseChop",
-    bass:"squareBass", keys:"organ", drums:"house",
-    keysC:65, keysF:45, bassC:60, bassF:35, drumsC:70, drumsF:50,
-    halfOn:true, halfDen:30
-  },
-  dnb: {
-    tempo:[165,178], swing:[50,54], groove:"dnb", comp:"arpeggio",
-    bass:"reese", keys:"fm", drums:"dnb",
-    keysC:70, keysF:55, bassC:80, bassF:45, drumsC:80, drumsF:65,
-    halfOn:true, halfDen:35
-  },
-  ambient: {
-    tempo:[60,90], swing:[50,52], groove:"ambient", comp:"sustain",
-    bass:"sub", keys:"pad", drums:"minimal",
-    keysC:25, keysF:20, bassC:25, bassF:15, drumsC:20, drumsF:15,
-    halfOn:false, halfDen:10
-  },
-  free: {
-    tempo:[90,170], swing:[50,65], groove:"free", comp:"pushPull",
-    bass:"fmBass", keys:"glass", drums:"electro",
-    keysC:85, keysF:70, bassC:85, bassF:60, drumsC:85, drumsF:70,
-    halfOn:true, halfDen:55
-  },
-};
-
-function applyGenrePreset(id){
-  const p = GENRE_PRESETS[id] || GENRE_PRESETS.jazzSwing;
-
-  state.genrePreset = id;
-
-  state.tempo = rint(p.tempo[0], p.tempo[1]);
-  state.swing = rint(p.swing[0], p.swing[1]);
-
-  state.grooveStyle = p.groove;
-  state.compStyle = p.comp;
-
-  state.halfEnabled = !!p.halfOn;
-  state.halfDensity = p.halfDen|0;
-
-  state.keysComplex = p.keysC|0;
-  state.keysFill = p.keysF|0;
-  state.bassComplex = p.bassC|0;
-  state.bassFill = p.bassF|0;
-  state.drumsComplex = p.drumsC|0;
-  state.drumsFill = p.drumsF|0;
-
-  els.tempo.value = state.tempo; els.tempoNum.value = state.tempo;
-  els.swing.value = state.swing; els.swingNum.value = state.swing;
-  els.grooveStyle.value = state.grooveStyle;
-  els.compStyle.value = state.compStyle;
-
-  els.halfChords.checked = state.halfEnabled;
-  els.halfDensity.value = state.halfDensity; els.halfDensityNum.value = state.halfDensity;
-
-  els.keysComplex.value = state.keysComplex; els.keysComplexNum.value = state.keysComplex;
-  els.keysFill.value = state.keysFill; els.keysFillNum.value = state.keysFill;
-  els.bassComplex.value = state.bassComplex; els.bassComplexNum.value = state.bassComplex;
-  els.bassFill.value = state.bassFill; els.bassFillNum.value = state.bassFill;
-  els.drumsComplex.value = state.drumsComplex; els.drumsComplexNum.value = state.drumsComplex;
-  els.drumsFill.value = state.drumsFill; els.drumsFillNum.value = state.drumsFill;
-
-  // pick safe sound defaults for each preset
-  els.bassPreset.value = p.bass || "upright";
-  els.keysPreset.value = p.keys === "clav?__unused" ? "chip" : (p.keys || "ep");
-  els.drumsPreset.value = p.drums || "jazz";
-
-  state.weights = macroToWeights(state.chaos);
-
-  player.setTempo(state.tempo, state.swing);
-  player.setGroove(state.grooveStyle);
-  player.setCompStyle(state.compStyle);
-  player.setPresets(els.bassPreset.value, els.keysPreset.value, els.drumsPreset.value);
-  player.setFeel(state);
-
-  generateAndRender();
-  els.msg.textContent = `Preset: ${id}`;
-}
-
-els.genrePreset.addEventListener("change", ()=> applyGenrePreset(els.genrePreset.value));
-
-/* ========= Randomize everything ========= */
-function randomizeAllSettings(){
-  state.bars = rint(2, 16);
-  els.bars.value = state.bars;
-  els.barsNum.value = state.bars;
-
-  state.halfEnabled = chance(0.55);
-  els.halfChords.checked = state.halfEnabled;
-
-  state.halfDensity = rint(10, 70);
-  els.halfDensity.value = state.halfDensity;
-  els.halfDensityNum.value = state.halfDensity;
-
-  // random genre influences groove + style but keep user control
-  const g = pick(Object.keys(GENRE_PRESETS));
-  els.genrePreset.value = g;
-  applyGenrePreset(g); // will call generate
-
-  // then sprinkle extra randomness
-  state.chaos = rint(0, 100);
-  els.chaos.value = state.chaos; els.chaosNum.value = state.chaos;
-  state.weights = macroToWeights(state.chaos);
-
-  state.rootMode = pick(["keyed","drifting","orbiting","freefall"]);
-  els.rootMode.value = state.rootMode;
-
-  // random sounds
-  els.bassPreset.value = pick([...els.bassPreset.options].map(o=>o.value));
-  els.keysPreset.value = pick([...els.keysPreset.options].map(o=>o.value));
-  els.drumsPreset.value = pick([...els.drumsPreset.options].map(o=>o.value));
-
-  const dl = rint(20, 85);
-  els.drumsLevel.value = dl; els.drumsLevelNum.value = dl;
-
-  // random feel
-  state.keysComplex = rint(0, 95); state.keysFill = rint(0, 85);
-  state.bassComplex = rint(0, 95); state.bassFill = rint(0, 85);
-  state.drumsComplex = rint(0, 95); state.drumsFill = rint(0, 95);
-
-  els.keysComplex.value = state.keysComplex; els.keysComplexNum.value = state.keysComplex;
-  els.keysFill.value = state.keysFill; els.keysFillNum.value = state.keysFill;
-  els.bassComplex.value = state.bassComplex; els.bassComplexNum.value = state.bassComplex;
-  els.bassFill.value = state.bassFill; els.bassFillNum.value = state.bassFill;
-  els.drumsComplex.value = state.drumsComplex; els.drumsComplexNum.value = state.drumsComplex;
-  els.drumsFill.value = state.drumsFill; els.drumsFillNum.value = state.drumsFill;
-
-  // limiter random
-  const lim = {
-    qMaj7: chance(0.85),
-    qMin7: chance(0.85),
-    qDom7: chance(0.85),
-    qDim7: chance(0.55),
-    qHalfDim: chance(0.45),
-    qSus: chance(0.40),
-    qMinMaj: chance(0.25),
-
-    x9: chance(0.60),
-    x11: chance(0.35),
-    x13: chance(0.35),
-    x6: chance(0.35),
-    xAdd9: chance(0.30),
-    xSharp11: chance(0.25),
-    xMin11: chance(0.25),
-
-    tAlt: chance(0.35),
-    tSlash: chance(0.30),
-    tChrom: chance(0.30),
-    tB9: chance(0.25),
-    tSharp9: chance(0.25),
-  };
-  if (!lim.qMaj7 && !lim.qMin7 && !lim.qDom7 && !lim.qDim7 && !lim.qHalfDim && !lim.qSus && !lim.qMinMaj){
-    lim.qDom7 = true;
-  }
-  setChordLimiterState(lim);
-
-  player.setPresets(els.bassPreset.value, els.keysPreset.value, els.drumsPreset.value);
-  player.setDrumsLevel((Number(els.drumsLevel.value)||55)/100);
-  player.setCompStyle(state.compStyle);
-  player.setGroove(state.grooveStyle);
-  player.setTempo(state.tempo, state.swing);
-  player.setFeel(state);
-
-  generateAndRender();
-  els.msg.textContent = "Randomized everything.";
-}
-els.btnRandom.addEventListener("click", randomizeAllSettings);
-
-/* ========= Defaults ========= */
-function applyDefaults(){
-  state.bars = DEFAULTS.bars;
-  els.bars.value = state.bars; els.barsNum.value = state.bars;
-
-  state.halfEnabled = DEFAULTS.halfEnabled;
-  els.halfChords.checked = state.halfEnabled;
-
-  state.halfDensity = DEFAULTS.halfDensity;
-  els.halfDensity.value = state.halfDensity; els.halfDensityNum.value = state.halfDensity;
-
-  state.tempo = DEFAULTS.tempo; els.tempo.value = state.tempo; els.tempoNum.value = state.tempo;
-  state.swing = DEFAULTS.swing; els.swing.value = state.swing; els.swingNum.value = state.swing;
-  state.chaos = DEFAULTS.chaos; els.chaos.value = state.chaos; els.chaosNum.value = state.chaos;
-
-  state.rootMode = DEFAULTS.rootMode; els.rootMode.value = state.rootMode;
-
-  state.genrePreset = DEFAULTS.genrePreset;
-  els.genrePreset.value = state.genrePreset;
-
-  state.grooveStyle = DEFAULTS.grooveStyle;
-  els.grooveStyle.value = state.grooveStyle;
-
-  state.compStyle = DEFAULTS.compStyle;
-  els.compStyle.value = state.compStyle;
-
-  els.bassPreset.value = DEFAULTS.bassPreset;
-  els.keysPreset.value = DEFAULTS.keysPreset;
-  els.drumsPreset.value = DEFAULTS.drumsPreset;
-
-  els.drumsLevel.value = DEFAULTS.drumsLevel;
-  els.drumsLevelNum.value = DEFAULTS.drumsLevel;
-
-  state.keysComplex = DEFAULTS.keysComplex; els.keysComplex.value = state.keysComplex; els.keysComplexNum.value = state.keysComplex;
-  state.keysFill = DEFAULTS.keysFill; els.keysFill.value = state.keysFill; els.keysFillNum.value = state.keysFill;
-
-  state.bassComplex = DEFAULTS.bassComplex; els.bassComplex.value = state.bassComplex; els.bassComplexNum.value = state.bassComplex;
-  state.bassFill = DEFAULTS.bassFill; els.bassFill.value = state.bassFill; els.bassFillNum.value = state.bassFill;
-
-  state.drumsComplex = DEFAULTS.drumsComplex; els.drumsComplex.value = state.drumsComplex; els.drumsComplexNum.value = state.drumsComplex;
-  state.drumsFill = DEFAULTS.drumsFill; els.drumsFill.value = state.drumsFill; els.drumsFillNum.value = state.drumsFill;
-
-  setChordLimiterState(DEFAULTS.limiter);
-  state.weights = macroToWeights(state.chaos);
-
-  els.pianoTheme.value = DEFAULTS.pianoTheme;
-  els.markerStyle.value = DEFAULTS.markerStyle;
-  applyMarkerStyle(DEFAULTS.markerStyle);
-  applyPianoTheme(DEFAULTS.pianoTheme);
-
-  els.scaleOutlineW.value = DEFAULTS.scaleStrokeWidth;
-  els.scaleOutlineWNum.value = DEFAULTS.scaleStrokeWidth;
-  els.scaleOutlineA.value = DEFAULTS.scaleStrokeAlphaPct;
-  els.scaleOutlineANum.value = DEFAULTS.scaleStrokeAlphaPct;
-  applyScaleOutlineSettings(DEFAULTS.scaleStrokeWidth, DEFAULTS.scaleStrokeAlphaPct);
-
-  player.setPresets(els.bassPreset.value, els.keysPreset.value, els.drumsPreset.value);
-  player.setDrumsLevel((DEFAULTS.drumsLevel)/100);
-  player.setCompStyle(state.compStyle);
-  player.setGroove(state.grooveStyle);
-  player.setFeel(state);
-  player.setTempo(state.tempo, state.swing);
-
-  generateAndRender();
-  els.msg.textContent = "Restored defaults.";
-}
-els.btnDefaults.addEventListener("click", applyDefaults);
-els.btnDefaults2.addEventListener("click", applyDefaults);
-
-/* ========= Advanced settings: reorder MAIN SECTIONS ========= */
-const DEFAULT_SECTION_ORDER = ["cardLead","cardPiano","cardControls","cardLimiters"];
-const SECTION_LABELS = {
-  cardLead: "Lead sheet",
-  cardPiano: "Piano display",
-  cardControls: "Controls",
-  cardLimiters: "Chord limiters",
-};
-
-function getSectionOrder(){
-  try{
-    const raw = localStorage.getItem("fm_section_order");
-    if (!raw) return DEFAULT_SECTION_ORDER.slice();
-    const arr = JSON.parse(raw);
-    const set = new Set(DEFAULT_SECTION_ORDER);
-    const cleaned = arr.filter(x=>set.has(x));
-    for (const x of DEFAULT_SECTION_ORDER) if (!cleaned.includes(x)) cleaned.push(x);
-    return cleaned;
-  }catch{
-    return DEFAULT_SECTION_ORDER.slice();
-  }
-}
-function setSectionOrder(order){
-  localStorage.setItem("fm_section_order", JSON.stringify(order));
-}
-function applySectionOrder(order){
-  const app = document.querySelector(".app");
-  const header = app.querySelector(".header");
-  const sections = new Map();
-
-  for (const id of DEFAULT_SECTION_ORDER){
-    const el = document.getElementById(id);
-    if (el) sections.set(id, el);
-  }
-
-  for (const id of order){
-    const el = sections.get(id);
-    if (el) app.appendChild(el);
-  }
-
-  if (header) app.insertBefore(header, app.firstChild);
-}
-function renderOrderModal(){
-  const order = getSectionOrder();
-  els.orderList.innerHTML = "";
-  order.forEach((id, idx)=>{
-    const row = document.createElement("div");
-    row.className = "modalRow";
-    row.innerHTML = `
-      <div class="name">${idx+1}. ${SECTION_LABELS[id] || id}</div>
-      <div class="reorderBtns">
-        <button class="btn small" data-act="up" data-key="${id}">↑</button>
-        <button class="btn small" data-act="down" data-key="${id}">↓</button>
-      </div>
-    `;
-    els.orderList.appendChild(row);
-  });
-
-  els.orderList.querySelectorAll("button[data-act]").forEach(btn=>{
-    btn.addEventListener("click", ()=>{
-      const act = btn.getAttribute("data-act");
-      const key = btn.getAttribute("data-key");
-      const cur = getSectionOrder();
-      const i = cur.indexOf(key);
-      if (i < 0) return;
-
-      if (act==="up" && i>0){
-        [cur[i-1], cur[i]] = [cur[i], cur[i-1]];
-      } else if (act==="down" && i<cur.length-1){
-        [cur[i+1], cur[i]] = [cur[i], cur[i+1]];
-      }
-
-      setSectionOrder(cur);
-      renderOrderModal();
-      applySectionOrder(cur);
-    });
-  });
-}
-function openAdv(){ renderOrderModal(); els.advBack.style.display = "flex"; }
-function closeAdv(){ els.advBack.style.display = "none"; }
-els.btnGear.addEventListener("click", openAdv);
-els.btnCloseAdv.addEventListener("click", closeAdv);
-els.advBack.addEventListener("click", (e)=>{ if (e.target === els.advBack) closeAdv(); });
-els.btnResetMenu.addEventListener("click", ()=>{
-  setSectionOrder(DEFAULT_SECTION_ORDER.slice());
-  renderOrderModal();
-  applySectionOrder(getSectionOrder());
-});
-
-/* ========= Piano theme + marker style ========= */
-const THEME_PRESETS = {
-  classic: {
-    "--accent":"#2f6bff","--good":"#3fe18b","--chord":"#b67cff",
-    "--keyWhite":"#f2f5fb","--keyBlack":"#161b23","--keyBorder":"#c9d3e2","--keyBlackBorder":"#2a3240",
-  },
-    neon: {
-    "--accent":"#00b7ff","--good":"#00ff9a","--chord":"#ff4dff",
-    "--keyWhite":"#e9f7ff","--keyBlack":"#0b0f14","--keyBorder":"rgba(233,247,255,.45)","--keyBlackBorder":"rgba(255,255,255,.16)",
-  },
-  mono: {
-    "--accent":"#d7dde6","--good":"#ffffff","--chord":"#9aa6b2",
-    "--keyWhite":"#f4f6fa","--keyBlack":"#10151d","--keyBorder":"rgba(0,0,0,.18)","--keyBlackBorder":"rgba(255,255,255,.12)",
-  },
-  pastel: {
-    "--accent":"#8bb6ff","--good":"#88f0c3","--chord":"#d7a6ff",
-    "--keyWhite":"#fbfbff","--keyBlack":"#141a22","--keyBorder":"rgba(20,26,34,.18)","--keyBlackBorder":"rgba(255,255,255,.10)",
-  }
-};
-
-function applyPianoTheme(themeId){
-  const t = THEME_PRESETS[themeId] || THEME_PRESETS.classic;
-  for (const k of Object.keys(t)){
-    document.documentElement.style.setProperty(k, t[k]);
-  }
-  state.pianoTheme = themeId;
-  try{ localStorage.setItem("fm_piano_theme", themeId); }catch{}
-  renderPianoBase();
-  updatePianoForActive();
-}
-
-function applyMarkerStyle(styleId){
-  state.markerStyle = styleId || "dots";
-  try{ localStorage.setItem("fm_marker_style", state.markerStyle); }catch{}
-  updatePianoForActive();
-}
-
-function applyScaleOutlineSettings(widthPx, alphaPct){
-  const w = clamp(Number(widthPx)||2.2, 0.0, 6.0);
-  const a = clamp((Number(alphaPct)||0)/100, 0, 1);
-  document.documentElement.style.setProperty("--scaleStrokeWidth", String(w));
-  document.documentElement.style.setProperty("--scaleStrokeAlpha", String(a));
-  try{
-    localStorage.setItem("fm_scale_outline_w", String(w));
-    localStorage.setItem("fm_scale_outline_a", String(alphaPct));
-  }catch{}
-  updatePianoForActive();
-}
-
-/* theme + marker UI wiring */
-els.pianoTheme.addEventListener("change", ()=> applyPianoTheme(els.pianoTheme.value));
-els.markerStyle.addEventListener("change", ()=> applyMarkerStyle(els.markerStyle.value));
-
-linkRangeAndNumber(els.scaleOutlineW, els.scaleOutlineWNum, (v)=> applyScaleOutlineSettings(v, Number(els.scaleOutlineA.value)));
-linkRangeAndNumber(els.scaleOutlineA, els.scaleOutlineANum, (v)=> applyScaleOutlineSettings(Number(els.scaleOutlineW.value), v));
-
-/* ========= LocalStorage load ========= */
-function loadSaved(){
-  try{
-    const t = localStorage.getItem("fm_piano_theme");
-    if (t && THEME_PRESETS[t]) { els.pianoTheme.value = t; state.pianoTheme=t; }
-    const ms = localStorage.getItem("fm_marker_style");
-    if (ms) { els.markerStyle.value = ms; state.markerStyle = ms; }
-
-    const w = localStorage.getItem("fm_scale_outline_w");
-    const a = localStorage.getItem("fm_scale_outline_a");
-    if (w){
-      els.scaleOutlineW.value = w;
-      els.scaleOutlineWNum.value = w;
-    }
-    if (a){
-      els.scaleOutlineA.value = a;
-      els.scaleOutlineANum.value = a;
-    }
-  }catch{}
-}
-
-/* ========= AUDIO ENGINE (minimal synth band) ========= */
-function midiToFreq(m){ return 440 * Math.pow(2, (m-69)/12); }
-
-class MiniSynth {
-  constructor(ctx){
-    this.ctx = ctx;
-    this.out = ctx.createGain();
-    this.out.gain.value = 0.9;
-    this.out.connect(ctx.destination);
-
-    this.master = ctx.createGain();
-    this.master.gain.value = 0.85;
-    this.master.connect(this.out);
-
-    this.drumsBus = ctx.createGain();
-    this.drumsBus.gain.value = 0.55;
-    this.drumsBus.connect(this.master);
-
-    this.keysBus = ctx.createGain();
-    this.keysBus.gain.value = 0.55;
-    this.keysBus.connect(this.master);
-
-    this.bassBus = ctx.createGain();
-    this.bassBus.gain.value = 0.55;
-    this.bassBus.connect(this.master);
-
-    this.presets = { bass:"upright", keys:"ep", drums:"jazz" };
-  }
-
-  setPresets(bass, keys, drums){
-    this.presets = { bass, keys, drums };
-  }
-
-  setDrumsLevel(v01){
-    this.drumsBus.gain.value = clamp(v01,0,1);
-  }
-
-  _env(g, t, a, d, s, r, peak=1){
-    const now = t;
-    g.gain.cancelScheduledValues(now);
-    g.gain.setValueAtTime(0.0001, now);
-    g.gain.linearRampToValueAtTime(peak, now + a);
-    g.gain.exponentialRampToValueAtTime(Math.max(0.0001, peak*s), now + a + d);
-    g.gain.exponentialRampToValueAtTime(0.0001, now + a + d + r);
-  }
-
-  /* ---------- KEYS ---------- */
-  playKeysChord(midiNotes, t, len=0.18, vel=0.7){
-    const ctx = this.ctx;
-    const p = this.presets.keys;
-
-    const wave = ({
-      ep:"sine",
-      piano:"triangle",
-      organ:"square",
-      pad:"sine",
-      fm:"sine",
-      chip:"square",
-      bell:"sine",
-      glass:"sine",
-      pluck2:"triangle",
-      vibes:"sine",
-      choirPad:"sine",
-      noisePad:"sine",
-    })[p] || "sine";
-
-    const baseCut = ({
-      ep: 1600,
-      piano: 2400,
-      organ: 1200,
-      pad: 900,
-      fm: 1500,
-      chip: 2500,
-      bell: 2600,
-      glass: 3000,
-      pluck2: 2000,
-      vibes: 2200,
-      choirPad: 900,
-      noisePad: 1100,
-    })[p] || 1600;
-
-    for (const m of midiNotes){
-      const o = ctx.createOscillator();
-      o.type = wave;
-
-      const g = ctx.createGain();
-      const f = ctx.createBiquadFilter();
-      f.type = "lowpass";
-      f.frequency.setValueAtTime(baseCut, t);
-      f.Q.setValueAtTime(0.7, t);
-
-      o.frequency.setValueAtTime(midiToFreq(m), t);
-
-      const atk = (p==="pad" || p==="choirPad" || p==="noisePad") ? 0.02 : 0.004;
-      const rel = (p==="pad" || p==="choirPad" || p==="noisePad") ? Math.max(0.18, len*0.9) : Math.max(0.08, len*0.6);
-      this._env(g, t, atk, 0.06, 0.35, rel, vel*0.55);
-
-      o.connect(f);
-      f.connect(g);
-      g.connect(this.keysBus);
-
-      o.start(t);
-      o.stop(t + len + rel + 0.05);
-
-      if (p==="noisePad"){
-        // subtle noise layer
-        const n = ctx.createBufferSource();
-        const buf = ctx.createBuffer(1, Math.floor(ctx.sampleRate*(len+0.25)), ctx.sampleRate);
-        const data = buf.getChannelData(0);
-        for (let i=0;i<data.length;i++) data[i] = (Math.random()*2-1) * 0.15;
-        n.buffer = buf;
-        const ng = ctx.createGain();
-        this._env(ng, t, 0.01, 0.08, 0.18, 0.22, vel*0.18);
-        const nf = ctx.createBiquadFilter();
-        nf.type = "bandpass";
-        nf.frequency.setValueAtTime(900, t);
-        nf.Q.setValueAtTime(0.8, t);
-        n.connect(nf); nf.connect(ng); ng.connect(this.keysBus);
-        n.start(t);
-        n.stop(t + len + 0.3);
-      }
-    }
-  }
-
-  /* ---------- BASS ---------- */
-  playBassNote(midi, t, len=0.16, vel=0.7){
-    const ctx = this.ctx;
-    const p = this.presets.bass;
-
-    const wave = ({
-      upright:"sine",
-      round:"triangle",
-      sub:"sine",
-      pluck:"triangle",
-      fmBass:"sine",
-      rubber:"square",
-      acid:"sawtooth",
-      reese:"sawtooth",
-      squareBass:"square",
-      wobble:"square",
-    })[p] || "sine";
-
-    const o = ctx.createOscillator();
-    o.type = wave;
-
-    const g = ctx.createGain();
-    const f = ctx.createBiquadFilter();
-    f.type = "lowpass";
-
-    const cut = ({
-      upright: 700,
-      round: 900,
-      sub: 380,
-      pluck: 1100,
-      fmBass: 900,
-      rubber: 1200,
-      acid: 1800,
-      reese: 1400,
-      squareBass: 1200,
-      wobble: 1000,
-    })[p] || 800;
-
-    f.frequency.setValueAtTime(cut, t);
-    f.Q.setValueAtTime(p==="acid" ? 1.2 : 0.8, t);
-
-    o.frequency.setValueAtTime(midiToFreq(midi), t);
-
-    const atk = 0.004;
-    const rel = Math.max(0.07, len*0.6);
-    const peak = vel * (p==="sub" ? 0.75 : 0.65);
-
-    this._env(g, t, atk, 0.06, 0.28, rel, peak);
-
-    o.connect(f);
-    f.connect(g);
-    g.connect(this.bassBus);
-
-    // wobble LFO
-    if (p==="wobble"){
-      const lfo = ctx.createOscillator();
-      const lg = ctx.createGain();
-      lfo.type = "sine";
-      lfo.frequency.setValueAtTime(3.5, t);
-      lg.gain.setValueAtTime(320, t);
-      lfo.connect(lg);
-      lg.connect(f.frequency);
-      lfo.start(t);
-      lfo.stop(t + len + rel + 0.05);
-    }
-    // reese detune
-    if (p==="reese"){
-      const o2 = ctx.createOscillator();
-      o2.type = "sawtooth";
-      o2.frequency.setValueAtTime(midiToFreq(midi)*1.005, t);
-      const g2 = ctx.createGain();
-      this._env(g2, t, 0.006, 0.07, 0.22, rel, peak*0.45);
-      o2.connect(f);
-      f.connect(g2);
-      g2.connect(this.bassBus);
-      o2.start(t);
-      o2.stop(t + len + rel + 0.05);
-    }
-
-    o.start(t);
-    o.stop(t + len + rel + 0.05);
-  }
-
-  /* ---------- DRUMS ---------- */
-  _noise(t, len, hp=2000){
-    const ctx = this.ctx;
-    const src = ctx.createBufferSource();
-    const buf = ctx.createBuffer(1, Math.floor(ctx.sampleRate*len), ctx.sampleRate);
-    const data = buf.getChannelData(0);
-    for (let i=0;i<data.length;i++) data[i] = (Math.random()*2-1);
-    src.buffer = buf;
-
-    const f = ctx.createBiquadFilter();
-    f.type = "highpass";
-    f.frequency.setValueAtTime(hp, t);
-    const g = ctx.createGain();
-    src.connect(f); f.connect(g); g.connect(this.drumsBus);
-    return {src, g, f};
-  }
-
-  hitRide(t, vel=0.5){
-    const ctx = this.ctx;
-    const p = this.presets.drums;
-    const hp = (p==="brushes") ? 1800 : (p==="lofi" ? 1400 : 2400);
-    const {src,g} = this._noise(t, 0.12, hp);
-    this._env(g, t, 0.001, 0.03, 0.12, 0.08, vel*0.35);
-    src.start(t); src.stop(t+0.13);
-  }
-
-  hitHat(t, vel=0.45){
-    const p = this.presets.drums;
-    const hp = (p==="trap") ? 5000 : 3800;
-    const {src,g} = this._noise(t, 0.08, hp);
-    this._env(g, t, 0.001, 0.02, 0.10, 0.05, vel*0.28);
-    src.start(t); src.stop(t+0.09);
-  }
-
-  hitSnare(t, vel=0.6){
-    const ctx = this.ctx;
-    const p = this.presets.drums;
-    const {src,g} = this._noise(t, 0.14, p==="lofi" ? 900 : 1400);
-    this._env(g, t, 0.001, 0.03, 0.18, 0.11, vel*0.35);
-
-    const body = ctx.createOscillator();
-    body.type = "triangle";
-    body.frequency.setValueAtTime(180, t);
-    const bg = ctx.createGain();
-    this._env(bg, t, 0.001, 0.02, 0.10, 0.08, vel*0.18);
-    body.connect(bg); bg.connect(this.drumsBus);
-    body.start(t); body.stop(t+0.12);
-
-    src.start(t); src.stop(t+0.16);
-  }
-
-  hitKick(t, vel=0.7){
-    const ctx = this.ctx;
-    const o = ctx.createOscillator();
-    o.type = "sine";
-    const g = ctx.createGain();
-
-    o.frequency.setValueAtTime(120, t);
-    o.frequency.exponentialRampToValueAtTime(48, t+0.06);
-
-    this._env(g, t, 0.001, 0.03, 0.08, 0.10, vel*0.55);
-
-    o.connect(g); g.connect(this.drumsBus);
-    o.start(t); o.stop(t+0.16);
-  }
-}
-
-/* ========= PLAYER / TRANSPORT ========= */
-const player = (() => {
-  let ctx = null;
-  let synth = null;
-
-  let timer = null;
-  let startedAt = 0;
-  let nextTickAt = 0;
-
-  let chart = [];
-  let pos = { bar:0, half:0, step:0 }; // step = 8th-note steps inside current bar (0..7 or 0..3 if half slot)
-  let resumePos = { bar:0, half:0 };
-
-  let tempo = DEFAULTS.tempo;
-  let swing = DEFAULTS.swing; // 50..75
-
-  let groove = DEFAULTS.grooveStyle;
-  let compStyle = DEFAULTS.compStyle;
-
-  let feel = {
-    keysComplex: DEFAULTS.keysComplex,
-    keysFill: DEFAULTS.keysFill,
-    bassComplex: DEFAULTS.bassComplex,
-    bassFill: DEFAULTS.bassFill,
-    drumsComplex: DEFAULTS.drumsComplex,
-    drumsFill: DEFAULTS.drumsFill,
-  };
-
-  let isPlaying = false;
-  let isPaused = false;
-
-  let drumsLevel = DEFAULTS.drumsLevel/100;
-
-  function ensureCtx(){
-    if (!ctx){
-      ctx = new (window.AudioContext || window.webkitAudioContext)();
-      synth = new MiniSynth(ctx);
-      synth.setDrumsLevel(drumsLevel);
-    }
-    return ctx;
-  }
-
-  function setTempo(t, sw){
-    tempo = clamp(Number(t)||120, 30, 400);
-    swing = clamp(Number(sw)||60, 50, 80);
-  }
-
-  function setGroove(g){ groove = g || "swing"; }
-  function setCompStyle(s){ compStyle = s || "twoStabs"; }
-  function setPresets(b,k,d){ ensureCtx(); synth.setPresets(b,k,d); }
-  function setFeel(s){
-    feel = {
-      keysComplex: s.keysComplex|0,
-      keysFill: s.keysFill|0,
-      bassComplex: s.bassComplex|0,
-      bassFill: s.bassFill|0,
-      drumsComplex: s.drumsComplex|0,
-      drumsFill: s.drumsFill|0,
-    };
-  }
-  function setDrumsLevel(v01){
-    drumsLevel = clamp(v01,0,1);
-    if (synth) synth.setDrumsLevel(drumsLevel);
-  }
-
-  function setChart(bars){
-    chart = bars || [];
-  }
-
-  function currentChord(){
-    const barObj = chart[pos.bar];
-    const chords = barObj?.chords || [];
-    const idx = Math.min(pos.half, chords.length-1);
-    return chords[idx] || null;
-  }
-
-  function chordAt(bar, half){
-    const barObj = chart[bar];
-    const chords = barObj?.chords || [];
-    const idx = Math.min(half, chords.length-1);
-    return chords[idx] || null;
-  }
-
-  function barHasSplit(bar){
-    const barObj = chart[bar];
-    return !!barObj?.split;
-  }
-
-  function stepsInCurrentSlot(){
-    // 8th-note steps per bar = 8. If bar split, each half = 4 steps.
-    return barHasSplit(pos.bar) ? 4 : 8;
-  }
-
-  function stepDur(stepIndex){
-    // 8th-note swing: delay the off-beat (odd steps) by swing amount.
-    // base 8th duration:
-    const base = (60/tempo) / 2; // seconds per 8th
-    const sw = (swing-50)/25; // 0..1 when 50..75
-    // push odd steps longer, even steps shorter; keep sum ~2*base
-    const long = base * (1 + 0.45*sw);
-    const short= base * (1 - 0.45*sw);
-    return (stepIndex % 2 === 1) ? long : short;
-  }
-
-  function voicingForChord(ch){
-    // simple, musical-ish voicing around C4..C5
-    const rootMidi = 48 + (pc(ch.root)); // around C3/C4 area
-    const tones = ch.intervals.map(i=>rootMidi + i).filter(n=>n>=45 && n<=84);
-    // pick 3-5 notes max, drop duplicates by pitch class
-    const seen = new Set();
-    const uniq = [];
-    for (const n of tones){
-      const p = pc(n);
-      if (!seen.has(p)){ seen.add(p); uniq.push(n); }
-    }
-    // tighten: include 3rd+7th always if present
-    const want = [];
-    function pushIf(pcTarget){
-      const found = uniq.find(n=>pc(n-rootMidi)===pcTarget) || uniq.find(n=>pc(n)===pc(rootMidi+pcTarget));
-      if (found!=null && !want.includes(found)) want.push(found);
-    }
-    if (ch.family==="dom" || ch.family==="min" || ch.family==="maj" || ch.family==="minmaj"){
-      pushIf(ch.family==="min" || ch.family==="minmaj" ? 3 : 4);
-      pushIf(10); // 7th (dom/min)
-      pushIf(11); // maj7
-    }
-    // add root sometimes based on keys complexity (lower complexity -> more root)
-    if ((feel.keysComplex/100) < 0.55) want.unshift(rootMidi);
-    // fill with remaining tones
-    for (const n of uniq){
-      if (want.length>=5) break;
-      if (!want.includes(n)) want.push(n);
-    }
-    // shift up an octave if too low
-    const avg = want.reduce((s,n)=>s+n,0)/Math.max(1,want.length);
-    const up = avg < 55 ? 12 : 0;
-    return want.map(n=>n+up);
-  }
-
-  function bassTargetForChord(ch){
-    // keep bass in lower register
-    let m = 36 + pc(ch.root); // C2-ish
-    if (m < 34) m += 12;
-    if (m > 50) m -= 12;
-    return m;
-  }
-
-  /* ---------- PATTERNS ---------- */
-  function compHitsForStyle(style, steps){
-    // steps = 8 (full bar) or 4 (half)
-    // Return array of step indices to hit
-    const s = style || "twoStabs";
-    if (steps===4){
-      // half-bar variants
-      if (s==="fourComp") return [0,1,2,3];
-      if (s==="charleston") return [0,2];
-      if (s==="anticipations") return [1,3];
-      if (s==="pushPull") return chance(0.5) ? [0,3] : [1,2];
-      if (s==="sparse") return [0];
-      if (s==="arpeggio") return [0,1,2,3];
-      if (s==="sustain") return [0];
-      if (s==="montuno") return [0,2,3];
-      if (s==="clav") return [0,2];
-      if (s==="houseChop") return [0,2];
-      return [0,2];
-    }
-
-    // full bar (8 steps)
-    if (s==="twoStabs") return [0,4];
-    if (s==="fourComp") return [0,2,4,6];
-    if (s==="charleston") return [0,3];
-    if (s==="anticipations") return [1,4,7];
-    if (s==="pushPull") return [0,3,5,7];
-    if (s==="sparse") return [0,5];
-    if (s==="arpeggio") return [0,1,2,3,4,5,6,7];
-    if (s==="sustain") return [0];
-    if (s==="montuno") return [0,2,3,5,6];
-    if (s==="clav") return [0,2,3,5,7];
-    if (s==="houseChop") return [0,4,6];
-    return [0,4];
-  }
-
-  function drumsPattern(stepInBar){
-    // returns {ride,hat,kick,snare,ghostHat} booleans for this 8th step
-    const c = feel.drumsComplex/100;
-    const g = groove;
-
-    const base = {ride:false,hat:false,kick:false,snare:false,ghostHat:false};
-
-    if (g==="swing"){
-      // ride on all steps; accent on 0,3,4,7 loosely
-      base.ride = true;
-      base.hat = (stepInBar===4); // "2 and 4" = step 4 in 8th grid is beat 3's downbeat; we also add beat 2? We'll do both:
-      if (stepInBar===2 || stepInBar===6) base.hat = true;
-      base.kick = (stepInBar===0) || (c>0.6 && (stepInBar===5 || stepInBar===7) && chance(0.25));
-      base.snare = (stepInBar===4) && chance(0.65);
-      base.ghostHat = (c>0.55 && chance(0.20));
-      return base;
-    }
-
-    if (g==="brushBallad"){
-      base.ride = (stepInBar%2===0);
-      base.snare = (stepInBar===4) && chance(0.55);
-      base.kick = (stepInBar===0) && chance(0.55);
-      base.ghostHat = (c>0.4 && chance(0.15));
-      return base;
-    }
-
-    if (g==="bossa" || g==="afroCuban"){
-      base.hat = (stepInBar%2===1);
-      base.kick = (stepInBar===0 || stepInBar===4) && chance(0.6);
-      base.snare = (stepInBar===2 || stepInBar===6) && chance(0.55);
-      base.ride = (c>0.5 && chance(0.25));
-      return base;
-    }
-
-    if (g==="funk"){
-      base.hat = true;
-      base.kick = (stepInBar===0 || stepInBar===3 || stepInBar===5) && chance(0.55 + c*0.25);
-      base.snare = (stepInBar===4) || (c>0.75 && stepInBar===6 && chance(0.35));
-      base.ghostHat = (c>0.6 && chance(0.20));
-      return base;
-    }
-
-    if (g==="hiphop"){
-      base.hat = (stepInBar%1===0) && chance(0.85);
-      base.kick = (stepInBar===0 || stepInBar===5) && chance(0.55 + c*0.20);
-      base.snare = (stepInBar===4) && chance(0.9);
-      base.ghostHat = (c>0.5 && chance(0.30));
-      return base;
-    }
-
-    if (g==="house"){
-      base.kick = (stepInBar===0 || stepInBar===4);
-      base.hat  = (stepInBar%2===1) && chance(0.85);
-      base.snare= (stepInBar===4) && chance(0.25);
-      base.ride = (c>0.75 && chance(0.25));
-      return base;
-    }
-
-    if (g==="dnb" || g==="breaks"){
-      base.hat = true;
-      base.kick = (stepInBar===0 || stepInBar===3 || stepInBar===5) && chance(0.6+c*0.25);
-      base.snare = (stepInBar===4) && chance(0.95);
-      base.ride = (c>0.8 && chance(0.25));
-      return base;
-    }
-
-    if (g==="ambient"){
-      base.ride = chance(0.35 + c*0.20);
-      base.hat = chance(0.25 + c*0.20);
-      base.kick = (stepInBar===0) && chance(0.25);
-      base.snare = (stepInBar===4) && chance(0.15);
-      return base;
-    }
-
-    if (g==="free"){
-      base.ride = chance(0.55 + c*0.35);
-      base.hat = chance(0.25 + c*0.35);
-      base.kick = chance(0.20 + c*0.25);
-      base.snare = chance(0.15 + c*0.25);
-      return base;
-    }
-
-    return base;
-  }
-
-  function bassPattern(stepInBar, stepsInSlot, ch, prevCh){
-    // return midi note or null
-    const c = feel.bassComplex/100;
-    const root = bassTargetForChord(ch);
-
-    // walking-ish: more complexity -> more steps
-    const wantWalk = (c > 0.45);
-    if (!wantWalk){
-      if (stepInBar===0) return root;
-      if (stepsInSlot===8 && stepInBar===4 && chance(0.35)) return root + 12;
-      return null;
-    }
-
-    // choose targets
-    const chordPCs = chordTonesPCs(ch);
-    const nextRoot = root;
-    const stepStrong = (stepInBar===0 || stepInBar===4);
-
-    if (stepStrong) return (stepInBar===0) ? root : (chance(0.35+c*0.25) ? root+7 : root);
-
-    // passing tones / approach notes
-    const approachChance = 0.25 + c*0.35;
-    if (chance(approachChance)){
-      const dir = chance(0.5) ? 1 : -1;
-      return root + dir * pick([1,2,3,5,7]);
-    }
-
-    // chord tone pick
-    const tone = pick(chordPCs);
-    let m = 36 + tone;
-    while (m < 34) m += 12;
-    while (m > 52) m -= 12;
-    return m;
-  }
-
-  function maybeDoFills(t, slotIndexIn4bar, isEndOfPhrase){
-    // randomized "fill shapes" — not the same fill each time
-    const kF = feel.keysFill/100;
-    const bF = feel.bassFill/100;
-    const dF = feel.drumsFill/100;
-
-    // prefer phrase ends, but sometimes mid
-    const pBoost = isEndOfPhrase ? 1.0 : 0.45;
-
-    const doKeys = chance(kF * 0.55 * pBoost);
-    const doBass = chance(bF * 0.50 * pBoost);
-    const doDrum = chance(dF * 0.65 * pBoost);
-
-    const fillShapes = [
-      [6,7],          // last two 8ths
-      [5,6,7],        // run
-      [4,6,7],        // skip
-      [3,5,6,7],      // ramp
-      [7],            // tag
-    ];
-
-    return { doKeys, doBass, doDrum, shape: pick(fillShapes) };
-  }
-
-  function scheduleStep(t, globalStepInBar, stepsInSlot, ch, prevCh, isFill, fillShape){
-    ensureCtx();
-
-    // drums
-    const d = drumsPattern(globalStepInBar);
-    const dVelBase = 0.65 + (feel.drumsComplex/100)*0.25;
-
-    if (d.ride) synth.hitRide(t, dVelBase*0.70);
-    if (d.hat) synth.hitHat(t, dVelBase*0.55);
-    if (d.kick) synth.hitKick(t, dVelBase*0.75);
-    if (d.snare) synth.hitSnare(t, dVelBase*0.70);
-    if (d.ghostHat && chance(0.35)) synth.hitHat(t, dVelBase*0.35);
-
-    if (isFill){
-      // fill shapes: little flurries
-      if (fillShape.includes(globalStepInBar)){
-        if (chance(0.55)) synth.hitSnare(t, dVelBase*0.55);
-        if (chance(0.40)) synth.hitHat(t, dVelBase*0.45);
-        if (chance(0.25)) synth.hitKick(t, dVelBase*0.55);
-      }
-    }
-
-    // bass
-    const bassMidi = bassPattern(globalStepInBar, stepsInSlot, ch, prevCh);
-    if (bassMidi!=null){
-      const len = (globalStepInBar%2===0) ? 0.14 : 0.12;
-      const vel = 0.65 + (feel.bassComplex/100)*0.25;
-      synth.playBassNote(bassMidi, t, len, vel);
-    }
-    if (isFill && fillShape.includes(globalStepInBar)){
-      if (chance(0.35 + (feel.bassFill/100)*0.35)){
-        synth.playBassNote(bassTargetForChord(ch)+pick([2,3,5,7,9]), t, 0.10, 0.45);
-      }
-    }
-
-    // keys comp
-    const hits = compHitsForStyle(compStyle, stepsInSlot);
-    const keysBusy = feel.keysComplex/100;
-    const isHit = hits.includes(globalStepInBar);
-    const vel = 0.55 + keysBusy*0.30;
-
-    if (isHit){
-      const notes = voicingForChord(ch);
-      const len = (compStyle==="sustain" ? (stepsInSlot===8 ? 0.85 : 0.45) : 0.16) * (60/tempo);
-      synth.playKeysChord(notes, t, Math.max(0.12, len), vel);
-    } else if (keysBusy > 0.78 && chance(0.12 + keysBusy*0.10)){
-      // extra syncopation with high complexity
-      const notes = voicingForChord(ch).slice(0, chance(0.5)?3:4);
-      synth.playKeysChord(notes, t, 0.11, vel*0.6);
-    }
-
-    if (isFill && fillShape.includes(globalStepInBar) && chance(0.45 + (feel.keysFill/100)*0.35)){
-      const notes = voicingForChord(ch);
-      // little arpeggio-ish jab
-      const single = pick(notes);
-      synth.playKeysChord([single], t, 0.10, vel*0.55);
-    }
-  }
-
-  function advanceStep(){
-    const stepsSlot = stepsInCurrentSlot();
-    pos.step += 1;
-
-    if (pos.step >= stepsSlot){
-      pos.step = 0;
-      // advance half / bar
-      if (barHasSplit(pos.bar)){
-        if (pos.half === 0){
-          pos.half = 1;
-        } else {
-          pos.half = 0;
-          pos.bar += 1;
-        }
+    // helper: determine if note is in lists
+    const inScale = (p)=>scalePcs.includes(pc(p));
+    const inChord = (p)=>chordPcs.includes(pc(p));
+
+    // draw white keys
+    for (const k of keys){
+      if (!k.isWhite) continue;
+      const x = k.wx * whiteW;
+      const rect = document.createElementNS("http://www.w3.org/2000/svg","rect");
+      rect.setAttribute("x", x.toFixed(2));
+      rect.setAttribute("y", "0");
+      rect.setAttribute("width", (whiteW+0.6).toFixed(2));
+      rect.setAttribute("height", whiteH.toFixed(2));
+      rect.setAttribute("rx", "10");
+      rect.setAttribute("ry", "10");
+
+      const isScale = inScale(k.p);
+      rect.setAttribute("fill", isScale ? "var(--accent)" : "var(--keyWhite)");
+
+      // fixed thin black outline separating scale keys
+      if (isScale){
+        rect.setAttribute("stroke", `rgba(0,0,0,var(--scaleStrokeAlpha))`);
+        rect.setAttribute("stroke-width", String(parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--scaleStrokeWidth")) || 2.2));
       } else {
-        pos.bar += 1;
-        pos.half = 0;
+        rect.setAttribute("stroke", "var(--keyBorder)");
+        rect.setAttribute("stroke-width", "1");
       }
+      svg.appendChild(rect);
 
-      if (pos.bar >= state.bars){
-        // loop
-        pos.bar = 0; pos.half = 0; pos.step = 0;
+      // chord/root markers
+      const isChord = inChord(k.p);
+      const isRoot = (rootPc!=null && k.p===rootPc);
+      if (isChord || isRoot){
+        addMarker(svg, x + whiteW/2, whiteH*0.80, isRoot ? "root" : "chord", marker);
       }
+    }
 
-      // keep UI in sync exactly at chord boundaries
-      state.activeBar = pos.bar;
-      state.activeHalf = pos.half;
-      renderSheet();
-      updatePianoForActive();
+    // draw black keys (after whites so they appear on top)
+    // black keys relative position: between specific whites
+    for (const k of keys){
+      if (k.isWhite) continue;
+      // find nearest left white
+      const leftWhite = keys.slice().reverse().find(w => w.isWhite && w.m < k.m);
+      if (!leftWhite) continue;
+      const x = (leftWhite.wx + 1) * whiteW - (blackW/2);
+      const rect = document.createElementNS("http://www.w3.org/2000/svg","rect");
+      rect.setAttribute("x", x.toFixed(2));
+      rect.setAttribute("y", "0");
+      rect.setAttribute("width", blackW.toFixed(2));
+      rect.setAttribute("height", blackH.toFixed(2));
+      rect.setAttribute("rx", "9");
+      rect.setAttribute("ry", "9");
+
+      const isScale = inScale(k.p);
+      rect.setAttribute("fill", isScale ? "var(--accent)" : "var(--keyBlack)");
+      if (isScale){
+        rect.setAttribute("stroke", `rgba(0,0,0,var(--scaleStrokeAlpha))`);
+        rect.setAttribute("stroke-width", String(parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--scaleStrokeWidth")) || 2.2));
+      } else {
+        rect.setAttribute("stroke", "var(--keyBlackBorder)");
+        rect.setAttribute("stroke-width", "1");
+      }
+      svg.appendChild(rect);
+
+      const isChord = inChord(k.p);
+      const isRoot = (rootPc!=null && k.p===rootPc);
+      if (isChord || isRoot){
+        addMarker(svg, x + blackW/2, blackH*0.78, isRoot ? "root" : "chord", marker, true);
+      }
     }
   }
 
-  function tick(){
-    if (!isPlaying || isPaused) return;
+  function addMarker(svg, cx, cy, kind, style, onBlack=false){
+    const color = kind==="root" ? "var(--good)" : "var(--chord)";
+    const stroke = "rgba(0,0,0,.35)";
+    const size = onBlack ? 9.0 : 10.5;
 
-    const ctx = ensureCtx();
-    const now = ctx.currentTime;
-
-    // schedule slightly ahead
-    const lookahead = 0.10; // seconds
-    while (nextTickAt < now + lookahead){
-      // compute chord and schedule
-      const ch = currentChord();
-      if (ch){
-        const stepsSlot = stepsInCurrentSlot();
-
-        // map slot step to "global step in bar" 0..7
-        let globalStep = pos.step;
-        if (barHasSplit(pos.bar)){
-          globalStep = (pos.half===0 ? pos.step : (pos.step + 4));
-        }
-
-        // fill logic at phrase ends (every 4 bars)
-        const slotIdxIn4 = pos.bar % 4;
-        const isPhraseEnd = (pos.bar % 4 === 3) && (globalStep >= 4);
-        const fill = maybeDoFills(nextTickAt, slotIdxIn4, isPhraseEnd);
-        const isFill = fill.doDrum || fill.doBass || fill.doKeys;
-
-        // to avoid fills constantly: only enable on some steps near end
-        const fillShape = fill.shape;
-
-        scheduleStep(
-          nextTickAt,
-          globalStep,
-          barHasSplit(pos.bar) ? 4 : 8,
-          ch,
-          (pos.bar>0 || pos.half>0) ? chordAt(pos.bar, Math.max(0,pos.half-1)) || chordAt(Math.max(0,pos.bar-1), 1) : null,
-          isFill,
-          fillShape
-        );
-      }
-
-      // advance + next time
-      const d = stepDur(pos.step);
-      nextTickAt += d;
-      advanceStep();
+    if (style==="rings"){
+      const c = document.createElementNS("http://www.w3.org/2000/svg","circle");
+      c.setAttribute("cx", cx.toFixed(2));
+      c.setAttribute("cy", cy.toFixed(2));
+      c.setAttribute("r", (size*0.72).toFixed(2));
+      c.setAttribute("fill", "none");
+      c.setAttribute("stroke", color);
+      c.setAttribute("stroke-width", "3");
+      svg.appendChild(c);
+      return;
     }
 
-    timer = setTimeout(tick, 25);
+    if (style==="triangles"){
+      const p = document.createElementNS("http://www.w3.org/2000/svg","path");
+      const h = size*1.2;
+      const d = `M ${cx} ${cy-h/2} L ${cx-size*0.8} ${cy+h/2} L ${cx+size*0.8} ${cy+h/2} Z`;
+      p.setAttribute("d", d);
+      p.setAttribute("fill", color);
+      p.setAttribute("stroke", stroke);
+      p.setAttribute("stroke-width", "1.2");
+      svg.appendChild(p);
+      return;
+    }
+
+    if (style==="squares"){
+      const r = document.createElementNS("http://www.w3.org/2000/svg","rect");
+      const w = size*1.25;
+      r.setAttribute("x", (cx-w/2).toFixed(2));
+      r.setAttribute("y", (cy-w/2).toFixed(2));
+      r.setAttribute("width", w.toFixed(2));
+      r.setAttribute("height", w.toFixed(2));
+      r.setAttribute("rx", "3");
+      r.setAttribute("fill", color);
+      r.setAttribute("stroke", stroke);
+      r.setAttribute("stroke-width", "1.2");
+      svg.appendChild(r);
+      return;
+    }
+
+    // default dots
+    const c = document.createElementNS("http://www.w3.org/2000/svg","circle");
+    c.setAttribute("cx", cx.toFixed(2));
+    c.setAttribute("cy", cy.toFixed(2));
+    c.setAttribute("r", (size*0.55).toFixed(2));
+    c.setAttribute("fill", color);
+    c.setAttribute("stroke", stroke);
+    c.setAttribute("stroke-width", "1.2");
+    svg.appendChild(c);
   }
 
-  async function start(){
-    ensureCtx();
-    if (ctx.state === "suspended") await ctx.resume();
+  /* ---------- Render meta/status line ---------- */
+  function renderMeta(){
+    els.metaBars.textContent = String(state.chartBars.length || state.bars || 0);
+    els.metaTempo.textContent = String(state.tempo|0);
+    els.metaSwing.textContent = String(state.swing|0);
+    els.metaChaos.textContent = String(state.chaos|0);
 
-    isPlaying = true;
-    isPaused = false;
-
-    // start from resumePos if set (used when pausing and tapping chords)
-    pos.bar = clamp(resumePos.bar, 0, Math.max(0,state.bars-1));
-    pos.half = clamp(resumePos.half, 0, 1);
-    pos.step = 0;
-
-    state.activeBar = pos.bar;
-    state.activeHalf = pos.half;
-    renderSheet();
-    updatePianoForActive();
-
-    startedAt = ctx.currentTime;
-    nextTickAt = ctx.currentTime + 0.03;
-
-    clearTimeout(timer);
-    timer = setTimeout(tick, 10);
-  }
-
-  function pause(){
-    if (!isPlaying) return;
-    isPaused = true;
-    clearTimeout(timer);
-    timer = null;
-  }
-
-  async function resume(){
-    if (!isPlaying) return start();
-    ensureCtx();
-    if (ctx.state === "suspended") await ctx.resume();
-    isPaused = false;
-    nextTickAt = ctx.currentTime + 0.03;
-    clearTimeout(timer);
-    timer = setTimeout(tick, 10);
-  }
-
-  function stopHard(){
-    isPlaying = false;
-    isPaused = false;
-    clearTimeout(timer);
-    timer = null;
-  }
-
-  function jumpTo(bar, half){
-    resumePos = { bar: bar|0, half: half|0 };
-    if (!isPlaying) return;
-    // if currently playing, jump immediately
-    pos.bar = clamp(resumePos.bar, 0, Math.max(0,state.bars-1));
-    pos.half = clamp(resumePos.half, 0, 1);
-    pos.step = 0;
-  }
-
-  function setResumePos(bar, half){
-    resumePos = { bar: bar|0, half: half|0 };
-  }
-
-  async function previewChord(ch){
-    ensureCtx();
-    if (ctx.state === "suspended") await ctx.resume();
-    const t = ctx.currentTime + 0.01;
-
-    // quick “band” preview (no transport)
-    const notes = voicingForChord(ch);
-    synth.playKeysChord(notes, t, 0.18, 0.75);
-    synth.playBassNote(bassTargetForChord(ch), t, 0.14, 0.65);
-    // subtle tick
-    synth.hitRide(t, 0.35);
-  }
-
-  return {
-    get isPlaying(){ return isPlaying; },
-    get isPaused(){ return isPaused; },
-
-    lastHalvesCount: 0,
-
-    setChart,
-    setTempo,
-    setGroove,
-    setCompStyle,
-    setPresets,
-    setFeel,
-    setDrumsLevel,
-
-    start,
-    pause,
-    resume,
-    stopHard,
-
-    jumpTo,
-    setResumePos,
-    previewChord,
-  };
-})();
-
-/* Play/Pause button */
-function updatePlayBtn(){
-  if (!player.isPlaying) els.btnPlay.textContent = "Play";
-  else if (player.isPaused) els.btnPlay.textContent = "Resume";
-  else els.btnPlay.textContent = "Pause";
-}
-
-els.btnPlay.addEventListener("click", async ()=>{
-  try{
-    if (!player.isPlaying){
-      player.setChart(state.chartBars);
-      player.setTempo(state.tempo, state.swing);
-      player.setGroove(state.grooveStyle);
-      player.setCompStyle(state.compStyle);
-      player.setPresets(els.bassPreset.value, els.keysPreset.value, els.drumsPreset.value);
-      player.setFeel(state);
-      player.setDrumsLevel((Number(els.drumsLevel.value)||55)/100);
-      player.setResumePos(state.activeBar, state.activeHalf);
-      await player.start();
-      els.msg.textContent = "Playing… (tap any bar to jump / preview when paused)";
-    } else if (player.isPaused){
-      await player.resume();
-      els.msg.textContent = "Resumed.";
+    const halvesCount = (state.chartBars||[]).filter(b=>b.split).length;
+    if (halvesCount>0){
+      els.metaHalves.style.display = "";
+      els.metaHalvesVal.textContent = String(halvesCount);
     } else {
-      player.pause();
-      player.setResumePos(state.activeBar, state.activeHalf);
-      els.msg.textContent = "Paused. Tap a chord to preview or set resume point.";
+      els.metaHalves.style.display = "none";
+      els.metaHalvesVal.textContent = "0";
     }
-  } finally {
-    updatePlayBtn();
+
+    const got = getChordAt(state.activeBar, state.activeHalf);
+    els.pillLine.textContent = got?.chord ? `Now: ${chordName(got.chord)}` : "—";
+
+    // “Key” display only if generator thinks it's stable
+    if (state.showKey){
+      els.leadKey.textContent = `Center: ${noteName(state.keyRoot)} ${state.keyMode}`;
+    } else {
+      els.leadKey.textContent = "Center: —";
+    }
   }
-});
 
-/* keep tempo/swing live while playing handled in range wiring */
+  function renderAll(){
+    renderMeta();
+    renderLead();
+    renderPianoForActive();
+  }
 
-/* ========= INITIALIZE ========= */
-function init(){
-  loadSaved();
+  /* ---------- Copy chart ---------- */
+  function chartToText(){
+    const bars = state.chartBars || [];
+    const parts = bars.map((b, i)=>{
+      if (!b.split) return chordName(b.chords[0]);
+      return `${chordName(b.chords[0])}, ${chordName(b.chords[1])}`;
+    });
+    // group into bars with | |
+    return `| ${parts.join(" | ")} |`;
+  }
 
-  applySectionOrder(getSectionOrder());
+  async function copyChart(){
+    const txt = chartToText();
+    try{
+      await navigator.clipboard.writeText(txt);
+      els.msg.textContent = "Copied chart to clipboard.";
+    }catch{
+      // fallback
+      const ta = document.createElement("textarea");
+      ta.value = txt;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      ta.remove();
+      els.msg.textContent = "Copied chart (fallback).";
+    }
+  }
 
-  applyPianoTheme(els.pianoTheme.value || DEFAULTS.pianoTheme);
-  applyMarkerStyle(els.markerStyle.value || DEFAULTS.markerStyle);
+  /* ---------- Defaults / Randomize All ---------- */
+  function setUIFromState(){
+    els.bars.value = state.bars; els.barsNum.value = state.bars;
+    els.halfChords.checked = !!state.halfEnabled;
+    els.halfDensity.value = state.halfDensity; els.halfDensityNum.value = state.halfDensity;
+    els.tempo.value = state.tempo; els.tempoNum.value = state.tempo;
+    els.swing.value = state.swing; els.swingNum.value = state.swing;
+    els.chaos.value = state.chaos; els.chaosNum.value = state.chaos;
+    els.rootMode.value = state.rootMode;
 
-  applyScaleOutlineSettings(
-    Number(els.scaleOutlineW.value || DEFAULTS.scaleStrokeWidth),
-    Number(els.scaleOutlineA.value || DEFAULTS.scaleStrokeAlphaPct)
-  );
+    els.grooveStyle.value = state.grooveStyle;
+    els.compStyle.value = state.compStyle;
+    els.bassPreset.value = state.bassPreset;
+    els.keysPreset.value = state.keysPreset;
+    els.drumsPreset.value = state.drumsPreset;
 
-  renderPianoBase();
+    els.drumsLevel.value = state.drumsLevel; els.drumsLevelNum.value = state.drumsLevel;
 
-  // set default limiter + generate once
-  setChordLimiterState(DEFAULTS.limiter);
-  state.limiter = getChordLimiterState();
+    els.keysComplex.value = state.keysComplex; els.keysComplexNum.value = state.keysComplex;
+    els.keysFill.value = state.keysFill; els.keysFillNum.value = state.keysFill;
 
-  // set initial UI values explicitly
-  els.bars.value = state.bars; els.barsNum.value = state.bars;
-  els.tempo.value = state.tempo; els.tempoNum.value = state.tempo;
-  els.swing.value = state.swing; els.swingNum.value = state.swing;
-  els.chaos.value = state.chaos; els.chaosNum.value = state.chaos;
+    els.bassComplex.value = state.bassComplex; els.bassComplexNum.value = state.bassComplex;
+    els.bassFill.value = state.bassFill; els.bassFillNum.value = state.bassFill;
 
-  els.halfChords.checked = state.halfEnabled;
-  els.halfDensity.value = state.halfDensity; els.halfDensityNum.value = state.halfDensity;
+    els.drumsComplex.value = state.drumsComplex; els.drumsComplexNum.value = state.drumsComplex;
+    els.drumsFill.value = state.drumsFill; els.drumsFillNum.value = state.drumsFill;
 
-  els.rootMode.value = state.rootMode;
-  els.grooveStyle.value = state.grooveStyle;
-  els.compStyle.value = state.compStyle;
+    els.genrePreset.value = state.genrePreset;
+    els.progressionLogic.value = state.progressionLogic;
 
-  els.bassPreset.value = DEFAULTS.bassPreset;
-  els.keysPreset.value = DEFAULTS.keysPreset;
-  els.drumsPreset.value = DEFAULTS.drumsPreset;
-  els.drumsLevel.value = DEFAULTS.drumsLevel; els.drumsLevelNum.value = DEFAULTS.drumsLevel;
+    // themes
+    els.pageTheme.value = state.pageTheme;
+    els.pianoTheme.value = state.pianoTheme;
+    els.markerStyle.value = state.markerStyle;
 
-  els.keysComplex.value = state.keysComplex; els.keysComplexNum.value = state.keysComplex;
-  els.keysFill.value = state.keysFill; els.keysFillNum.value = state.keysFill;
-  els.bassComplex.value = state.bassComplex; els.bassComplexNum.value = state.bassComplex;
-  els.bassFill.value = state.bassFill; els.bassFillNum.value = state.bassFill;
-  els.drumsComplex.value = state.drumsComplex; els.drumsComplexNum.value = state.drumsComplex;
-  els.drumsFill.value = state.drumsFill; els.drumsFillNum.value = state.drumsFill;
+    // limiter checkboxes
+    setChordLimiterState(state.limiter);
+  }
 
-  generateAndRender();
-  updatePlayBtn();
-}
+  function resetDefaults(){
+    state = JSON.parse(JSON.stringify({
+      ...state,
+      bars: DEFAULTS.bars,
+      halfEnabled: DEFAULTS.halfEnabled,
+      halfDensity: DEFAULTS.halfDensity,
+      tempo: DEFAULTS.tempo,
+      swing: DEFAULTS.swing,
+      chaos: DEFAULTS.chaos,
+      rootMode: DEFAULTS.rootMode,
+      progressionLogic: DEFAULTS.progressionLogic,
+      genrePreset: DEFAULTS.genrePreset,
+      grooveStyle: DEFAULTS.grooveStyle,
+      compStyle: DEFAULTS.compStyle,
+      bassPreset: DEFAULTS.bassPreset,
+      keysPreset: DEFAULTS.keysPreset,
+      drumsPreset: DEFAULTS.drumsPreset,
+      drumsLevel: DEFAULTS.drumsLevel,
+      keysComplex: DEFAULTS.keysComplex,
+      keysFill: DEFAULTS.keysFill,
+      bassComplex: DEFAULTS.bassComplex,
+      bassFill: DEFAULTS.bassFill,
+      drumsComplex: DEFAULTS.drumsComplex,
+      drumsFill: DEFAULTS.drumsFill,
+      pageTheme: DEFAULTS.pageTheme,
+      pianoTheme: DEFAULTS.pianoTheme,
+      markerStyle: DEFAULTS.markerStyle,
+      limiter: {...DEFAULTS.limiter},
+      weights: macroToWeights(DEFAULTS.chaos),
+      activeBar: 0,
+      activeHalf: 0,
+    }));
 
-init();
+    applyPageTheme(state.pageTheme);
+    applyPianoTheme(state.pianoTheme);
+
+    setUIFromState();
+
+    // regenerate (default generator, not a song shape)
+    els.songSelect.value = "none";
+    generateChart();
+    els.msg.textContent = "Reset to defaults.";
+  }
+
+  function randomizeAll(){
+    // random within sensible ranges
+    const gp = GENRE_PRESETS[pick(Object.keys(GENRE_PRESETS))];
+    applyGenrePresetById(Object.keys(GENRE_PRESETS).find(k=>GENRE_PRESETS[k]===gp) || "jazzSwing");
+
+    // chaos + modes
+    state.chaos = rint(0, 85);
+    state.rootMode = pick(["keyed","drifting","orbiting","freefall"]);
+    state.progressionLogic = pick(Object.keys(PROGRESSION_LOGICS));
+    state.weights = macroToWeights(state.chaos);
+
+    // bars + halves
+    state.bars = rint(2, 16);
+    state.halfEnabled = chance(0.65);
+    state.halfDensity = rint(0, 70);
+
+    // sounds
+    state.keysPreset = pick(["piano","ep","organ","pad","fm","chip","bell","glass","pluck2","vibes","choirPad","noisePad","guitarish","clavBright"]);
+    state.bassPreset = pick(["upright","round","sub","pluck","fmBass","rubber","acid","reese","squareBass","wobble","pickBass","muted"]);
+    state.drumsPreset = pick(["jazz","brushes","tight","rock","disco","lofi","minimal","electro","house","trap","perc","dnb","techno"]);
+
+    // groove + comp
+    state.grooveStyle = pick(Array.from(els.grooveStyle.options).map(o=>o.value));
+    state.compStyle = pick(Array.from(els.compStyle.options).map(o=>o.value));
+
+    // feel
+    state.tempo = rint(60, 220);
+    state.swing = rint(50, 72);
+
+    state.keysComplex = rint(10, 95);
+    state.keysFill = rint(0, 85);
+    state.bassComplex = rint(10, 95);
+    state.bassFill = rint(0, 70);
+    state.drumsComplex = rint(10, 95);
+    state.drumsFill = rint(0, 90);
+    state.drumsLevel = rint(20, 85);
+
+    // limiters random-ish but keep at least some core qualities
+    const lim = {...DEFAULTS.limiter};
+    lim.qMaj7 = chance(0.85);
+    lim.qMin7 = chance(0.85);
+    lim.qDom7 = chance(0.85);
+    lim.qDim7 = chance(0.35);
+    lim.qHalfDim = chance(0.45);
+    lim.qSus = chance(0.25);
+    lim.qMinMaj = chance(0.20);
+
+    lim.x9 = chance(0.55);
+    lim.x11 = chance(0.35);
+    lim.x13 = chance(0.35);
+    lim.x6 = chance(0.30);
+    lim.xAdd9 = chance(0.20);
+    lim.xSharp11 = chance(0.20);
+    lim.xMin11 = chance(0.25);
+
+    lim.tAlt = chance(0.35);
+    lim.tSlash = chance(0.30);
+    lim.tChrom = chance(0.35);
+    lim.tB9 = chance(0.25);
+    lim.tSharp9 = chance(0.25);
+
+    // ensure at least one
+    if (!lim.qMaj7 && !lim.qMin7 && !lim.qDom7 && !lim.qDim7 && !lim.qHalfDim && !lim.qSus && !lim.qMinMaj){
+      lim.qDom7 = true;
+    }
+    state.limiter = lim;
+
+    // themes
+    state.pageTheme = pick(Object.keys(PAGE_THEMES));
+    state.pianoTheme = pick(Object.keys(PIANO_THEMES));
+    state.markerStyle = pick(["dots","rings","triangles","squares"]);
+
+    applyPageTheme(state.pageTheme);
+    applyPianoTheme(state.pianoTheme);
+
+    // UI + generate
+    setUIFromState();
+    els.songSelect.value = "none";
+    generateChart();
+
+    els.msg.textContent = "Randomized everything 🎲";
+  }
+
+  /* ---------- Generate chart (generator mode) ---------- */
+  function generateChart(){
+    state.weights = macroToWeights(state.chaos);
+    // apply progression logic modifier
+    const logicId = els.progressionLogic.value || state.progressionLogic || "none";
+    const baseW = macroToWeights(state.chaos);
+    const logic = PROGRESSION_LOGICS[logicId] || PROGRESSION_LOGICS.none;
+    state.weights = logic.apply(baseW, state.chaos);
+
+    const limiter = getChordLimiterState();
+    state.limiter = limiter;
+
+    const res = genChartBars({
+      bars: state.bars,
+      chaos: state.chaos,
+      rootMode: state.rootMode,
+      weights: state.weights,
+      limiter,
+      halfEnabled: state.halfEnabled,
+      halfDensity: state.halfDensity,
+      progressionLogic: logicId,
+    });
+
+    state.chartBars = res.bars;
+    state.keyRoot = res.keyRoot;
+    state.keyMode = res.keyMode;
+    state.showKey = res.showKey;
+
+    state.activeBar = 0;
+    state.activeHalf = 0;
+
+    player.setTempo(state.tempo, state.swing);
+    player.setChart(state.chartBars);
+
+    renderAll();
+  }
+
+  /* ---------- Presets selection ---------- */
+  function applyGenrePresetById(id){
+    const p = GENRE_PRESETS[id];
+    if (!p) return;
+
+    state.genrePreset = id;
+    state.grooveStyle = p.groove;
+    state.compStyle = p.comp;
+
+    state.bassPreset = p.bass;
+    state.keysPreset = p.keys;
+    state.drumsPreset = p.drums;
+
+    state.keysComplex = p.kC; state.keysFill = p.kF;
+    state.bassComplex = p.bC; state.bassFill = p.bF;
+    state.drumsComplex = p.dC; state.drumsFill = p.dF;
+
+    state.halfEnabled = p.halfOn;
+    state.halfDensity = rint(p.halfDen[0], p.halfDen[1]);
+
+    state.tempo = rint(p.tempo[0], p.tempo[1]);
+    state.swing = rint(p.swing[0], p.swing[1]);
+
+    state.progressionLogic = p.logic;
+
+    player.setTempo(state.tempo, state.swing);
+
+    setUIFromState();
+    els.msg.textContent = `Preset: ${p.name}`;
+  }
+
+  /* ---------- Advanced modal: reorder menus ---------- */
+  const MENU_IDS = ["cardControls","cardLimiters","cardLead","cardPiano"];
+  const MENU_LABELS = {
+    cardControls:"Controls",
+    cardLimiters:"Chord limiters",
+    cardLead:"Lead sheet",
+    cardPiano:"Piano",
+  };
+
+  function getMenuOrder(){
+    // try localStorage
+    try{
+      const raw = localStorage.getItem("fm_menu_order");
+      if (raw){
+        const arr = JSON.parse(raw);
+        if (Array.isArray(arr) && arr.every(id=>MENU_IDS.includes(id))){
+          // ensure all included
+          const full = [...new Set([...arr, ...MENU_IDS])].filter(id=>MENU_IDS.includes(id));
+          return full;
+        }
+      }
+    }catch{}
+    return MENU_IDS.slice();
+  }
+
+  function setMenuOrder(order){
+    const app = document.querySelector(".app");
+    const header = app.querySelector(".header");
+    const cards = order.map(id=>document.getElementById(id)).filter(Boolean);
+    // keep header on top, then cards
+    cards.forEach(c=>app.appendChild(c));
+    app.insertBefore(header, app.firstChild);
+
+    try{ localStorage.setItem("fm_menu_order", JSON.stringify(order)); }catch{}
+    renderOrderList(order);
+  }
+
+  function renderOrderList(order){
+    els.orderList.innerHTML = "";
+    order.forEach((id, idx)=>{
+      const row = document.createElement("div");
+      row.className = "modalRow";
+
+      const name = document.createElement("div");
+      name.className = "name";
+      name.textContent = MENU_LABELS[id] || id;
+
+      const btns = document.createElement("div");
+      btns.className = "reorderBtns";
+
+      const up = document.createElement("button");
+      up.className = "btn tiny";
+      up.textContent = "↑";
+      up.disabled = idx===0;
+      up.addEventListener("click", ()=>{
+        const n = order.slice();
+        [n[idx-1], n[idx]] = [n[idx], n[idx-1]];
+        setMenuOrder(n);
+      });
+
+      const dn = document.createElement("button");
+      dn.className = "btn tiny";
+      dn.textContent = "↓";
+      dn.disabled = idx===order.length-1;
+      dn.addEventListener("click", ()=>{
+        const n = order.slice();
+        [n[idx], n[idx+1]] = [n[idx+1], n[idx]];
+        setMenuOrder(n);
+      });
+
+      btns.appendChild(up);
+      btns.appendChild(dn);
+
+      row.appendChild(name);
+      row.appendChild(btns);
+      els.orderList.appendChild(row);
+    });
+  }
+
+  function openAdv(){ els.advBack.style.display = "flex"; }
+  function closeAdv(){ els.advBack.style.display = "none"; }
+
+  /* ---------- Wire up controls (range <-> number) ---------- */
+  function bindRangeNumber(rangeEl, numEl, onChange){
+    const sync = (v)=>{
+      rangeEl.value = v;
+      numEl.value = v;
+      onChange(Number(v));
+    };
+    rangeEl.addEventListener("input", ()=> sync(rangeEl.value));
+    numEl.addEventListener("change", ()=> sync(numEl.value));
+  }
+
+  /* ---------- Init selects ---------- */
+  function initSelects(){
+    // songSelect
+    els.songSelect.innerHTML = "";
+    Object.keys(SONG_LIBRARY).forEach(id=>{
+      const s = SONG_LIBRARY[id];
+      const opt = document.createElement("option");
+      opt.value = id;
+      opt.textContent = s.title;
+      els.songSelect.appendChild(opt);
+    });
+    els.songSelect.value = "none";
+
+    // genre preset
+    els.genrePreset.innerHTML = "";
+    Object.keys(GENRE_PRESETS).forEach(id=>{
+      const p = GENRE_PRESETS[id];
+      const opt = document.createElement("option");
+      opt.value = id;
+      opt.textContent = p.name;
+      els.genrePreset.appendChild(opt);
+    });
+
+    // progression logic
+    els.progressionLogic.innerHTML = "";
+    Object.keys(PROGRESSION_LOGICS).forEach(id=>{
+      const p = PROGRESSION_LOGICS[id];
+      const opt = document.createElement("option");
+      opt.value = id;
+      opt.textContent = p.name;
+      els.progressionLogic.appendChild(opt);
+    });
+
+    // themes
+    els.pageTheme.innerHTML = "";
+    Object.keys(PAGE_THEMES).forEach(id=>{
+      const opt = document.createElement("option");
+      opt.value = id;
+      opt.textContent = PAGE_THEMES[id].name;
+      els.pageTheme.appendChild(opt);
+    });
+
+    els.pianoTheme.innerHTML = "";
+    Object.keys(PIANO_THEMES).forEach(id=>{
+      const opt = document.createElement("option");
+      opt.value = id;
+      opt.textContent = PIANO_THEMES[id].name;
+      els.pianoTheme.appendChild(opt);
+    });
+  }
+
+  /* ---------- Persist/load minimal settings ---------- */
+  function loadPersisted(){
+    try{
+      const pt = localStorage.getItem("fm_page_theme");
+      if (pt && PAGE_THEMES[pt]) state.pageTheme = pt;
+    }catch{}
+    try{
+      const kt = localStorage.getItem("fm_piano_theme");
+      if (kt && PIANO_THEMES[kt]) state.pianoTheme = kt;
+    }catch{}
+    try{
+      const ms = localStorage.getItem("fm_marker_style");
+      if (ms) state.markerStyle = ms;
+    }catch{}
+    applyPageTheme(state.pageTheme);
+    applyPianoTheme(state.pianoTheme);
+  }
+
+  function persistMarkerStyle(){
+    try{ localStorage.setItem("fm_marker_style", state.markerStyle); }catch{}
+  }
+
+  /* ---------- Events ---------- */
+  function wireEvents(){
+    // top buttons
+    els.btnCopy.addEventListener("click", copyChart);
+    els.btnDefaults.addEventListener("click", resetDefaults);
+    els.btnDefaults2.addEventListener("click", resetDefaults);
+
+    els.btnPlay.addEventListener("click", async ()=>{
+      if (!state.chartBars.length) generateChart();
+
+      if (!player.isPlaying){
+        player.setTempo(state.tempo, state.swing);
+        player.setChart(state.chartBars);
+        player.jumpTo(state.activeBar, state.activeHalf);
+        await player.start();
+        els.btnPlay.textContent = "⏸";
+        els.btnPlay.title = "Pause";
+        els.msg.textContent = "Playing. Tap bars to jump (and audition works too).";
+      } else {
+        player.stop();
+        els.btnPlay.textContent = "▶️";
+        els.btnPlay.title = "Play";
+        els.msg.textContent = "Paused. Tap bars to audition + focus.";
+        // IMPORTANT: audition still works because audio engine is independent of transport.
+      }
+    });
+
+    els.btnGenerate.addEventListener("click", ()=>{
+      els.songSelect.value = "none";
+      generateChart();
+      els.msg.textContent = "Generated 🎰";
+    });
+
+    els.btnRandomAll.addEventListener("click", randomizeAll);
+
+    // sliders / numbers
+    bindRangeNumber(els.bars, els.barsNum, (v)=>{
+      state.bars = clamp(v|0, 2, 16);
+      els.metaBars.textContent = String(state.bars);
+    });
+
+    els.halfChords.addEventListener("change", ()=>{
+      state.halfEnabled = !!els.halfChords.checked;
+    });
+    bindRangeNumber(els.halfDensity, els.halfDensityNum, (v)=>{
+      state.halfDensity = clamp(v|0, 0, 100);
+    });
+
+    bindRangeNumber(els.tempo, els.tempoNum, (v)=>{
+      state.tempo = clamp(v|0, 40, 300);
+      player.setTempo(state.tempo, state.swing);
+      renderMeta();
+    });
+
+    bindRangeNumber(els.swing, els.swingNum, (v)=>{
+      state.swing = clamp(v|0, 50, 80);
+      player.setTempo(state.tempo, state.swing);
+      renderMeta();
+    });
+
+    bindRangeNumber(els.chaos, els.chaosNum, (v)=>{
+      state.chaos = clamp(v|0, 0, 100);
+      renderMeta();
+    });
+
+    els.rootMode.addEventListener("change", ()=>{
+      state.rootMode = els.rootMode.value;
+    });
+
+    els.grooveStyle.addEventListener("change", ()=>{
+      state.grooveStyle = els.grooveStyle.value;
+    });
+
+    els.compStyle.addEventListener("change", ()=>{
+      state.compStyle = els.compStyle.value;
+    });
+
+    els.bassPreset.addEventListener("change", ()=>{
+      state.bassPreset = els.bassPreset.value;
+      player.refreshVoices();
+    });
+    els.keysPreset.addEventListener("change", ()=>{
+      state.keysPreset = els.keysPreset.value;
+      player.refreshVoices();
+    });
+    els.drumsPreset.addEventListener("change", ()=>{
+      state.drumsPreset = els.drumsPreset.value;
+      player.refreshVoices();
+    });
+
+    bindRangeNumber(els.drumsLevel, els.drumsLevelNum, (v)=>{
+      state.drumsLevel = clamp(v|0, 0, 100);
+    });
+
+    bindRangeNumber(els.keysComplex, els.keysComplexNum, (v)=> state.keysComplex = clamp(v|0, 0, 100));
+    bindRangeNumber(els.keysFill, els.keysFillNum, (v)=> state.keysFill = clamp(v|0, 0, 100));
+
+    bindRangeNumber(els.bassComplex, els.bassComplexNum, (v)=> state.bassComplex = clamp(v|0, 0, 100));
+    bindRangeNumber(els.bassFill, els.bassFillNum, (v)=> state.bassFill = clamp(v|0, 0, 100));
+
+    bindRangeNumber(els.drumsComplex, els.drumsComplexNum, (v)=> state.drumsComplex = clamp(v|0, 0, 100));
+    bindRangeNumber(els.drumsFill, els.drumsFillNum, (v)=> state.drumsFill = clamp(v|0, 0, 100));
+
+    // limiters regenerate hint
+    const limiterBoxes = document.querySelectorAll("#cardLimiters input[type='checkbox']");
+    limiterBoxes.forEach(cb=>{
+      cb.addEventListener("change", ()=>{
+        state.limiter = getChordLimiterState();
+      });
+    });
+
+    // genre preset
+    els.genrePreset.addEventListener("change", ()=>{
+      const id = els.genrePreset.value;
+      applyGenrePresetById(id);
+      // keep UI selection
+      state.genrePreset = id;
+      state.progressionLogic = GENRE_PRESETS[id]?.logic || state.progressionLogic;
+      els.progressionLogic.value = state.progressionLogic;
+      // do not auto-generate; user can Generate
+      renderMeta();
+    });
+
+    // progression logic
+    els.progressionLogic.addEventListener("change", ()=>{
+      state.progressionLogic = els.progressionLogic.value;
+    });
+
+    // song shapes
+    els.songSelect.addEventListener("change", ()=>{
+      const id = els.songSelect.value;
+      if (id==="none") return;
+      // ensure we have a key root (generate once if empty)
+      if (!state.chartBars.length){
+        generateChart();
+      }
+      loadSongById(id);
+    });
+
+    // advanced modal
+    els.btnGear.addEventListener("click", openAdv);
+    els.btnCloseAdv.addEventListener("click", closeAdv);
+    els.advBack.addEventListener("click", (e)=>{
+      if (e.target === els.advBack) closeAdv();
+    });
+    els.btnResetMenu.addEventListener("click", ()=>{
+      setMenuOrder(MENU_IDS.slice());
+      els.msg.textContent = "Menu order reset.";
+    });
+
+    els.pageTheme.addEventListener("change", ()=>{
+      const id = els.pageTheme.value;
+      applyPageTheme(id);
+    });
+
+    els.pianoTheme.addEventListener("change", ()=>{
+      const id = els.pianoTheme.value;
+      applyPianoTheme(id);
+      renderPianoForActive();
+    });
+
+    els.markerStyle.addEventListener("change", ()=>{
+      state.markerStyle = els.markerStyle.value;
+      persistMarkerStyle();
+      renderPianoForActive();
+    });
+
+    // helpful: spacebar play/pause
+    window.addEventListener("keydown",(e)=>{
+      if (e.code==="Space"){
+        e.preventDefault();
+        els.btnPlay.click();
+      }
+    }, {passive:false});
+  }
+
+  /* ---------- Boot ---------- */
+  function boot(){
+    initSelects();
+    loadPersisted();
+
+    // init UI default selections
+    els.genrePreset.value = DEFAULTS.genrePreset;
+    els.progressionLogic.value = DEFAULTS.progressionLogic;
+
+    // restore marker style if saved
+    try{
+      const ms = localStorage.getItem("fm_marker_style");
+      if (ms) state.markerStyle = ms;
+    }catch{}
+    els.markerStyle.value = state.markerStyle;
+
+    // restore menu order
+    const order = getMenuOrder();
+    setMenuOrder(order);
+
+    // set up UI from defaults
+    state.limiter = {...DEFAULTS.limiter};
+    setChordLimiterState(state.limiter);
+    state.pageTheme = state.pageTheme || DEFAULTS.pageTheme;
+    state.pianoTheme = state.pianoTheme || DEFAULTS.pianoTheme;
+
+    applyPageTheme(state.pageTheme);
+    applyPianoTheme(state.pianoTheme);
+
+    setUIFromState();
+    wireEvents();
+
+    // first chart
+    generateChart();
+    player.setTempo(state.tempo, state.swing);
+    player.setChart(state.chartBars);
+
+    els.msg.textContent = "Ready. Tap a bar to audition. Generate 🎰 for new charts. ⚙️ for menu order + themes.";
+  }
+
+  boot();
 </script>
+
 </body>
 </html>
