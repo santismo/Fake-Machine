@@ -1262,6 +1262,52 @@
     }
     const paletteSet = new Set(palette);
 
+    function nearestScaleTone(rootPc, scaleSet){
+      let best = rootPc;
+      let bestDist = 99;
+      for (const p of scaleSet){
+        const d = Math.min((p - rootPc + 12) % 12, (rootPc - p + 12) % 12);
+        if (d < bestDist){
+          bestDist = d;
+          best = p;
+        }
+      }
+      return best;
+    }
+
+    function retuneChordToScale(slot, scaleRoot, mode){
+      const scaleSet = pcsFor(scaleRoot, mode);
+      const limiters = state.limiter || DEFAULTS.limiter;
+      const weights = state.weights || macroToWeights(state.chaos);
+      const baseOpts = buildQualityOptions(limiters);
+      const scaleTones = [...scaleSet];
+
+      let rootPc = pc(slot.chord.root);
+      if (!scaleSet.has(rootPc)) rootPc = nearestScaleTone(rootPc, scaleSet);
+
+      // If current root can't support any in-scale quality, find a nearby scale root that can.
+      const hasFitAt = (r)=>baseOpts.some(o=>{
+        const tones = (CHORDS[o.v.symbol] || []).map(iv=>pc(r + iv));
+        return tones.every(p=>scaleSet.has(p));
+      });
+      if (!hasFitAt(rootPc)){
+        let best = rootPc;
+        let bestDist = 99;
+        for (const t of scaleTones){
+          if (!hasFitAt(t)) continue;
+          const d = Math.min((t - rootPc + 12) % 12, (rootPc - t + 12) % 12);
+          if (d < bestDist){ bestDist = d; best = t; }
+        }
+        rootPc = best;
+      }
+      const q = chooseQuality(limiters, weights, scaleSet, rootPc);
+      const replacement = makeChord(rootPc, q);
+      replacement.mode = mode;
+      replacement.scaleRoot = pc(scaleRoot);
+      if (slot.chord.slash!=null && scaleSet.has(pc(slot.chord.slash))) replacement.slash = pc(slot.chord.slash);
+      Object.assign(slot.chord, replacement);
+    }
+
     for (let i=0;i<slots.length;i++){
       const chord = slots[i].chord;
       const cand = candPer[i];
@@ -1293,23 +1339,10 @@
       }
 
       if (!chosen){
-        // fallback: prefer any fitting candidate even if outside palette
-        let bestAny = null;
-        let bestAnyScore = -1e9;
-        for (const c of cand){
-          if (!chordFits(chord, c.center, c.mode)) continue;
-          if (c.score > bestAnyScore){
-            bestAnyScore = c.score;
-            bestAny = c;
-          }
-        }
-        if (bestAny){
-          chosen = bestAny;
-        } else {
-          const fallbackSig = palette[0] || cand[0]?.sig || sigFor(pc(chord.root), "mixo");
-          const meta = sigMeta.get(fallbackSig) || {root: pc(chord.root), mode:"mixo"};
-          chosen = {mode:meta.mode, center:meta.root, sig:fallbackSig};
-        }
+        const fallbackSig = palette[0] || cand[0]?.sig || sigFor(pc(chord.root), "mixo");
+        const meta = sigMeta.get(fallbackSig) || {root: pc(chord.root), mode:"mixo"};
+        retuneChordToScale(slots[i], meta.root, meta.mode);
+        continue;
       }
 
       slots[i].chord.mode = chosen.mode || "mixo";
@@ -1344,9 +1377,9 @@
         }
 
         if (!reassigned){
-          // preserve chord/scale alignment even if it exceeds the limit
-          slot.chord.mode = slot.chord.mode || "mixo";
-          slot.chord.scaleRoot = pc(slot.chord.scaleRoot ?? slot.chord.root);
+          const fallbackSig = keep[0];
+          const meta = sigMeta.get(fallbackSig) || {root: pc(slot.chord.root), mode:"mixo"};
+          retuneChordToScale(slot, meta.root, meta.mode);
         }
       });
     }
