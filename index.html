@@ -981,12 +981,35 @@
     dim7:[0,3,6,9],
   };
 
+  function chordIntervals(ch){
+    if (Array.isArray(ch?.intervals) && ch.intervals.length) return ch.intervals;
+    const key = ch?.key;
+    if (key && CHORDS[key]) return CHORDS[key];
+    const sym = ch?.symbol;
+    const bySymbol = {
+      "maj7":"maj7", "maj9":"maj9", "6/9":"6/9", "6":"maj6", "add9":"add9", "maj9(#11)":"maj9sharp11",
+      "m7":"min7", "m9":"min9", "m6":"min6", "m11":"min11", "mMaj7":"minMaj7", "mMaj9":"minMaj9",
+      "7":"dom7", "9":"dom9", "11":"dom11", "13":"dom13", "7(b9)":"dom7b9", "7(#9)":"dom7sharp9",
+      "sus":"sus", "7sus":"7sus",
+      "ø7":"halfdim", "dim7":"dim7"
+    }[sym];
+    if (bySymbol && CHORDS[bySymbol]) return CHORDS[bySymbol];
+    const fam = ch?.family;
+    if (fam==="maj") return CHORDS.maj7;
+    if (fam==="min") return CHORDS.min7;
+    if (fam==="dom") return CHORDS.dom7;
+    if (fam==="hdim") return CHORDS.halfdim;
+    if (fam==="dim") return CHORDS.dim7;
+    if (fam==="sus") return CHORDS.sus;
+    return CHORDS.dom7;
+  }
+
   function chordName(ch){
     const base = `${noteName(ch.root)}${ch.symbol}`;
     return (ch.slash!=null) ? `${base}/${noteName(ch.slash)}` : base;
   }
   function chordTonesPCs(ch){
-    return [...new Set((ch.intervals||[]).map(i=>pc(ch.root+i)))];
+    return [...new Set(chordIntervals(ch).map(i=>pc(ch.root+i)))];
   }
 
   /* ---------- Chord-local scale selection (context-aware) ---------- */
@@ -1270,10 +1293,23 @@
       }
 
       if (!chosen){
-        // fallback: force first palette signature even if not ideal, but keep tones consistent
-        const fallbackSig = palette[0];
-        const meta = sigMeta.get(fallbackSig) || {root: pc(chord.root), mode:"mixo"};
-        chosen = {mode:meta.mode, center:meta.root, sig:fallbackSig};
+        // fallback: prefer any fitting candidate even if outside palette
+        let bestAny = null;
+        let bestAnyScore = -1e9;
+        for (const c of cand){
+          if (!chordFits(chord, c.center, c.mode)) continue;
+          if (c.score > bestAnyScore){
+            bestAnyScore = c.score;
+            bestAny = c;
+          }
+        }
+        if (bestAny){
+          chosen = bestAny;
+        } else {
+          const fallbackSig = palette[0] || cand[0]?.sig || sigFor(pc(chord.root), "mixo");
+          const meta = sigMeta.get(fallbackSig) || {root: pc(chord.root), mode:"mixo"};
+          chosen = {mode:meta.mode, center:meta.root, sig:fallbackSig};
+        }
       }
 
       slots[i].chord.mode = chosen.mode || "mixo";
