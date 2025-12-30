@@ -943,6 +943,7 @@
     phryg:[0,1,3,5,7,8,10],
     lydian:[0,2,4,6,7,9,11],
     mixo:  [0,2,4,5,7,9,10],
+    mixolydian:[0,2,4,5,7,9,10],
     aeolian:[0,2,3,5,7,8,10],
     locrian:[0,1,3,5,6,8,10],
     melodicMinor:[0,2,3,5,7,9,11],
@@ -1068,6 +1069,18 @@
   }
 
   /* ---------- Limit how many distinct scales are used ---------- */
+  function candidateModesWithLimit(ch, limit){
+    const base = candidatesForChord(ch);
+    if (limit<=2){
+      if (ch.family==="dom") return ["mixo"];
+      if (ch.family==="maj") return ["ionian"];
+      if (ch.family==="min") return ["dorian","aeolian"];
+      if (ch.family==="sus") return ["mixo"];
+      if (ch.family==="minmaj") return ["melodicMinor","dorian"];
+    }
+    return base;
+  }
+
   function assignChordModesWithLimit(chartBars){
     if (!Array.isArray(chartBars) || !chartBars.length) return;
 
@@ -1095,50 +1108,211 @@
       return;
     }
 
+    const pcsFor = (center, mode)=>{
+      const base = SCALES[mode] || SCALES.mixo;
+      return new Set(base.map(i=>pc(center + i)));
+    };
+    const chordFits = (ch, center, mode)=>{
+      const set = pcsFor(center, mode);
+      for (const p of chordTonesPCs(ch)) if (!set.has(pc(p))) return false;
+      if (ch.slash!=null && !set.has(pc(ch.slash))) return false;
+      return true;
+    };
+
+    const candidateCentersForMode = (ch, mode)=>{
+      const intervals = SCALES[mode] || SCALES.mixo;
+      const centers = [];
+      const seen = new Set();
+      for (const iv of intervals){
+        const center = pc(ch.root - iv);
+        if (seen.has(center)) continue;
+        seen.add(center);
+        if (chordFits(ch, center, mode)) centers.push(center);
+      }
+      return centers;
+    };
+
+    const sigFor = (rootPc, mode)=>{
+      const base = SCALES[mode] || SCALES.mixo;
+      const pcs = base.map(i=>pc(rootPc + i)).sort((a,b)=>a-b);
+      return pcs.join(",");
+    };
+
     // collect candidate modes per chord (root fixed to chord root)
-    const modeTotals = new Map();
+    const sigTotals = new Map();
+    const sigMeta = new Map(); // sig -> {root, mode}
     const candPer = slots.map((slot, idx)=>{
       const prev = slots[idx-1]?.chord || null;
       const next = slots[idx+1]?.chord || null;
       const chord = slot.chord;
-      const cand = candidatesForChord(chord).map(mode=>{
-        const score = scoreModeForContext(chord, mode, prev, next, chord.root);
-        const id = `${pc(chord.root)}:${mode}`;
-        modeTotals.set(id, (modeTotals.get(id)||0) + score);
-        return {mode, score, center: pc(chord.root), id};
+      const cand = [];
+      const modes = candidateModesWithLimit(chord, limit);
+      modes.forEach(mode=>{
+        const centers = candidateCentersForMode(chord, mode);
+        centers.forEach(center=>{
+          const score = scoreModeForContext(chord, mode, prev, next, center);
+          const sig = sigFor(center, mode);
+          sigTotals.set(sig, (sigTotals.get(sig)||0) + score);
+          if (!sigMeta.has(sig)) sigMeta.set(sig, {root:center, mode});
+          cand.push({mode, score, center, sig});
+        });
       });
-      return cand.length ? cand : [{mode:"mixo", score:0, center:pc(chord.root), id:`${pc(chord.root)}:mixo`}];
+      if (!cand.length){
+        const fallbackMode = modes[0] || "mixo";
+        const center = pc(chord.root);
+        const sig = sigFor(center, fallbackMode);
+        if (!sigMeta.has(sig)) sigMeta.set(sig, {root:center, mode:fallbackMode});
+        cand.push({mode:fallbackMode, score:scoreModeForContext(chord, fallbackMode, prev, next, center), center, sig});
+      }
+      return cand;
     });
 
-    // fixed palette: top-N root+mode combos across chart
-    const paletteEntries = [...modeTotals.entries()]
-      .sort((a,b)=>b[1]-a[1])
-      .slice(0, limit);
-    if (paletteEntries.length===0 && slots.length){
-      paletteEntries.push([`${pc(slots[0].chord.root)}:mixo`, 0]);
+    // Exact cover (limit=2): pick signatures that cover all chords with best total score
+    const sigArr = [...sigTotals.keys()];
+    let palette = [];
+    if (limit === 2 && sigArr.length){
+      let bestScore = -Infinity;
+      let bestPair = null;
+      for (let a=0;a<sigArr.length;a++){
+        for (let b=a;b<sigArr.length;b++){
+          const pair = [sigArr[a], sigArr[b]];
+          let ok = true;
+          let total = 0;
+          for (let i=0;i<candPer.length;i++){
+            const cand = candPer[i].filter(c=>pair.includes(c.sig) && chordFits(slots[i].chord, c.center, c.mode));
+            if (!cand.length){ ok = false; break; }
+            const best = cand.reduce((m,c)=> c.score>m?c.score:m, -Infinity);
+            total += best;
+          }
+          if (ok && total > bestScore){
+            bestScore = total;
+            bestPair = pair;
+          }
+        }
+      }
+      if (bestPair) palette = bestPair;
     }
-    const palette = new Set(paletteEntries.map(([id])=>id));
+
+    // Greedy cover: pick signatures that cover as many chords as possible up to limit
+    const allSigs = new Set(sigArr);
+    const covered = new Array(slots.length).fill(false);
+    if (!palette.length){
+      palette = [];
+    }
+
+    function chordHasSig(idx, sig){
+      const cand = candPer[idx];
+      return cand.some(c=>c.sig===sig && chordFits(slots[idx].chord, c.center, c.mode));
+    }
+
+    while (palette.length < limit && allSigs.size){
+      let bestSig = null, bestGain = -Infinity;
+      for (const sig of allSigs){
+        let gain = 0;
+        for (let i=0;i<slots.length;i++){
+          if (covered[i]) continue;
+          const cand = candPer[i].filter(c=>c.sig===sig && chordFits(slots[i].chord, c.center, c.mode));
+          if (cand.length){
+            // use best score for this chord under this sig
+            const s = cand.reduce((m,c)=> c.score>m?c.score:m, -Infinity);
+            gain += s;
+          }
+        }
+        if (gain > bestGain){
+          bestGain = gain;
+          bestSig = sig;
+        }
+      }
+      if (bestSig==null || bestGain===-Infinity) break;
+      palette.push(bestSig);
+      allSigs.delete(bestSig);
+      for (let i=0;i<slots.length;i++){
+        if (covered[i]) continue;
+        if (chordHasSig(i, bestSig)) covered[i] = true;
+      }
+    }
+
+    if (!palette.length && candPer.length){
+      const fallbackSig = candPer[0][0]?.sig || "";
+      palette.push(fallbackSig);
+      if (!sigMeta.has(fallbackSig)) sigMeta.set(fallbackSig, {root: pc(slots[0].chord.root), mode:"mixo"});
+    }
+    const paletteSet = new Set(palette);
 
     for (let i=0;i<slots.length;i++){
+      const chord = slots[i].chord;
       const cand = candPer[i];
       let chosen = null;
       let best = -1e9;
-      // first, best candidate within palette (same root+mode)
+
+      // best candidate within palette (same signature) that fits
       for (const c of cand){
-        if (palette.has(c.id) && c.score>best){
+        if (!paletteSet.has(c.sig)) continue;
+        if (!chordFits(chord, c.center, c.mode)) continue;
+        if (c.score>best){
           best = c.score;
           chosen = c;
         }
       }
 
       if (!chosen){
-        // fallback to this chord's best candidate (root fixed)
-        chosen = cand.reduce((m,c)=> c.score>(m?.score??-Infinity)?c:m, cand[0]);
+        // best palette meta that fits
+        for (const sig of palette){
+          const meta = sigMeta.get(sig);
+          if (!meta) continue;
+          if (!chordFits(chord, meta.root, meta.mode)) continue;
+          const s = scoreModeForContext(chord, meta.mode, null, null, meta.root);
+          if (s > best){
+            best = s;
+            chosen = {mode:meta.mode, score:s, center:meta.root, sig};
+          }
+        }
+      }
+
+      if (!chosen){
+        // fallback: force first palette signature even if not ideal, but keep tones consistent
+        const fallbackSig = palette[0];
+        const meta = sigMeta.get(fallbackSig) || {root: pc(chord.root), mode:"mixo"};
+        chosen = {mode:meta.mode, center:meta.root, sig:fallbackSig};
       }
 
       slots[i].chord.mode = chosen.mode || "mixo";
-      const centerRoot = (chosen && typeof chosen.center==="number") ? chosen.center : pc(slots[i].chord.root);
+      const centerRoot = (chosen && typeof chosen.center==="number") ? chosen.center : pc(chord.root);
       slots[i].chord.scaleRoot = pc(centerRoot);
+    }
+
+    // Hard cap: if any extra signatures slipped through, remap them into the top `limit`
+    const usedCounts = new Map();
+    slots.forEach(slot=>{
+      const sig = sigFor(pc(slot.chord.scaleRoot ?? slot.chord.root), slot.chord.mode || "mixo");
+      usedCounts.set(sig, (usedCounts.get(sig)||0)+1);
+      if (!sigMeta.has(sig)) sigMeta.set(sig, {root: pc(slot.chord.scaleRoot ?? slot.chord.root), mode: slot.chord.mode||"mixo"});
+    });
+
+    if (usedCounts.size > limit){
+      const keep = [...usedCounts.entries()].sort((a,b)=>b[1]-a[1]).slice(0, limit).map(([sig])=>sig);
+      const keepSet = new Set(keep);
+      slots.forEach(slot=>{
+        const currentSig = sigFor(pc(slot.chord.scaleRoot ?? slot.chord.root), slot.chord.mode || "mixo");
+        if (keepSet.has(currentSig)) return;
+
+        let reassigned = false;
+        for (const sig of keep){
+          const meta = sigMeta.get(sig);
+          if (meta && chordFits(slot.chord, meta.root, meta.mode)){
+            slot.chord.mode = meta.mode;
+            slot.chord.scaleRoot = meta.root;
+            reassigned = true;
+            break;
+          }
+        }
+
+        if (!reassigned){
+          // preserve chord/scale alignment even if it exceeds the limit
+          slot.chord.mode = slot.chord.mode || "mixo";
+          slot.chord.scaleRoot = pc(slot.chord.scaleRoot ?? slot.chord.root);
+        }
+      });
     }
   }
 
