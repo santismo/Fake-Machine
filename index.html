@@ -35,6 +35,7 @@
       --keyBlack:#161b23;
       --keyBorder:#c9d3e2;
       --keyBlackBorder:#2a3240;
+      --keyBorderStrong: rgba(0,0,0,.35);
 
       /* Fixed thin black outline for scale keys */
       --scaleStrokeAlpha: 0.88;
@@ -1049,9 +1050,20 @@
     const scaleRoot = (ch && typeof ch.scaleRoot==="number") ? ch.scaleRoot : ch.root;
     const base = SCALES[mode] || SCALES.mixo;
     const pcsSet = new Set();
-    base.forEach(i => pcsSet.add(pc(scaleRoot + i)));
-    chordTonesPCs(ch).forEach(p=>pcsSet.add(p));
-    if (ch.slash!=null) pcsSet.add(pc(ch.slash));
+    const baseSet = new Set();
+    base.forEach(i => {
+      const p = pc(scaleRoot + i);
+      pcsSet.add(p);
+      baseSet.add(p);
+    });
+    chordTonesPCs(ch).forEach(p=>{
+      const pp = pc(p);
+      if (baseSet.has(pp)) pcsSet.add(pp);
+    });
+    if (ch.slash!=null){
+      const s = pc(ch.slash);
+      if (baseSet.has(s)) pcsSet.add(s);
+    }
     return { pcs:[...pcsSet], mode };
   }
 
@@ -1071,42 +1083,43 @@
     }
     if (!slots.length) return;
 
-    const limit = clamp(Number(state.scalesUsed)||1, 1, 32);
-    const centers = (Array.isArray(state.allowedCenters) && state.allowedCenters.length)
-      ? state.allowedCenters.map(pc)
-      : [...new Set(slots.map(s=>pc(s.chord.root)))];
+    const limit = clamp(Number(state.scalesUsed)||1, 1, Math.max(1, Object.keys(SCALES).length));
 
-    const comboTotals = new Map();
+    // collect candidate modes per chord (root fixed to chord root)
+    const modeTotals = new Map();
     const candPer = slots.map((slot, idx)=>{
       const prev = slots[idx-1]?.chord || null;
       const next = slots[idx+1]?.chord || null;
       const chord = slot.chord;
-      const rootsPool = centers.length ? centers : [pc(chord.root)];
-      const cand = [];
-      for (const center of rootsPool){
-        for (const mode of candidatesForChord(chord)){
-          const score = scoreModeForContext(chord, mode, prev, next, center);
-          const id = `${pc(center)}:${mode}`;
-          cand.push({mode, score, center: pc(center), id});
-          comboTotals.set(id, (comboTotals.get(id)||0) + score);
-        }
-      }
-      return cand;
+      const cand = candidatesForChord(chord).map(mode=>{
+        const score = scoreModeForContext(chord, mode, prev, next, chord.root);
+        const id = `${pc(chord.root)}:${mode}`;
+        modeTotals.set(id, (modeTotals.get(id)||0) + score);
+        return {mode, score, center: pc(chord.root), id};
+      });
+      return cand.length ? cand : [{mode:"mixo", score:0, center:pc(chord.root), id:`${pc(chord.root)}:mixo`}];
     });
 
-    const palette = new Set(
-      [...comboTotals.entries()]
-        .sort((a,b)=>b[1]-a[1])
-        .slice(0, limit)
-        .map(([id])=>id)
-    );
-    if (!palette.size) palette.add(`${pc(centers[0]||0)}:mixo`);
+    const paletteWeights = [...modeTotals.entries()]
+      .map(([id,total])=>({id,total}))
+      .sort((a,b)=>b.total - a.total);
+
+    const palette = new Set();
+    const weightMap = new Map(modeTotals);
+
+    function lowestPaletteId(){
+      let lowId=null, low=Infinity;
+      palette.forEach(id=>{
+        const w = weightMap.get(id)||-Infinity;
+        if (w < low){ low = w; lowId = id; }
+      });
+      return lowId;
+    }
 
     for (let i=0;i<slots.length;i++){
       const cand = candPer[i];
-      const prev = slots[i-1]?.chord || null;
-      const next = slots[i+1]?.chord || null;
 
+      // try palette candidate first
       let chosen = null;
       let best = -1e9;
       for (const c of cand){
@@ -1117,35 +1130,23 @@
       }
 
       if (!chosen){
-        // pick the palette combo that scores best, even if not a default candidate
-        for (const combo of palette){
-          const [centerStr, m] = String(combo).split(":");
-          const center = pc(Number(centerStr)||0);
-          const s = scoreModeForContext(slots[i].chord, m, prev, next, center);
-          if (s > best){
-            best = s;
-            chosen = {mode:m, score:s, center, id:combo};
+        // use best candidate for this chord
+        const bestCand = cand.reduce((m,c)=> c.score>(m?.score??-Infinity)?c:m, cand[0]);
+
+        if (palette.size < limit){
+          palette.add(bestCand.id);
+        } else {
+          const lowId = lowestPaletteId();
+          if (!palette.has(bestCand.id)){
+            palette.delete(lowId);
+            palette.add(bestCand.id);
           }
         }
+        chosen = bestCand;
       }
 
-      if (!chosen){
-        // fallback to chord's top candidate
-        for (const c of cand){
-          if (c.score>best){
-            best = c.score;
-            chosen = c;
-          }
-        }
-      }
-
-      if (chosen){
-        slots[i].chord.mode = chosen.mode || "mixo";
-        slots[i].chord.scaleRoot = (typeof chosen.center==="number") ? chosen.center : slots[i].chord.root;
-      } else {
-        slots[i].chord.mode = "mixo";
-        slots[i].chord.scaleRoot = slots[i].chord.root;
-      }
+      slots[i].chord.mode = chosen.mode || "mixo";
+      slots[i].chord.scaleRoot = pc(slots[i].chord.root);
     }
   }
 
@@ -1396,6 +1397,14 @@
     });
   }
 
+  const GENRE_BASE = {
+    tempo:[120,180], swing:[55,60], groove:"swing", comp:"twoStabs",
+    bass:"upright", keys:"piano", drums:"jazz",
+    kC:60,kF:30,bC:60,bF:20,dC:70,dF:40, halfOn:true, halfDen:[18,38],
+    logic:"jazzFunctional"
+  };
+  const GP = (cfg)=>({...GENRE_BASE, ...cfg});
+
   /* ---------- Genre Presets (expanded + old-ish coverage) ---------- */
   const GENRE_PRESETS = {
     modernJazz: { name:"Modern jazz", tempo:[120,190], swing:[56,62], groove:"swing", comp:"twoStabs", bass:"upright", keys:"ep", drums:"jazz",
@@ -1424,6 +1433,102 @@
       kC:55,kF:35,bC:65,bF:30,dC:85,dF:55, halfOn:false, halfDen:[0,18], logic:"edmLogic" },
     edm: { name:"EDM", tempo:[118,150], swing:[50,52], groove:"house", comp:"edmStab", bass:"sub", keys:"pad", drums:"house",
       kC:45,kF:25,bC:55,bF:20,dC:80,dF:45, halfOn:false, halfDen:[0,14], logic:"edmLogic" },
+    newOrleans: GP({ name:"New Orleans trad", tempo:[95,140], swing:[56,62], comp:"twoStabs", bass:"upright", keys:"piano", drums:"jazz",
+      kC:55,kF:22,bC:55,bF:18,dC:68,dF:32, halfDen:[10,26], logic:"tradSwing" }),
+    chicagoStyle: GP({ name:"Chicago style", tempo:[105,150], swing:[56,62], comp:"twoStabs", bass:"upright", keys:"piano", drums:"jazz",
+      kC:58,kF:24,bC:58,bF:18,dC:70,dF:35, halfDen:[12,28], logic:"tradSwing" }),
+    kcSwing: GP({ name:"Kansas City swing", tempo:[115,175], swing:[57,63], comp:"pushPull", bass:"upright", keys:"piano", drums:"jazz",
+      kC:62,kF:32,bC:62,bF:24,dC:72,dF:40, halfDen:[16,32], logic:"tradSwing" }),
+    swingBigBand: GP({ name:"Swing era big band", tempo:[110,180], swing:[57,63], comp:"fourComp", bass:"upright", keys:"piano", drums:"jazz",
+      kC:60,kF:30,bC:60,bF:24,dC:75,dF:45, halfDen:[16,34], logic:"tradSwing" }),
+    gypsyJazz: GP({ name:"Gypsy jazz / manouche", tempo:[180,240], swing:[58,64], comp:"fourComp", bass:"upright", keys:"guitarish", drums:"jazz",
+      kC:68,kF:32,bC:62,bF:24,dC:74,dF:35, halfOn:false, halfDen:[0,12], logic:"tradSwing" }),
+    westCoastCool: GP({ name:"West Coast cool", tempo:[90,130], swing:[54,58], comp:"sustain", bass:"upright", keys:"piano", drums:"brushes",
+      kC:45,kF:22,bC:48,bF:18,dC:55,dF:22, halfOn:false, halfDen:[0,16], logic:"coolModal" }),
+    milesCool: GP({ name:"Cool jazz (Miles/Gil)", tempo:[78,118], swing:[53,58], comp:"sustain", bass:"upright", keys:"piano", drums:"brushes",
+      kC:48,kF:24,bC:50,bF:18,dC:55,dF:24, halfOn:false, halfDen:[0,16], logic:"coolModal" }),
+    thirdStream: GP({ name:"Third stream", tempo:[70,130], swing:[52,56], comp:"sustain", bass:"upright", keys:"piano", drums:"brushes",
+      kC:50,kF:26,bC:50,bF:18,dC:55,dF:24, halfOn:false, halfDen:[0,14], logic:"cinematicBigBand" }),
+    soulJazz: GP({ name:"Soul jazz", tempo:[90,125], swing:[54,58], comp:"pushPull", bass:"upright", keys:"organ", drums:"tight",
+      kC:65,kF:40,bC:65,bF:35,dC:70,dF:45, halfOn:true, halfDen:[12,32], logic:"grooveFunk" }),
+    organGroove: GP({ name:"Organ trio groove", tempo:[95,135], swing:[54,58], comp:"pushPull", bass:"upright", keys:"organ", drums:"tight",
+      kC:60,kF:38,bC:62,bF:32,dC:70,dF:40, halfOn:true, halfDen:[12,30], logic:"grooveFunk" }),
+    gospelJazz: GP({ name:"Gospel jazz", tempo:[70,115], swing:[52,56], comp:"sustain", bass:"upright", keys:"ep", drums:"brushes",
+      kC:55,kF:35,bC:55,bF:30,dC:60,dF:35, halfOn:false, halfDen:[0,20], logic:"grooveFunk" }),
+    jazzBlues: GP({ name:"Jazz blues shuffle", tempo:[95,150], swing:[56,62], comp:"charleston", bass:"upright", keys:"piano", drums:"shuffle",
+      kC:60,kF:32,bC:60,bF:26,dC:72,dF:42, halfOn:true, halfDen:[10,28], logic:"bluesLogic" }),
+    jazzWaltz: GP({ name:"Jazz waltz", tempo:[85,135], swing:[54,58], comp:"fourComp", bass:"upright", keys:"piano", drums:"brushes",
+      kC:55,kF:28,bC:55,bF:22,dC:60,dF:30, halfOn:false, halfDen:[0,18], logic:"tradSwing" }),
+    modalJazz: GP({ name:"Modal jazz", tempo:[80,140], swing:[53,57], comp:"sustain", bass:"upright", keys:"piano", drums:"jazz",
+      kC:50,kF:26,bC:52,bF:22,dC:55,dF:26, halfOn:true, halfDen:[8,24], logic:"modalSpiritual" }),
+    spiritualJazz: GP({ name:"Spiritual jazz", tempo:[70,125], swing:[52,56], comp:"sustain", bass:"upright", keys:"organ", drums:"ambient",
+      kC:52,kF:30,bC:52,bF:24,dC:50,dF:26, halfOn:true, halfDen:[10,24], logic:"modalSpiritual" }),
+    postBop: GP({ name:"Post-bop", tempo:[110,180], swing:[55,60], comp:"pushPull", bass:"upright", keys:"piano", drums:"jazz",
+      kC:62,kF:32,bC:62,bF:24,dC:70,dF:38, halfOn:true, halfDen:[14,30], logic:"coolModal" }),
+    ecm: GP({ name:"ECM / Nordic ambient", tempo:[60,110], swing:[50,54], comp:"sustain", bass:"upright", keys:"pad", drums:"ambient",
+      kC:35,kF:24,bC:40,bF:18,dC:40,dF:22, halfOn:false, halfDen:[0,12], logic:"ambientModal" }),
+    chamberJazz: GP({ name:"Chamber jazz", tempo:[70,125], swing:[50,54], comp:"sustain", bass:"upright", keys:"piano", drums:"brushes",
+      kC:42,kF:24,bC:44,bF:18,dC:45,dF:20, halfOn:false, halfDen:[0,12], logic:"ambientModal" }),
+    freeJazz: GP({ name:"Free jazz", tempo:[90,170], swing:[50,56], comp:"sustain", bass:"upright", keys:"piano", drums:"free",
+      kC:70,kF:55,bC:70,bF:40,dC:75,dF:55, halfOn:true, halfDen:[10,40], logic:"freeForm" }),
+    loftJazz: GP({ name:"Loft jazz", tempo:[85,150], swing:[50,56], comp:"sustain", bass:"upright", keys:"piano", drums:"free",
+      kC:68,kF:52,bC:68,bF:36,dC:70,dF:48, halfOn:true, halfDen:[10,36], logic:"freeForm" }),
+    avantJazz: GP({ name:"Avant-garde jazz", tempo:[70,150], swing:[50,56], comp:"sustain", bass:"upright", keys:"piano", drums:"free",
+      kC:70,kF:60,bC:68,bF:40,dC:72,dF:52, halfOn:true, halfDen:[8,34], logic:"freeForm" }),
+    cinematicBigBand: GP({ name:"Modern big band cinematic", tempo:[80,170], swing:[52,58], comp:"fourComp", bass:"upright", keys:"piano", drums:"jazz",
+      kC:60,kF:34,bC:60,bF:26,dC:78,dF:46, halfOn:true, halfDen:[12,30], logic:"cinematicBigBand" }),
+    brassBand: GP({ name:"Brass band / second line", tempo:[95,150], swing:[56,60], comp:"pushPull", bass:"upright", keys:"piano", drums:"swing",
+      kC:60,kF:32,bC:62,bF:26,dC:74,dF:42, halfOn:true, halfDen:[12,26], logic:"tradSwing" }),
+    bossaJazz: GP({ name:"Bossa nova jazz", tempo:[120,175], swing:[50,52], groove:"bossa", comp:"montuno", bass:"round", keys:"ep", drums:"perc",
+      kC:55,kF:28,bC:55,bF:18,dC:60,dF:35, halfOn:true, halfDen:[14,32], logic:"latinTurns" }),
+    sambaJazz: GP({ name:"Samba-jazz (brazuca)", tempo:[120,185], swing:[50,52], groove:"samba", comp:"montuno", bass:"round", keys:"piano", drums:"perc",
+      kC:58,kF:32,bC:58,bF:22,dC:65,dF:38, halfOn:true, halfDen:[16,36], logic:"latinTurns" }),
+    afroCubanJazz: GP({ name:"Afro-Cuban jazz (clave)", tempo:[105,170], swing:[50,54], groove:"afroCuban", comp:"montuno", bass:"round", keys:"organ", drums:"perc",
+      kC:60,kF:35,bC:65,bF:26,dC:68,dF:40, halfOn:true, halfDen:[16,36], logic:"claveDrive" }),
+    mamboBigBand: GP({ name:"Mambo big band", tempo:[115,180], swing:[50,54], groove:"afroCuban", comp:"fourComp", bass:"round", keys:"piano", drums:"perc",
+      kC:62,kF:34,bC:65,bF:26,dC:72,dF:46, halfOn:true, halfDen:[18,38], logic:"claveDrive" }),
+    boleroJazz: GP({ name:"Bolero jazz ballad", tempo:[60,95], swing:[50,52], groove:"afroCuban", comp:"sustain", bass:"upright", keys:"piano", drums:"brushes",
+      kC:42,kF:24,bC:44,bF:18,dC:45,dF:24, halfOn:false, halfDen:[0,12], logic:"claveDrive" }),
+    afroPeruvian: GP({ name:"Afro-Peruvian jazz (landó)", tempo:[70,115], swing:[50,52], groove:"afroCuban", comp:"montuno", bass:"upright", keys:"piano", drums:"perc",
+      kC:55,kF:30,bC:55,bF:22,dC:60,dF:38, halfOn:true, halfDen:[10,26], logic:"claveDrive" }),
+    flamencoJazz: GP({ name:"Flamenco-jazz", tempo:[90,150], swing:[50,54], groove:"afroCuban", comp:"montuno", bass:"upright", keys:"piano", drums:"perc",
+      kC:60,kF:32,bC:60,bF:24,dC:65,dF:40, halfOn:true, halfDen:[12,30], logic:"latinTurns" }),
+    calypsoJazz: GP({ name:"Caribbean calypso-jazz", tempo:[100,160], swing:[50,52], groove:"afroCuban", comp:"pushPull", bass:"round", keys:"piano", drums:"perc",
+      kC:58,kF:32,bC:58,bF:24,dC:65,dF:40, halfOn:true, halfDen:[12,30], logic:"claveDrive" }),
+    skaJazz: GP({ name:"Ska-jazz", tempo:[120,185], swing:[50,52], groove:"rock", comp:"pushPull", bass:"pickBass", keys:"organ", drums:"rock",
+      kC:62,kF:32,bC:62,bF:22,dC:70,dF:40, halfOn:false, halfDen:[0,18], logic:"dubReggae" }),
+    reggaeJazz: GP({ name:"Reggae / rocksteady jazz", tempo:[80,120], swing:[50,52], groove:"hiphop", comp:"pushPull", bass:"sub", keys:"organ", drums:"minimal",
+      kC:55,kF:30,bC:58,bF:26,dC:60,dF:32, halfOn:false, halfDen:[0,14], logic:"dubReggae" }),
+    afrobeatFusion: GP({ name:"Afrobeat jazz fusion", tempo:[100,140], swing:[50,54], groove:"afroCuban", comp:"pushPull", bass:"round", keys:"organ", drums:"perc",
+      kC:65,kF:38,bC:68,bF:30,dC:72,dF:44, halfOn:true, halfDen:[14,32], logic:"fusionRock" }),
+    highlifeFusion: GP({ name:"Highlife jazz fusion", tempo:[100,140], swing:[50,52], groove:"afroCuban", comp:"pushPull", bass:"round", keys:"piano", drums:"perc",
+      kC:62,kF:32,bC:62,bF:26,dC:68,dF:40, halfOn:true, halfDen:[12,30], logic:"fusionRock" }),
+    latinFunkJazz: GP({ name:"Latin funk-jazz", tempo:[90,125], swing:[50,54], groove:"funk", comp:"clav", bass:"round", keys:"clavBright", drums:"tight",
+      kC:70,kF:45,bC:70,bF:35,dC:75,dF:45, halfOn:true, halfDen:[12,28], logic:"grooveFunk" }),
+    jazzFunk: GP({ name:"Jazz-funk", tempo:[90,120], swing:[50,54], groove:"funk", comp:"clav", bass:"round", keys:"ep", drums:"tight",
+      kC:70,kF:48,bC:70,bF:38,dC:75,dF:48, halfOn:true, halfDen:[10,26], logic:"grooveFunk" }),
+    acidJazz: GP({ name:"Acid jazz", tempo:[95,120], swing:[50,54], groove:"funk", comp:"clav", bass:"sub", keys:"organ", drums:"tight",
+      kC:65,kF:45,bC:65,bF:35,dC:70,dF:45, halfOn:false, halfDen:[0,22], logic:"grooveFunk" }),
+    nuJazz: GP({ name:"Nu jazz", tempo:[95,125], swing:[50,54], groove:"house", comp:"sustain", bass:"round", keys:"pad", drums:"electro",
+      kC:58,kF:38,bC:60,bF:30,dC:65,dF:45, halfOn:false, halfDen:[0,22], logic:"brokenBeat" }),
+    jazztronica: GP({ name:"Jazztronica", tempo:[95,125], swing:[50,54], groove:"house", comp:"edmStab", bass:"sub", keys:"pad", drums:"electro",
+      kC:60,kF:40,bC:60,bF:30,dC:70,dF:48, halfOn:false, halfDen:[0,22], logic:"brokenBeat" }),
+    brokenBeatJazz: GP({ name:"Broken beat jazz", tempo:[95,130], swing:[50,54], groove:"breaks", comp:"pushPull", bass:"round", keys:"ep", drums:"breaks",
+      kC:62,kF:42,bC:62,bF:32,dC:70,dF:50, halfOn:false, halfDen:[0,20], logic:"brokenBeat" }),
+    boomBapJazz: GP({ name:"Hip-hop jazz / boom-bap", tempo:[80,105], swing:[50,54], groove:"hiphop", comp:"neoSoulPush", bass:"sub", keys:"ep", drums:"lofi",
+      kC:62,kF:48,bC:60,bF:36,dC:65,dF:50, halfOn:false, halfDen:[0,18], logic:"grooveFunk" }),
+    tripHopJazz: GP({ name:"Trip-hop jazz", tempo:[70,100], swing:[50,54], groove:"hiphop", comp:"sustain", bass:"sub", keys:"pad", drums:"lofi",
+      kC:55,kF:35,bC:55,bF:30,dC:60,dF:45, halfOn:false, halfDen:[0,18], logic:"brokenBeat" }),
+    neoSoulJazz: GP({ name:"Neo-soul jazz", tempo:[70,110], swing:[50,54], groove:"hiphop", comp:"neoSoulPush", bass:"round", keys:"ep", drums:"lofi",
+      kC:68,kF:55,bC:60,bF:35,dC:55,dF:45, halfOn:true, halfDen:[24,50], logic:"grooveFunk" }),
+    smoothJazz: GP({ name:"Smooth jazz", tempo:[70,110], swing:[50,52], groove:"hiphop", comp:"sustain", bass:"round", keys:"ep", drums:"minimal",
+      kC:55,kF:32,bC:55,bF:24,dC:55,dF:32, halfOn:false, halfDen:[0,18], logic:"coolModal" }),
+    quietStorm: GP({ name:"Quiet storm jazz", tempo:[65,95], swing:[50,52], groove:"hiphop", comp:"sustain", bass:"sub", keys:"ep", drums:"minimal",
+      kC:50,kF:32,bC:50,bF:24,dC:50,dF:32, halfOn:false, halfDen:[0,16], logic:"coolModal" }),
+    jazzRockFusion: GP({ name:"Jazz-rock fusion", tempo:[95,150], swing:[50,54], groove:"rock", comp:"pushPull", bass:"pickBass", keys:"organ", drums:"rock",
+      kC:70,kF:40,bC:70,bF:30,dC:78,dF:48, halfOn:false, halfDen:[0,20], logic:"fusionRock" }),
+    progFusion: GP({ name:"Prog / jazz-metal fusion", tempo:[110,180], swing:[50,54], groove:"rock", comp:"rockChugs", bass:"pickBass", keys:"organ", drums:"rock",
+      kC:75,kF:45,bC:75,bF:35,dC:82,dF:52, halfOn:false, halfDen:[0,22], logic:"fusionRock" }),
   };
 
   /* ---------- Limiters ---------- */
@@ -1581,6 +1686,120 @@
         qualityChaos:clamp(w.qualityChaos+12,0,100)
       };
     }},
+    tradSwing: { name:"Trad swing gravity", apply:(w,chaos)=>{
+      const c=clamp(chaos,0,100)/100;
+      return {...w,
+        functional:clamp(w.functional+14,0,100),
+        keyStability:clamp(w.keyStability+16,0,100),
+        rootChaos:clamp(w.rootChaos-12,0,100),
+        tension:clamp(w.tension+(4+6*c),0,100),
+        qualityChaos:clamp(w.qualityChaos-2,0,100)
+      };
+    }},
+    coolModal: { name:"Cool/modal restraint", apply:(w,chaos)=>{
+      const c=clamp(chaos,0,100)/100;
+      return {...w,
+        functional:clamp(w.functional-6,0,100),
+        keyStability:clamp(w.keyStability+18,0,100),
+        rootChaos:clamp(w.rootChaos-8,0,100),
+        tension:clamp(w.tension+(2+4*c),0,100),
+        qualityChaos:clamp(w.qualityChaos+4,0,100)
+      };
+    }},
+    modalSpiritual: { name:"Modal / spiritual drift", apply:(w,chaos)=>{
+      const c=clamp(chaos,0,100)/100;
+      return {...w,
+        functional:clamp(w.functional-10,0,100),
+        keyStability:clamp(w.keyStability+8,0,100),
+        rootChaos:clamp(w.rootChaos+8,0,100),
+        tension:clamp(w.tension+(6+8*c),0,100),
+        qualityChaos:clamp(w.qualityChaos+10,0,100)
+      };
+    }},
+    ambientModal: { name:"Ambient modal centers", apply:(w,chaos)=>{
+      const c=clamp(chaos,0,100)/100;
+      return {...w,
+        functional:clamp(w.functional-16,0,100),
+        keyStability:clamp(w.keyStability+20,0,100),
+        rootChaos:clamp(w.rootChaos-6,0,100),
+        tension:clamp(w.tension+(1+4*c),0,100),
+        qualityChaos:clamp(w.qualityChaos+2,0,100),
+        memoryKill:clamp(w.memoryKill-6,0,100)
+      };
+    }},
+    freeForm: { name:"Free / avant", apply:(w,chaos)=>{
+      const c=clamp(chaos,0,100)/100;
+      return {...w,
+        functional:clamp(w.functional-25,0,100),
+        keyStability:clamp(w.keyStability-10,0,100),
+        rootChaos:clamp(w.rootChaos+26,0,100),
+        tension:clamp(w.tension+(14+12*c),0,100),
+        qualityChaos:clamp(w.qualityChaos+22,0,100),
+        memoryKill:clamp(w.memoryKill+18,0,100)
+      };
+    }},
+    cinematicBigBand: { name:"Cinematic big band", apply:(w,chaos)=>{
+      const c=clamp(chaos,0,100)/100;
+      return {...w,
+        functional:clamp(w.functional+10,0,100),
+        keyStability:clamp(w.keyStability+16,0,100),
+        rootChaos:clamp(w.rootChaos-6,0,100),
+        tension:clamp(w.tension+(6+8*c),0,100),
+        qualityChaos:clamp(w.qualityChaos+6,0,100),
+        memoryKill:clamp(w.memoryKill-4,0,100)
+      };
+    }},
+    claveDrive: { name:"Clave-driven", apply:(w,chaos)=>{
+      const c=clamp(chaos,0,100)/100;
+      return {...w,
+        functional:clamp(w.functional+8,0,100),
+        keyStability:clamp(w.keyStability+10,0,100),
+        rootChaos:clamp(w.rootChaos-2,0,100),
+        tension:clamp(w.tension+(8+10*c),0,100),
+        qualityChaos:clamp(w.qualityChaos+4,0,100)
+      };
+    }},
+    grooveFunk: { name:"Groove / funk-jazz", apply:(w,chaos)=>{
+      const c=clamp(chaos,0,100)/100;
+      return {...w,
+        functional:clamp(w.functional-6,0,100),
+        keyStability:clamp(w.keyStability+4,0,100),
+        rootChaos:clamp(w.rootChaos+8,0,100),
+        tension:clamp(w.tension+(6+10*c),0,100),
+        qualityChaos:clamp(w.qualityChaos+10,0,100)
+      };
+    }},
+    brokenBeat: { name:"Broken beat / nu", apply:(w,chaos)=>{
+      const c=clamp(chaos,0,100)/100;
+      return {...w,
+        functional:clamp(w.functional-12,0,100),
+        keyStability:clamp(w.keyStability+6,0,100),
+        rootChaos:clamp(w.rootChaos+10,0,100),
+        tension:clamp(w.tension+(6+8*c),0,100),
+        qualityChaos:clamp(w.qualityChaos+12,0,100),
+        memoryKill:clamp(w.memoryKill+8,0,100)
+      };
+    }},
+    dubReggae: { name:"Dub / reggae lean", apply:(w,chaos)=>{
+      const c=clamp(chaos,0,100)/100;
+      return {...w,
+        functional:clamp(w.functional-14,0,100),
+        keyStability:clamp(w.keyStability+12,0,100),
+        rootChaos:clamp(w.rootChaos-2,0,100),
+        tension:clamp(w.tension+(1+4*c),0,100),
+        qualityChaos:clamp(w.qualityChaos+4,0,100)
+      };
+    }},
+    fusionRock: { name:"Fusion / rock drive", apply:(w,chaos)=>{
+      const c=clamp(chaos,0,100)/100;
+      return {...w,
+        functional:clamp(w.functional-2,0,100),
+        keyStability:clamp(w.keyStability+6,0,100),
+        rootChaos:clamp(w.rootChaos+8,0,100),
+        tension:clamp(w.tension+(10+12*c),0,100),
+        qualityChaos:clamp(w.qualityChaos+10,0,100)
+      };
+    }},
     edmLogic: { name:"EDM: loop-centric", apply:(w,chaos)=>{
       const c=clamp(chaos,0,100)/100;
       return {...w,
@@ -1654,10 +1873,10 @@
   }
 
   const PIANO_THEMES = {
-    classic:{ name:"Classic", vars:{ "--accent":"#2f6bff","--good":"#3fe18b","--chord":"#b67cff","--keyWhite":"#f2f5fb","--keyBlack":"#161b23","--keyBorder":"#c9d3e2","--keyBlackBorder":"#2a3240" } },
-    neon:{ name:"Neon", vars:{ "--accent":"#00b7ff","--good":"#00ff9a","--chord":"#ff4dff","--keyWhite":"#e9f7ff","--keyBlack":"#0b0f14","--keyBorder":"rgba(233,247,255,.45)","--keyBlackBorder":"rgba(255,255,255,.16)" } },
-    mono:{ name:"Mono", vars:{ "--accent":"#d7dde6","--good":"#ffffff","--chord":"#b9c2cf","--keyWhite":"#f5f7fb","--keyBlack":"#0f131a","--keyBorder":"#cfd6e2","--keyBlackBorder":"#2a3240" } },
-    pastel:{ name:"Pastel", vars:{ "--accent":"#7aa2ff","--good":"#7fffd4","--chord":"#ffb3e6","--keyWhite":"#f7fbff","--keyBlack":"#141826","--keyBorder":"rgba(255,255,255,.25)","--keyBlackBorder":"rgba(255,255,255,.12)" } },
+    classic:{ name:"Classic", vars:{ "--accent":"#2f82ff","--good":"#18e07a","--chord":"#ff4dd2","--keyWhite":"#f2f5fb","--keyBlack":"#161b23","--keyBorder":"#c9d3e2","--keyBlackBorder":"#2a3240","--keyBorderStrong":"rgba(0,0,0,.38)" } },
+    neon:{ name:"Neon", vars:{ "--accent":"#00c8ff","--good":"#00ff9a","--chord":"#ff4dff","--keyWhite":"#e9f7ff","--keyBlack":"#0b0f14","--keyBorder":"rgba(233,247,255,.45)","--keyBlackBorder":"rgba(255,255,255,.16)","--keyBorderStrong":"rgba(0,0,0,.36)" } },
+    mono:{ name:"Mono", vars:{ "--accent":"#9ecbff","--good":"#7cf7b0","--chord":"#ff63d8","--keyWhite":"#0f131a","--keyBlack":"#05070b","--keyBorder":"#6d7686","--keyBlackBorder":"#d5dbe6","--keyBorderStrong":"rgba(255,255,255,.82)" } },
+    pastel:{ name:"Pastel", vars:{ "--accent":"#6aa8ff","--good":"#6ff0c8","--chord":"#ff7fcf","--keyWhite":"#f7fbff","--keyBlack":"#141826","--keyBorder":"rgba(255,255,255,.25)","--keyBlackBorder":"rgba(255,255,255,.12)","--keyBorderStrong":"rgba(0,0,0,.34)" } },
   };
 
   function initPianoThemeDropdown(){
@@ -1787,6 +2006,8 @@
   function placeMarker(svg, cx, cy, kind){
     const style = state.markerStyle || "dots";
     const fillVar = (kind==="root") ? "var(--good)" : "var(--chord)";
+    const rootStroke = "rgba(255,255,255,.82)";
+    const chordStroke = "rgba(0,0,0,.55)";
 
     if (style==="dots"){
       const c = document.createElementNS("http://www.w3.org/2000/svg","circle");
@@ -1794,8 +2015,8 @@
       c.setAttribute("cy", String(cy));
       c.setAttribute("r", "10");
       c.setAttribute("fill", fillVar);
-      c.setAttribute("stroke", "rgba(0,0,0,.35)");
-      c.setAttribute("stroke-width", "1.2");
+      c.setAttribute("stroke", kind==="root" ? rootStroke : chordStroke);
+      c.setAttribute("stroke-width", kind==="root" ? "2.2" : "1.4");
       svg.appendChild(c);
       return;
     }
@@ -1804,9 +2025,9 @@
       c.setAttribute("cx", String(cx));
       c.setAttribute("cy", String(cy));
       c.setAttribute("r", "12");
-      c.setAttribute("fill", "transparent");
-      c.setAttribute("stroke", fillVar);
-      c.setAttribute("stroke-width", "3.2");
+      c.setAttribute("fill", kind==="root" ? fillVar : "transparent");
+      c.setAttribute("stroke", kind==="root" ? rootStroke : fillVar);
+      c.setAttribute("stroke-width", kind==="root" ? "3.2" : "2.4");
       svg.appendChild(c);
       return;
     }
@@ -1818,16 +2039,16 @@
       r.setAttribute("height", "20");
       r.setAttribute("rx", "5");
       r.setAttribute("fill", fillVar);
-      r.setAttribute("stroke", "rgba(0,0,0,.35)");
-      r.setAttribute("stroke-width", "1.2");
+      r.setAttribute("stroke", kind==="root" ? rootStroke : chordStroke);
+      r.setAttribute("stroke-width", kind==="root" ? "2.2" : "1.4");
       svg.appendChild(r);
       return;
     }
     const tri = document.createElementNS("http://www.w3.org/2000/svg","path");
     tri.setAttribute("d", `M ${cx} ${cy-12} L ${cx-12} ${cy+10} L ${cx+12} ${cy+10} Z`);
     tri.setAttribute("fill", fillVar);
-    tri.setAttribute("stroke", "rgba(0,0,0,.35)");
-    tri.setAttribute("stroke-width", "1.2");
+    tri.setAttribute("stroke", kind==="root" ? rootStroke : chordStroke);
+    tri.setAttribute("stroke-width", kind==="root" ? "2.2" : "1.4");
     svg.appendChild(tri);
   }
 
@@ -1854,7 +2075,9 @@
     svg.innerHTML = "";
 
     const W = 1000, H = 240;
-    const oct = clamp(Number(state.kbOct)||2, 1, 4);
+    const baseOct = clamp(Number(state.kbOct)||2, 1, 4);
+    const needWide = (ch.intervals?.length||0) >= 5;
+    const oct = clamp(needWide ? Math.max(baseOct, 3) : baseOct, 1, 4);
     const whiteKeyCount = 7 * oct;
     const whiteW = W / whiteKeyCount;
     const whiteH = 230;
@@ -1882,8 +2105,8 @@
 
       const inScale = scalePCs.includes(p);
       rect.setAttribute("fill", inScale ? "var(--accent)" : "var(--keyWhite)");
-      rect.setAttribute("stroke", inScale ? `rgba(0,0,0,var(--scaleStrokeAlpha))` : "var(--keyBorder)");
-      rect.setAttribute("stroke-width", inScale ? "var(--scaleStrokeWidth)" : "1.2");
+      rect.setAttribute("stroke", inScale ? `rgba(0,0,0,var(--scaleStrokeAlpha))` : "var(--keyBorderStrong)");
+      rect.setAttribute("stroke-width", inScale ? "var(--scaleStrokeWidth)" : "1.6");
       svg.appendChild(rect);
 
       const isChord = chordPCs.includes(p);
@@ -1912,7 +2135,7 @@
         const inScale = scalePCs.includes(p);
         rect.setAttribute("fill", inScale ? "var(--accent)" : "var(--keyBlack)");
         rect.setAttribute("stroke", inScale ? `rgba(0,0,0,var(--scaleStrokeAlpha))` : "var(--keyBlackBorder)");
-        rect.setAttribute("stroke-width", inScale ? "var(--scaleStrokeWidth)" : "1.2");
+        rect.setAttribute("stroke-width", inScale ? "var(--scaleStrokeWidth)" : "1.6");
         svg.appendChild(rect);
 
         const isChord = chordPCs.includes(p);
@@ -2009,24 +2232,30 @@
       return { ctx:c, out:g };
     }
 
-    function chordVoicingMidi(ch, style="closed"){
-      const root = ch.root;
-      const tones = chordTonesPCs(ch).slice();
-      const base = 60 + (pc(root) - 0);
-      const mids = tones.map(p=>{
-        let m = base + (pc(p - pc(root)));
-        while (m < 52) m += 12;
-        while (m > 78) m -= 12;
-        return m;
-      });
+  function chordVoicingMidi(ch, style="closed"){
+    const root = ch.root;
+    const tones = chordTonesPCs(ch).slice();
+    const base = 52 + (pc(root) - 0); // lower register to reduce brightness
+    const mids = tones.map(p=>{
+      let m = base + (pc(p - pc(root)));
+      while (m < 46) m += 12;
+      while (m > 74) m -= 12;
+      return m;
+    });
+    mids.sort((a,b)=>a-b);
+    if ((style==="open" || mids.length>=5) && mids.length>=4){
+      mids[0] -= 12;
+      mids[2] += 12;
       mids.sort((a,b)=>a-b);
-      if (style==="open" && mids.length>=4){
-        mids[0] -= 12;
-        mids[2] += 12;
-        mids.sort((a,b)=>a-b);
-      }
-      return mids;
     }
+
+    // enforce minimum spacing (>=3 semitones) by nudging upward
+    for (let i=1;i<mids.length;i++){
+      if (mids[i] - mids[i-1] < 3) mids[i] = mids[i-1] + 3;
+    }
+
+    return mids;
+  }
 
     function playChord(ch, preset, t0, dur, vel=0.7){
       const c = ensure();
@@ -2045,7 +2274,7 @@
       gain.gain.value = 0.0001;
       gain.connect(out);
 
-      const sustain = (preset==="pad"||preset==="choirPad") ? 0.65 : 0.35;
+      const sustain = (preset==="pad"||preset==="choirPad") ? 0.65 : 0.32;
       const release = env(gain, t0, 0.01, 0.08, sustain, 0.14, 0.35*vel);
 
       for (let i=0;i<mids.length;i++){
@@ -2653,23 +2882,6 @@
 
     chooseKeyCenter();
 
-    // choose allowed scale centers (root PCs) based on scalesUsed
-    const centerCount = clamp(Number(state.scalesUsed)||1, 1, 12);
-    const centers = [pc(state.keyRoot)];
-    while (centers.length < centerCount){
-      const c = rint(0,11);
-      if (!centers.includes(pc(c))) centers.push(pc(c));
-    }
-    state.allowedCenters = centers.slice();
-    const snapCenter = (r)=>{
-      let best = centers[0], bestDist = 99;
-      for (const c of centers){
-        const d = Math.min(Math.abs(c - pc(r)), 12 - Math.abs(c - pc(r)));
-        if (d < bestDist){ bestDist = d; best = c; }
-      }
-      return best;
-    };
-
     // weights influenced by chaos + progressionLogic
     let w = macroToWeights(state.chaos);
     const logic = PROGRESSION_LOGICS[state.progressionLogic] || PROGRESSION_LOGICS.jazzFunctional;
@@ -2681,7 +2893,7 @@
     const limit = state.limiter;
 
     const bars = [];
-    let root = snapCenter(state.keyRoot);
+    let root = pc(state.keyRoot);
 
     // controlled “center drift”: allow only N center changes, spread across bars
     const driftBudget = clamp(Number(state.scalesUsed)||8, 1, 32);
@@ -2698,11 +2910,11 @@
         // occasional drift
         const driftChance = clamp(w.rootChaos,0,100)/100 * 0.30 + (b>0 && (b-lastDriftAt)>3 ? 0.07 : 0);
         if (driftLeft>0 && chance(driftChance)){
-          root = snapCenter(rint(0,11));
+          root = pc(rint(0,11));
           driftLeft--;
           lastDriftAt = b;
         } else {
-          root = snapCenter(stepRoot(root, w));
+          root = pc(stepRoot(root, w));
         }
 
         // pick quality (tied to limiters)
@@ -3595,13 +3807,6 @@
     bindRangePair(E.chaos, E.chaosNum, (v)=>{ state.chaos=v; saveAll(); });
     bindRangePair(E.scalesUsed, E.scalesUsedNum, (v)=>{
       state.scalesUsed=v;
-      const cnt = clamp(Number(v)||1, 1, 12);
-      const centers = Array.isArray(state.allowedCenters) ? state.allowedCenters.slice(0,cnt) : [];
-      while (centers.length < cnt){
-        const c = rint(0,11);
-        if (!centers.includes(pc(c))) centers.push(pc(c));
-      }
-      state.allowedCenters = centers;
       assignChordModesWithLimit(state.chartBars);
       renderPianoForActive();
       saveAll();
