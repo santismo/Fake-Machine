@@ -149,6 +149,13 @@
     .btnRow{display:flex;gap:8px;flex-wrap:wrap}
     .btnRow .btn{flex:1;min-width:120px}
 
+    /* Title bar button alignment */
+    #cardHeader .btnRow{justify-content:center;}
+    #cardHeader .btnRow .btn{flex:0 0 auto;min-width:0;}
+    #cardHeader .cardBody > .row{justify-content:center;}
+    #cardHeader .cardBody > .row > .grow{flex:1 1 100%;max-width:760px;}
+    #cardHeader .cardBody > .row > .grow:last-child{display:flex;flex-direction:column;align-items:center;}
+
     /* Lead sheet */
     .sheet{display:grid;grid-template-columns: repeat(4, minmax(0, 1fr));gap:10px;}
     @media (max-width: 640px){ .sheet{grid-template-columns: repeat(2, minmax(0, 1fr));} }
@@ -255,6 +262,9 @@
       background: rgba(12,16,22,.96);
       box-shadow: 0 20px 60px rgba(0,0,0,.55);
       overflow:hidden;
+      display:flex;
+      flex-direction:column;
+      max-height: calc(100vh - 28px);
     }
     .modalHead{
       display:flex;align-items:center;justify-content:space-between;gap:10px;
@@ -263,7 +273,12 @@
       background: rgba(255,255,255,.04);
     }
     .modalTitle{font-weight:900;font-size:14px;letter-spacing:.2px;}
-    .modalBody{padding:12px}
+    .modalBody{
+      padding:12px;
+      overflow:auto;
+      min-height:0;
+      -webkit-overflow-scrolling: touch;
+    }
     .modalRow{
       display:flex;align-items:center;justify-content:space-between;gap:10px;
       padding:10px 10px;border:1px solid rgba(255,255,255,.08);
@@ -447,8 +462,8 @@
                 <div class="sumSub"> </div>
               </div>
               <div class="row" style="gap:8px;">
-                <button class="lockMini" id="lockProgMini" type="button" title="Lock progression so Generate/Random won't change it">🔓 <b>Progression</b></button>
-                <button class="btn tiny" id="btnRandGen" type="button" title="Randomize only generator controls (respects locks)">🎲 Gen</button>
+                <button class="lockMini" id="lockProgMini" type="button" title="Lock progression so Generate/Random won't change it">🔓</button>
+                <button class="btn tiny" id="btnRandGen" type="button" title="Randomize only generator controls (respects locks)">🎲</button>
               </div>
             </div>
             <div class="chev">▼</div>
@@ -487,8 +502,8 @@
                 <div class="sumSub"> </div>
               </div>
               <div class="row" style="gap:8px;">
-                <button class="lockMini" id="lockTimeMini" type="button" title="Lock timing so Random won't change it">🔓 <b>Timing</b></button>
-                <button class="btn tiny" id="btnRandTime" type="button" title="Randomize timing/form only (respects locks)">🎲 Time</button>
+                <button class="lockMini" id="lockTimeMini" type="button" title="Lock timing so Random won't change it">🔓</button>
+                <button class="btn tiny" id="btnRandTime" type="button" title="Randomize timing/form only (respects locks)">🎲</button>
               </div>
             </div>
             <div class="chev">▼</div>
@@ -547,8 +562,8 @@
                 <div class="sumSub"> </div>
               </div>
               <div class="row" style="gap:8px;">
-                <button class="lockMini" id="lockStyleMini" type="button" title="Lock play style so Style/Random won't change it">🔓 <b>Play style</b></button>
-                <button class="btn tiny" id="btnRandFeel" type="button" title="Randomize feel (respects locks)">🎲 Feel</button>
+                <button class="lockMini" id="lockStyleMini" type="button" title="Lock play style so Style/Random won't change it">🔓</button>
+                <button class="btn tiny" id="btnRandFeel" type="button" title="Randomize feel (respects locks)">🎲</button>
               </div>
             </div>
             <div class="chev">▼</div>
@@ -597,8 +612,8 @@
                 <div class="sumSub"> </div>
               </div>
               <div class="row" style="gap:8px;">
-                <button class="lockMini" id="lockSoundMini" type="button" title="Lock sounds so Style/Random won't change them">🔓 <b>Sounds</b></button>
-                <button class="btn tiny" id="btnRandSounds" type="button" title="Randomize sounds/mix only (respects locks)">🎲 Sounds</button>
+                <button class="lockMini" id="lockSoundMini" type="button" title="Lock sounds so Style/Random won't change them">🔓</button>
+                <button class="btn tiny" id="btnRandSounds" type="button" title="Randomize sounds/mix only (respects locks)">🎲</button>
               </div>
             </div>
             <div class="chev">▼</div>
@@ -719,8 +734,8 @@
       <div class="cardHead">
         <div class="row" style="gap:8px;align-items:center;">
           <div class="title">🎶</div>
-          <button class="lockMini" id="lockLimitMini" type="button" title="Lock limiters so Random won't change them">🔓 <b>Limiters</b></button>
-          <button class="btn tiny" id="btnRandLimit" type="button" title="Randomize limiters only (respects locks)">🎲 Limit</button>
+          <button class="lockMini" id="lockLimitMini" type="button" title="Lock limiters so Random won't change them">🔓</button>
+          <button class="btn tiny" id="btnRandLimit" type="button" title="Randomize limiters only (respects locks)">🎲</button>
         </div>
         <div class="title"> </div>
       </div>
@@ -824,7 +839,7 @@
           <div class="miniCtl">
             <label style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
               <span>Page theme</span>
-              <button class="lockMini" id="lockThemeMini" type="button" title="Lock theme so Style/Random won't change it">🔓 <b>Theme</b></button>
+              <button class="lockMini" id="lockThemeMini" type="button" title="Lock theme so Style/Random won't change it">🔓</button>
             </label>
             <select id="pageTheme"></select>
           </div>
@@ -1843,206 +1858,295 @@
     jazzFunctional: { name:"Jazz: functional gravity", apply:(w,chaos)=>{
       const c=clamp(chaos,0,100)/100;
       return {...w,
-        functional:clamp(w.functional+18,0,100),
-        keyStability:clamp(w.keyStability+10,0,100),
-        rootChaos:clamp(w.rootChaos-10,0,100),
-        tension:clamp(w.tension+(8+10*c),0,100),
-        qualityChaos:clamp(w.qualityChaos+6,0,100)
+        functional:clamp(w.functional+22,0,100),
+        keyStability:clamp(w.keyStability+14,0,100),
+        rootChaos:clamp(w.rootChaos-14,0,100),
+        tension:clamp(w.tension+(4+8*c),0,100),
+        qualityChaos:clamp(w.qualityChaos+2,0,100)
       };
     }},
     jazzModal: { name:"Jazz: modal centers", apply:(w,chaos)=>{
       const c=clamp(chaos,0,100)/100;
       return {...w,
         functional:clamp(w.functional-18,0,100),
-        keyStability:clamp(w.keyStability+12,0,100),
-        rootChaos:clamp(w.rootChaos-10,0,100),
-        tension:clamp(w.tension+(3+8*c),0,100),
-        qualityChaos:clamp(w.qualityChaos+6,0,100)
+        keyStability:clamp(w.keyStability+18,0,100),
+        rootChaos:clamp(w.rootChaos-12,0,100),
+        tension:clamp(w.tension+(2+6*c),0,100),
+        qualityChaos:clamp(w.qualityChaos+4,0,100)
       };
     }},
     latinTurns: { name:"Latin: turnarounds + cycles", apply:(w,chaos)=>{
       const c=clamp(chaos,0,100)/100;
       return {...w,
-        functional:clamp(w.functional+10,0,100),
-        keyStability:clamp(w.keyStability+8,0,100),
-        rootChaos:clamp(w.rootChaos-6,0,100),
-        tension:clamp(w.tension+(10+6*c),0,100),
-        qualityChaos:clamp(w.qualityChaos+6,0,100)
+        functional:clamp(w.functional+12,0,100),
+        keyStability:clamp(w.keyStability+10,0,100),
+        rootChaos:clamp(w.rootChaos-10,0,100),
+        tension:clamp(w.tension+(6+6*c),0,100),
+        qualityChaos:clamp(w.qualityChaos+4,0,100)
       };
     }},
     bluesLogic: { name:"Blues: tension & release", apply:(w,chaos)=>{
       const c=clamp(chaos,0,100)/100;
       return {...w,
-        functional:clamp(w.functional+12,0,100),
-        keyStability:clamp(w.keyStability+18,0,100),
-        rootChaos:clamp(w.rootChaos-16,0,100),
-        tension:clamp(w.tension+(6+8*c),0,100),
-        qualityChaos:clamp(w.qualityChaos-4,0,100)
+        functional:clamp(w.functional+14,0,100),
+        keyStability:clamp(w.keyStability+20,0,100),
+        rootChaos:clamp(w.rootChaos-18,0,100),
+        tension:clamp(w.tension+(4+6*c),0,100),
+        qualityChaos:clamp(w.qualityChaos-6,0,100)
       };
     }},
     rockLogic: { name:"Rock: diatonic + borrowed", apply:(w,chaos)=>{
       const c=clamp(chaos,0,100)/100;
       return {...w,
-        functional:clamp(w.functional-8,0,100),
-        keyStability:clamp(w.keyStability+20,0,100),
-        rootChaos:clamp(w.rootChaos-10,0,100),
-        tension:clamp(w.tension+(2+6*c),0,100),
-        qualityChaos:clamp(w.qualityChaos+2,0,100)
+        functional:clamp(w.functional-4,0,100),
+        keyStability:clamp(w.keyStability+22,0,100),
+        rootChaos:clamp(w.rootChaos-12,0,100),
+        tension:clamp(w.tension+(1+5*c),0,100),
+        qualityChaos:clamp(w.qualityChaos+1,0,100)
       };
     }},
     discoLogic: { name:"Disco: bright loops", apply:(w,chaos)=>{
       const c=clamp(chaos,0,100)/100;
       return {...w,
         functional:clamp(w.functional+2,0,100),
-        keyStability:clamp(w.keyStability+18,0,100),
-        rootChaos:clamp(w.rootChaos-12,0,100),
-        tension:clamp(w.tension+(4+6*c),0,100),
-        qualityChaos:clamp(w.qualityChaos+6,0,100)
+        keyStability:clamp(w.keyStability+22,0,100),
+        rootChaos:clamp(w.rootChaos-14,0,100),
+        tension:clamp(w.tension+(2+4*c),0,100),
+        qualityChaos:clamp(w.qualityChaos+4,0,100)
       };
     }},
     neoSoulLogic: { name:"Neo-Soul: slippery voiceleading", apply:(w,chaos)=>{
       const c=clamp(chaos,0,100)/100;
       return {...w,
-        functional:clamp(w.functional-10,0,100),
-        keyStability:clamp(w.keyStability+10,0,100),
-        rootChaos:clamp(w.rootChaos+6,0,100),
-        tension:clamp(w.tension+(8+10*c),0,100),
-        qualityChaos:clamp(w.qualityChaos+10,0,100)
+        functional:clamp(w.functional-6,0,100),
+        keyStability:clamp(w.keyStability+12,0,100),
+        rootChaos:clamp(w.rootChaos+2,0,100),
+        tension:clamp(w.tension+(6+8*c),0,100),
+        qualityChaos:clamp(w.qualityChaos+7,0,100)
       };
     }},
     fusionLogic: { name:"Fusion: planing + side-slips", apply:(w,chaos)=>{
       const c=clamp(chaos,0,100)/100;
       return {...w,
-        functional:clamp(w.functional+6,0,100),
-        keyStability:clamp(w.keyStability+6,0,100),
-        rootChaos:clamp(w.rootChaos+10,0,100),
-        tension:clamp(w.tension+(10+12*c),0,100),
-        qualityChaos:clamp(w.qualityChaos+12,0,100)
+        functional:clamp(w.functional+4,0,100),
+        keyStability:clamp(w.keyStability+8,0,100),
+        rootChaos:clamp(w.rootChaos+4,0,100),
+        tension:clamp(w.tension+(8+8*c),0,100),
+        qualityChaos:clamp(w.qualityChaos+9,0,100)
       };
     }},
     tradSwing: { name:"Trad swing gravity", apply:(w,chaos)=>{
       const c=clamp(chaos,0,100)/100;
       return {...w,
-        functional:clamp(w.functional+14,0,100),
-        keyStability:clamp(w.keyStability+16,0,100),
-        rootChaos:clamp(w.rootChaos-12,0,100),
-        tension:clamp(w.tension+(4+6*c),0,100),
-        qualityChaos:clamp(w.qualityChaos-2,0,100)
+        functional:clamp(w.functional+16,0,100),
+        keyStability:clamp(w.keyStability+18,0,100),
+        rootChaos:clamp(w.rootChaos-14,0,100),
+        tension:clamp(w.tension+(3+5*c),0,100),
+        qualityChaos:clamp(w.qualityChaos-4,0,100)
       };
     }},
     coolModal: { name:"Cool/modal restraint", apply:(w,chaos)=>{
       const c=clamp(chaos,0,100)/100;
       return {...w,
         functional:clamp(w.functional-6,0,100),
-        keyStability:clamp(w.keyStability+18,0,100),
-        rootChaos:clamp(w.rootChaos-8,0,100),
-        tension:clamp(w.tension+(2+4*c),0,100),
-        qualityChaos:clamp(w.qualityChaos+4,0,100)
+        keyStability:clamp(w.keyStability+20,0,100),
+        rootChaos:clamp(w.rootChaos-10,0,100),
+        tension:clamp(w.tension+(1+3*c),0,100),
+        qualityChaos:clamp(w.qualityChaos+2,0,100)
       };
     }},
+    classicalCommon: { name:"Classical: common-practice cadences", apply:(w,chaos)=>{
+      const c=clamp(chaos,0,100)/100;
+      return {...w,
+        functional:clamp(w.functional+22,0,100),
+        keyStability:clamp(w.keyStability+24,0,100),
+        rootChaos:clamp(w.rootChaos-18,0,100),
+        tension:clamp(w.tension-8+3*c,0,100),
+        qualityChaos:clamp(w.qualityChaos-8,0,100),
+        memoryKill:clamp(w.memoryKill-8,0,100)
+      };
+    }},
+    classicalFugue: { name:"Fugue: strict counterpoint", apply:(w,chaos)=>{
+      const c=clamp(chaos,0,100)/100;
+      return {...w,
+        functional:clamp(w.functional+24,0,100),
+        keyStability:clamp(w.keyStability+26,0,100),
+        rootChaos:clamp(w.rootChaos-20,0,100),
+        tension:clamp(w.tension-10+3*c,0,100),
+        qualityChaos:clamp(w.qualityChaos-12,0,100),
+        memoryKill:clamp(w.memoryKill-12,0,100)
+      };
+    }},
+    bachStyle: { name:"Bach style: chorale gravity", apply:(w,chaos)=>{
+      const c=clamp(chaos,0,100)/100;
+      return {...w,
+        functional:clamp(w.functional+20,0,100),
+        keyStability:clamp(w.keyStability+22,0,100),
+        rootChaos:clamp(w.rootChaos-16,0,100),
+        tension:clamp(w.tension-2+4*c,0,100),
+        qualityChaos:clamp(w.qualityChaos-6,0,100),
+        memoryKill:clamp(w.memoryKill-8,0,100)
+      };
+    }},
+    classicalSymphony: { name:"Symphony: thematic development", apply:(w,chaos)=>{
+      const c=clamp(chaos,0,100)/100;
+      return {...w,
+        functional:clamp(w.functional+12,0,100),
+        keyStability:clamp(w.keyStability+16,0,100),
+        rootChaos:clamp(w.rootChaos-8,0,100),
+        tension:clamp(w.tension+2+5*c,0,100),
+        qualityChaos:clamp(w.qualityChaos+1,0,100),
+        memoryKill:clamp(w.memoryKill-4,0,100)
+      };
+    }},
+    classicalOpera: { name:"Opera: dramatic arcs", apply:(w,chaos)=>{
+      const c=clamp(chaos,0,100)/100;
+      return {...w,
+        functional:clamp(w.functional+8,0,100),
+        keyStability:clamp(w.keyStability+10,0,100),
+        rootChaos:clamp(w.rootChaos+2,0,100),
+        tension:clamp(w.tension+10+7*c,0,100),
+        qualityChaos:clamp(w.qualityChaos+5,0,100),
+        memoryKill:clamp(w.memoryKill+2,0,100)
+      };
+    }},
+    beethovenStyle: { name:"Beethoven style: bold cadences", apply:(w,chaos)=>{
+      const c=clamp(chaos,0,100)/100;
+      return {...w,
+        functional:clamp(w.functional+14,0,100),
+        keyStability:clamp(w.keyStability+12,0,100),
+        rootChaos:clamp(w.rootChaos+2,0,100),
+        tension:clamp(w.tension+10+6*c,0,100),
+        qualityChaos:clamp(w.qualityChaos+4,0,100),
+        memoryKill:clamp(w.memoryKill+2,0,100)
+      };
+    }},
+    romanticChromatic: { name:"Romantic: chromatic drama", apply:(w,chaos)=>{
+      const c=clamp(chaos,0,100)/100;
+      return {...w,
+        functional:clamp(w.functional+6,0,100),
+        keyStability:clamp(w.keyStability+6,0,100),
+        rootChaos:clamp(w.rootChaos+6,0,100),
+        tension:clamp(w.tension+14+7*c,0,100),
+        qualityChaos:clamp(w.qualityChaos+8,0,100),
+        memoryKill:clamp(w.memoryKill+4,0,100)
+      };
+    }},
+    neoClassicalMetal: { name:"Neo-classical metal: virtuosic drive", apply:(w,chaos)=>{
+      const c=clamp(chaos,0,100)/100;
+      return {...w,
+        functional:clamp(w.functional+8,0,100),
+        keyStability:clamp(w.keyStability+8,0,100),
+        rootChaos:clamp(w.rootChaos+10,0,100),
+        tension:clamp(w.tension+14+8*c,0,100),
+        qualityChaos:clamp(w.qualityChaos+12,0,100),
+        memoryKill:clamp(w.memoryKill+8,0,100)
+      };
+    }},
+
     modalSpiritual: { name:"Modal / spiritual drift", apply:(w,chaos)=>{
       const c=clamp(chaos,0,100)/100;
       return {...w,
-        functional:clamp(w.functional-10,0,100),
-        keyStability:clamp(w.keyStability+8,0,100),
-        rootChaos:clamp(w.rootChaos+8,0,100),
-        tension:clamp(w.tension+(6+8*c),0,100),
-        qualityChaos:clamp(w.qualityChaos+10,0,100)
+        functional:clamp(w.functional-8,0,100),
+        keyStability:clamp(w.keyStability+12,0,100),
+        rootChaos:clamp(w.rootChaos+2,0,100),
+        tension:clamp(w.tension+(4+6*c),0,100),
+        qualityChaos:clamp(w.qualityChaos+6,0,100)
       };
     }},
     ambientModal: { name:"Ambient modal centers", apply:(w,chaos)=>{
       const c=clamp(chaos,0,100)/100;
       return {...w,
         functional:clamp(w.functional-16,0,100),
-        keyStability:clamp(w.keyStability+20,0,100),
-        rootChaos:clamp(w.rootChaos-6,0,100),
-        tension:clamp(w.tension+(1+4*c),0,100),
-        qualityChaos:clamp(w.qualityChaos+2,0,100),
-        memoryKill:clamp(w.memoryKill-6,0,100)
+        keyStability:clamp(w.keyStability+22,0,100),
+        rootChaos:clamp(w.rootChaos-10,0,100),
+        tension:clamp(w.tension-4+3*c,0,100),
+        qualityChaos:clamp(w.qualityChaos+1,0,100),
+        memoryKill:clamp(w.memoryKill-8,0,100)
       };
     }},
     freeForm: { name:"Free / avant", apply:(w,chaos)=>{
       const c=clamp(chaos,0,100)/100;
       return {...w,
-        functional:clamp(w.functional-25,0,100),
-        keyStability:clamp(w.keyStability-10,0,100),
-        rootChaos:clamp(w.rootChaos+26,0,100),
-        tension:clamp(w.tension+(14+12*c),0,100),
-        qualityChaos:clamp(w.qualityChaos+22,0,100),
-        memoryKill:clamp(w.memoryKill+18,0,100)
+        functional:clamp(w.functional-18,0,100),
+        keyStability:clamp(w.keyStability-4,0,100),
+        rootChaos:clamp(w.rootChaos+16,0,100),
+        tension:clamp(w.tension+(10+10*c),0,100),
+        qualityChaos:clamp(w.qualityChaos+14,0,100),
+        memoryKill:clamp(w.memoryKill+12,0,100)
       };
     }},
     cinematicBigBand: { name:"Cinematic big band", apply:(w,chaos)=>{
       const c=clamp(chaos,0,100)/100;
       return {...w,
-        functional:clamp(w.functional+10,0,100),
-        keyStability:clamp(w.keyStability+16,0,100),
-        rootChaos:clamp(w.rootChaos-6,0,100),
-        tension:clamp(w.tension+(6+8*c),0,100),
-        qualityChaos:clamp(w.qualityChaos+6,0,100),
-        memoryKill:clamp(w.memoryKill-4,0,100)
+        functional:clamp(w.functional+12,0,100),
+        keyStability:clamp(w.keyStability+18,0,100),
+        rootChaos:clamp(w.rootChaos-8,0,100),
+        tension:clamp(w.tension+(4+6*c),0,100),
+        qualityChaos:clamp(w.qualityChaos+4,0,100),
+        memoryKill:clamp(w.memoryKill-6,0,100)
       };
     }},
     claveDrive: { name:"Clave-driven", apply:(w,chaos)=>{
       const c=clamp(chaos,0,100)/100;
       return {...w,
-        functional:clamp(w.functional+8,0,100),
-        keyStability:clamp(w.keyStability+10,0,100),
-        rootChaos:clamp(w.rootChaos-2,0,100),
-        tension:clamp(w.tension+(8+10*c),0,100),
-        qualityChaos:clamp(w.qualityChaos+4,0,100)
+        functional:clamp(w.functional+10,0,100),
+        keyStability:clamp(w.keyStability+12,0,100),
+        rootChaos:clamp(w.rootChaos-6,0,100),
+        tension:clamp(w.tension+(6+8*c),0,100),
+        qualityChaos:clamp(w.qualityChaos+2,0,100)
       };
     }},
     grooveFunk: { name:"Groove / funk-jazz", apply:(w,chaos)=>{
       const c=clamp(chaos,0,100)/100;
       return {...w,
-        functional:clamp(w.functional-6,0,100),
-        keyStability:clamp(w.keyStability+4,0,100),
-        rootChaos:clamp(w.rootChaos+8,0,100),
-        tension:clamp(w.tension+(6+10*c),0,100),
-        qualityChaos:clamp(w.qualityChaos+10,0,100)
+        functional:clamp(w.functional-4,0,100),
+        keyStability:clamp(w.keyStability+6,0,100),
+        rootChaos:clamp(w.rootChaos+2,0,100),
+        tension:clamp(w.tension+(4+7*c),0,100),
+        qualityChaos:clamp(w.qualityChaos+7,0,100)
       };
     }},
     brokenBeat: { name:"Broken beat / nu", apply:(w,chaos)=>{
       const c=clamp(chaos,0,100)/100;
       return {...w,
-        functional:clamp(w.functional-12,0,100),
-        keyStability:clamp(w.keyStability+6,0,100),
-        rootChaos:clamp(w.rootChaos+10,0,100),
-        tension:clamp(w.tension+(6+8*c),0,100),
-        qualityChaos:clamp(w.qualityChaos+12,0,100),
-        memoryKill:clamp(w.memoryKill+8,0,100)
+        functional:clamp(w.functional-10,0,100),
+        keyStability:clamp(w.keyStability+8,0,100),
+        rootChaos:clamp(w.rootChaos+4,0,100),
+        tension:clamp(w.tension+(4+6*c),0,100),
+        qualityChaos:clamp(w.qualityChaos+9,0,100),
+        memoryKill:clamp(w.memoryKill+6,0,100)
       };
     }},
     dubReggae: { name:"Dub / reggae lean", apply:(w,chaos)=>{
       const c=clamp(chaos,0,100)/100;
       return {...w,
-        functional:clamp(w.functional-14,0,100),
-        keyStability:clamp(w.keyStability+12,0,100),
-        rootChaos:clamp(w.rootChaos-2,0,100),
-        tension:clamp(w.tension+(1+4*c),0,100),
-        qualityChaos:clamp(w.qualityChaos+4,0,100)
+        functional:clamp(w.functional-12,0,100),
+        keyStability:clamp(w.keyStability+14,0,100),
+        rootChaos:clamp(w.rootChaos-4,0,100),
+        tension:clamp(w.tension-2+3*c,0,100),
+        qualityChaos:clamp(w.qualityChaos+2,0,100)
       };
     }},
     fusionRock: { name:"Fusion / rock drive", apply:(w,chaos)=>{
       const c=clamp(chaos,0,100)/100;
       return {...w,
-        functional:clamp(w.functional-2,0,100),
-        keyStability:clamp(w.keyStability+6,0,100),
-        rootChaos:clamp(w.rootChaos+8,0,100),
-        tension:clamp(w.tension+(10+12*c),0,100),
-        qualityChaos:clamp(w.qualityChaos+10,0,100)
+        functional:clamp(w.functional+2,0,100),
+        keyStability:clamp(w.keyStability+8,0,100),
+        rootChaos:clamp(w.rootChaos+4,0,100),
+        tension:clamp(w.tension+(8+8*c),0,100),
+        qualityChaos:clamp(w.qualityChaos+7,0,100)
       };
     }},
     edmLogic: { name:"EDM: loop-centric", apply:(w,chaos)=>{
       const c=clamp(chaos,0,100)/100;
       return {...w,
-        functional:clamp(w.functional-18,0,100),
-        keyStability:clamp(w.keyStability+26,0,100),
-        rootChaos:clamp(w.rootChaos-18,0,100),
-        tension:clamp(w.tension-2+6*c,0,100),
-        qualityChaos:clamp(w.qualityChaos-8+10*c,0,100),
-        memoryKill:clamp(w.memoryKill+12,0,100)
+        functional:clamp(w.functional-12,0,100),
+        keyStability:clamp(w.keyStability+28,0,100),
+        rootChaos:clamp(w.rootChaos-20,0,100),
+        tension:clamp(w.tension-4+5*c,0,100),
+        qualityChaos:clamp(w.qualityChaos-12+8*c,0,100),
+        memoryKill:clamp(w.memoryKill+14,0,100)
       };
     }},
   };
@@ -3724,7 +3828,7 @@
   /* ---------- Locks UI ---------- */
   function setLockBtn(btn, on, label){
     btn.classList.toggle("on", !!on);
-    btn.innerHTML = (on ? "🔒" : "🔓") + ` <b>${label}</b>`;
+    btn.innerHTML = (on ? "🔒" : "🔓");
   }
 
   function syncLocksUI(){
