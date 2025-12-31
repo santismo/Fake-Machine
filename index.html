@@ -151,7 +151,7 @@
 
     /* Title bar button alignment */
     #cardHeader .btnRow{justify-content:center;}
-    #cardHeader .btnRow .btn{flex:0 0 auto;min-width:0;}
+    #cardHeader .btnRow .btn{flex:0 1 auto;min-width:clamp(56px, 16vw, 92px); padding:8px 12px;}
     #cardHeader .cardBody > .row{justify-content:center;}
     #cardHeader .cardBody > .row > .grow{flex:1 1 100%;max-width:760px;}
     #cardHeader .cardBody > .row > .grow:last-child{display:flex;flex-direction:column;align-items:center;}
@@ -625,17 +625,21 @@
                 <label>Bass sound (minimal)</label>
                 <select id="bassPreset">
                   <option value="upright" selected>Upright</option>
+                  <option value="contra">Contra</option>
+                  <option value="fretless">Fretless</option>
+                  <option value="pizz">Pizz</option>
                   <option value="round">Round</option>
                   <option value="sub">Sub</option>
                   <option value="pluck">Pluck</option>
+                  <option value="pickBass">Pick bass</option>
+                  <option value="muted">Muted</option>
                   <option value="fmBass">FM bass</option>
                   <option value="rubber">Rubber</option>
                   <option value="acid">Acid</option>
                   <option value="reese">Reese</option>
                   <option value="squareBass">Square bass</option>
                   <option value="wobble">Wobble</option>
-                  <option value="pickBass">Pick bass</option>
-                  <option value="muted">Muted</option>
+                  <option value="mono">Mono synth</option>
                 </select>
               </div>
 
@@ -645,15 +649,21 @@
                   <option value="ep" selected>EP</option>
                   <option value="piano">Piano</option>
                   <option value="organ">Organ</option>
+                  <option value="harpsichord">Harpsichord</option>
+                  <option value="accordion">Accordion</option>
+                  <option value="strings">Strings</option>
                   <option value="pad">Pad</option>
+                  <option value="choirPad">Choir pad</option>
+                  <option value="noisePad">Noise pad</option>
                   <option value="fm">FM keys</option>
                   <option value="chip">Chip</option>
                   <option value="bell">Bell</option>
                   <option value="glass">Glass</option>
-                  <option value="pluck2">Pluck 2</option>
+                  <option value="celesta">Celesta</option>
                   <option value="vibes">Vibes</option>
-                  <option value="choirPad">Choir pad</option>
-                  <option value="noisePad">Noise pad</option>
+                  <option value="marimba">Marimba</option>
+                  <option value="harp">Harp</option>
+                  <option value="pluck2">Pluck 2</option>
                   <option value="guitarish">Guitar-ish</option>
                   <option value="clavBright">Clav bright</option>
                 </select>
@@ -663,18 +673,28 @@
                 <label>Drums sound (minimal)</label>
                 <select id="drumsPreset">
                   <option value="jazz" selected>Jazz kit</option>
+                  <option value="swing">Swing kit</option>
+                  <option value="shuffle">Shuffle kit</option>
                   <option value="brushes">Brushes</option>
                   <option value="tight">Tight</option>
                   <option value="rock">Rock kit</option>
+                  <option value="room">Room kit</option>
                   <option value="disco">Disco kit</option>
                   <option value="lofi">Lo-fi</option>
                   <option value="minimal">Minimal clicks</option>
+                  <option value="ambient">Ambient</option>
                   <option value="electro">Electro</option>
+                  <option value="analog">Analog</option>
                   <option value="house">House</option>
                   <option value="trap">Trap hats</option>
-                  <option value="perc">Perc kit</option>
+                  <option value="breaks">Breaks</option>
                   <option value="dnb">DnB kit</option>
                   <option value="techno">Techno kit</option>
+                  <option value="boomBap">Boom-bap</option>
+                  <option value="perc">Perc kit</option>
+                  <option value="latinKit">Latin kit</option>
+                  <option value="orchestral">Orchestral</option>
+                  <option value="free">Free</option>
                 </select>
               </div>
 
@@ -2569,6 +2589,194 @@
       g.connect(comp);
       return { ctx:c, out:g };
     }
+    const KEY_PRESETS = {
+      ep:{type:"triangle", a:0.008, d:0.08, s:0.32, r:0.18, peak:0.38},
+      piano:{type:"sine", a:0.006, d:0.08, s:0.22, r:0.22, peak:0.34, filter:{type:"highpass", freq:180}},
+      organ:{type:"square", a:0.004, d:0.06, s:0.55, r:0.12, peak:0.32, filter:{type:"lowpass", freq:1800}},
+      harpsichord:{type:"square", a:0.002, d:0.05, s:0.10, r:0.12, peak:0.30, filter:{type:"highpass", freq:900}},
+      accordion:{type:"square", a:0.006, d:0.08, s:0.45, r:0.20, peak:0.30, detune:3, filter:{type:"lowpass", freq:1500}},
+      strings:{type:"sawtooth", a:0.06, d:0.10, s:0.72, r:0.60, peak:0.26, detune:8, vStyle:"open", tail:0.45, filter:{type:"lowpass", freq:900}},
+      pad:{type:"sine", a:0.04, d:0.10, s:0.70, r:0.60, peak:0.28, detune:6, vStyle:"open", tail:0.45, filter:{type:"lowpass", freq:900}},
+      choirPad:{type:"sine", a:0.05, d:0.10, s:0.68, r:0.70, peak:0.26, detune:5, vStyle:"open", tail:0.45, filter:{type:"lowpass", freq:1200}},
+      noisePad:{type:"sine", a:0.04, d:0.12, s:0.60, r:0.60, peak:0.22, detune:4, vStyle:"open", tail:0.45, filter:{type:"bandpass", freq:1200, q:0.7}},
+      fm:{type:"sine", a:0.006, d:0.07, s:0.28, r:0.18, peak:0.34, detune:2},
+      chip:{type:"square", a:0.004, d:0.06, s:0.18, r:0.10, peak:0.30, filter:{type:"highpass", freq:500}},
+      bell:{type:"sine", a:0.002, d:0.08, s:0.12, r:0.26, peak:0.32, detune:4, filter:{type:"highpass", freq:700}},
+      glass:{type:"sine", a:0.002, d:0.08, s:0.10, r:0.28, peak:0.30, detune:6, filter:{type:"highpass", freq:900}},
+      celesta:{type:"triangle", a:0.002, d:0.08, s:0.10, r:0.26, peak:0.28, detune:5, filter:{type:"highpass", freq:1200}},
+      vibes:{type:"sine", a:0.003, d:0.10, s:0.18, r:0.30, peak:0.32, detune:4},
+      marimba:{type:"triangle", a:0.003, d:0.06, s:0.12, r:0.16, peak:0.30, filter:{type:"bandpass", freq:700, q:1.2}},
+      harp:{type:"triangle", a:0.004, d:0.08, s:0.18, r:0.20, peak:0.30, detune:6, filter:{type:"lowpass", freq:2200}},
+      pluck2:{type:"triangle", a:0.004, d:0.07, s:0.18, r:0.18, peak:0.32, filter:{type:"lowpass", freq:1800}},
+      guitarish:{type:"triangle", a:0.003, d:0.06, s:0.20, r:0.18, peak:0.30, filter:{type:"lowpass", freq:1400}},
+      clavBright:{type:"square", a:0.003, d:0.05, s:0.12, r:0.14, peak:0.30, filter:{type:"highpass", freq:1200}},
+    };
+
+    const BASS_PRESETS = {
+      upright:{type:"triangle", a:0.004, d:0.06, s:0.35, r:0.16, peak:0.40, slide:true, filter:{type:"lowpass", freq:700}},
+      contra:{type:"sine", a:0.008, d:0.08, s:0.40, r:0.26, peak:0.40, filter:{type:"lowpass", freq:420}},
+      fretless:{type:"sine", a:0.006, d:0.07, s:0.38, r:0.22, peak:0.34, detune:2, filter:{type:"lowpass", freq:600}},
+      pizz:{type:"triangle", a:0.002, d:0.05, s:0.18, r:0.12, peak:0.32, slide:true, filter:{type:"lowpass", freq:1100}},
+      round:{type:"sine", a:0.004, d:0.07, s:0.38, r:0.18, peak:0.38, filter:{type:"lowpass", freq:600}},
+      sub:{type:"sine", a:0.006, d:0.08, s:0.40, r:0.22, peak:0.42, filter:{type:"lowpass", freq:420}},
+      pluck:{type:"triangle", a:0.003, d:0.05, s:0.25, r:0.14, peak:0.36, slide:true, filter:{type:"lowpass", freq:900}},
+      pickBass:{type:"triangle", a:0.003, d:0.05, s:0.24, r:0.14, peak:0.34, slide:true, filter:{type:"lowpass", freq:1200}},
+      muted:{type:"triangle", a:0.003, d:0.04, s:0.20, r:0.12, peak:0.30, filter:{type:"lowpass", freq:800}},
+      fmBass:{type:"sine", a:0.004, d:0.06, s:0.30, r:0.16, peak:0.36, detune:2, filter:{type:"lowpass", freq:900}},
+      rubber:{type:"triangle", a:0.004, d:0.06, s:0.30, r:0.16, peak:0.36, filter:{type:"lowpass", freq:1000}},
+      acid:{type:"sawtooth", a:0.003, d:0.06, s:0.28, r:0.12, peak:0.32, filter:{type:"lowpass", freq:1000, q:0.9}},
+      reese:{type:"sawtooth", a:0.004, d:0.07, s:0.30, r:0.16, peak:0.34, detune:8, dual:true, filter:{type:"lowpass", freq:800}},
+      squareBass:{type:"square", a:0.003, d:0.05, s:0.25, r:0.12, peak:0.32, filter:{type:"lowpass", freq:1000}},
+      wobble:{type:"square", a:0.004, d:0.06, s:0.30, r:0.16, peak:0.34, filter:{type:"lowpass", freq:700}},
+      mono:{type:"square", a:0.004, d:0.06, s:0.30, r:0.16, peak:0.34, filter:{type:"lowpass", freq:900}},
+    };
+
+    const DRUM_DEFAULTS = {
+      kick:{
+        toneStart:110, toneEnd:55, toneSlide:0.08, toneDur:0.20,
+        toneA:0.001, toneD:0.05, toneS:0.05, toneR:0.12, tonePeak:0.70, toneRel:0.7,
+        noiseFreq:140, noiseQ:0.8, noiseDur:0.11,
+        noiseD:0.03, noiseS:0.02, noiseR:0.10, noisePeak:0.25, noiseRel:0.6
+      },
+      snare:{
+        noiseFreq:1800, noiseQ:1.2, noiseDur:0.20,
+        noiseD:0.06, noiseS:0.05, noiseR:0.14, noisePeak:0.55, noiseRel:0.55
+      },
+      hat:{
+        noiseFreq:9500, noiseQ:0.9, noiseDur:0.11,
+        noiseD:0.02, noiseS:0.04, noiseR:0.09, noisePeak:0.42, noiseRel:0.55
+      },
+      ride:{
+        noiseFreq:7800, noiseQ:0.7, noiseDur:0.38,
+        noiseD:0.06, noiseS:0.20, noiseR:0.20, noisePeak:0.36, noiseRel:0.58
+      },
+    };
+
+    const DRUM_KITS = {
+      jazz:{},
+      swing:{ ride:{noiseDur:0.42, noisePeak:0.40} },
+      shuffle:{ snare:{noiseDur:0.24, noisePeak:0.58}, hat:{noiseDur:0.12, noiseFreq:9000} },
+      brushes:{
+        kick:{toneStart:100, toneEnd:50, noisePeak:0.18, noiseDur:0.14},
+        snare:{noiseFreq:1400, noiseDur:0.26, noisePeak:0.40},
+        hat:{noiseFreq:7600, noiseDur:0.14, noisePeak:0.32},
+        ride:{noiseFreq:6500, noiseDur:0.48, noisePeak:0.30}
+      },
+      tight:{
+        kick:{toneStart:120, toneEnd:60, noiseDur:0.08, noisePeak:0.22},
+        snare:{noiseFreq:2000, noiseDur:0.14, noisePeak:0.50},
+        hat:{noiseFreq:10000, noiseDur:0.07, noisePeak:0.45},
+        ride:{noiseFreq:8500, noiseDur:0.22, noisePeak:0.30}
+      },
+      rock:{
+        kick:{toneStart:120, toneEnd:48, noiseDur:0.12, noisePeak:0.30},
+        snare:{noiseFreq:1900, noiseDur:0.24, noisePeak:0.65},
+        hat:{noiseFreq:9000, noiseDur:0.12, noisePeak:0.50},
+        ride:{noiseFreq:7600, noiseDur:0.40, noisePeak:0.50}
+      },
+      room:{
+        kick:{toneStart:115, toneEnd:50, noiseDur:0.16, noisePeak:0.32},
+        snare:{noiseFreq:1900, noiseDur:0.28, noisePeak:0.60},
+        hat:{noiseFreq:9000, noiseDur:0.12, noisePeak:0.42},
+        ride:{noiseFreq:7600, noiseDur:0.44, noisePeak:0.40}
+      },
+      disco:{
+        kick:{toneStart:130, toneEnd:65, noiseDur:0.10, noisePeak:0.28},
+        snare:{noiseFreq:2100, noiseDur:0.20, noisePeak:0.60},
+        hat:{noiseFreq:10500, noiseDur:0.09, noisePeak:0.55},
+        ride:{noiseFreq:9000, noiseDur:0.28, noisePeak:0.38}
+      },
+      lofi:{
+        kick:{toneStart:100, toneEnd:45, noiseDur:0.15, noisePeak:0.20},
+        snare:{noiseFreq:1200, noiseDur:0.25, noisePeak:0.45},
+        hat:{noiseFreq:6500, noiseDur:0.10, noisePeak:0.32},
+        ride:{noiseFreq:5200, noiseDur:0.30, noisePeak:0.32}
+      },
+      minimal:{
+        kick:{toneStart:90, toneEnd:45, noiseDur:0.07, noisePeak:0.14},
+        snare:{noiseFreq:1600, noiseDur:0.12, noisePeak:0.26},
+        hat:{noiseFreq:9000, noiseDur:0.06, noisePeak:0.25},
+        ride:{noiseFreq:7000, noiseDur:0.16, noisePeak:0.20}
+      },
+      ambient:{
+        kick:{toneStart:90, toneEnd:45, noiseDur:0.12, noisePeak:0.18},
+        snare:{noiseFreq:1200, noiseDur:0.32, noisePeak:0.28},
+        hat:{noiseFreq:7000, noiseDur:0.20, noisePeak:0.22},
+        ride:{noiseFreq:5200, noiseDur:0.60, noisePeak:0.26}
+      },
+      electro:{
+        kick:{toneStart:140, toneEnd:60, noiseDur:0.09, noisePeak:0.26},
+        snare:{noiseFreq:2400, noiseDur:0.16, noisePeak:0.55},
+        hat:{noiseFreq:11000, noiseDur:0.07, noisePeak:0.45},
+        ride:{noiseFreq:9000, noiseDur:0.25, noisePeak:0.35}
+      },
+      analog:{
+        kick:{toneStart:120, toneEnd:50, noiseDur:0.10, noisePeak:0.28},
+        snare:{noiseFreq:2000, noiseDur:0.18, noisePeak:0.48},
+        hat:{noiseFreq:12000, noiseDur:0.06, noisePeak:0.45},
+        ride:{noiseFreq:9800, noiseDur:0.18, noisePeak:0.32}
+      },
+      house:{
+        kick:{toneStart:120, toneEnd:55, noiseDur:0.11, noisePeak:0.30},
+        snare:{noiseFreq:2200, noiseDur:0.18, noisePeak:0.50},
+        hat:{noiseFreq:10500, noiseDur:0.08, noisePeak:0.48},
+        ride:{noiseFreq:8800, noiseDur:0.28, noisePeak:0.38}
+      },
+      trap:{
+        kick:{toneStart:120, toneEnd:50, noiseDur:0.08, noisePeak:0.26},
+        snare:{noiseFreq:2500, noiseDur:0.15, noisePeak:0.50},
+        hat:{noiseFreq:11500, noiseDur:0.05, noisePeak:0.55},
+        ride:{noiseFreq:9800, noiseDur:0.18, noisePeak:0.32}
+      },
+      breaks:{
+        kick:{toneStart:130, toneEnd:55, noiseDur:0.10, noisePeak:0.28},
+        snare:{noiseFreq:2300, noiseDur:0.18, noisePeak:0.58},
+        hat:{noiseFreq:9800, noiseDur:0.08, noisePeak:0.45},
+        ride:{noiseFreq:8200, noiseDur:0.30, noisePeak:0.34}
+      },
+      dnb:{
+        kick:{toneStart:130, toneEnd:55, noiseDur:0.10, noisePeak:0.30},
+        snare:{noiseFreq:2300, noiseDur:0.16, noisePeak:0.55},
+        hat:{noiseFreq:10500, noiseDur:0.07, noisePeak:0.48},
+        ride:{noiseFreq:9000, noiseDur:0.24, noisePeak:0.34}
+      },
+      techno:{
+        kick:{toneStart:130, toneEnd:60, noiseDur:0.10, noisePeak:0.32},
+        snare:{noiseFreq:2100, noiseDur:0.16, noisePeak:0.52},
+        hat:{noiseFreq:11000, noiseDur:0.07, noisePeak:0.50},
+        ride:{noiseFreq:9200, noiseDur:0.22, noisePeak:0.36}
+      },
+      boomBap:{
+        kick:{toneStart:100, toneEnd:45, noiseDur:0.16, noisePeak:0.28},
+        snare:{noiseFreq:1500, noiseDur:0.26, noisePeak:0.52},
+        hat:{noiseFreq:7000, noiseDur:0.10, noisePeak:0.35},
+        ride:{noiseFreq:6000, noiseDur:0.28, noisePeak:0.30}
+      },
+      perc:{
+        kick:{toneStart:110, toneEnd:55, noiseDur:0.10, noisePeak:0.26},
+        snare:{noiseFreq:2200, noiseDur:0.18, noisePeak:0.55},
+        hat:{noiseFreq:10000, noiseDur:0.08, noisePeak:0.40},
+        ride:{noiseFreq:8600, noiseDur:0.30, noisePeak:0.36}
+      },
+      latinKit:{
+        kick:{toneStart:105, toneEnd:55, noiseDur:0.10, noisePeak:0.24},
+        snare:{noiseFreq:2000, noiseDur:0.20, noisePeak:0.50},
+        hat:{noiseFreq:9800, noiseDur:0.09, noisePeak:0.40},
+        ride:{noiseFreq:8800, noiseDur:0.34, noisePeak:0.34}
+      },
+      orchestral:{
+        kick:{toneStart:90, toneEnd:45, noiseDur:0.14, noisePeak:0.28},
+        snare:{noiseFreq:1600, noiseDur:0.26, noisePeak:0.48},
+        hat:{noiseFreq:6500, noiseDur:0.18, noisePeak:0.30},
+        ride:{noiseFreq:5200, noiseDur:0.50, noisePeak:0.30}
+      },
+      free:{
+        kick:{toneStart:100, toneEnd:45, noiseDur:0.16, noisePeak:0.22},
+        snare:{noiseFreq:1500, noiseDur:0.30, noisePeak:0.42},
+        hat:{noiseFreq:7200, noiseDur:0.18, noisePeak:0.30},
+        ride:{noiseFreq:6000, noiseDur:0.60, noisePeak:0.30}
+      },
+    };
 
   function chordVoicingMidi(ch, style="closed"){
     const root = ch.root;
@@ -2594,71 +2802,87 @@
 
     return mids;
   }
-
     function playChord(ch, preset, t0, dur, vel=0.7){
       const c = ensure();
       const {out} = createVoiceChain();
 
-      const type = ({
-        ep:"triangle", piano:"sine", organ:"square", pad:"sine", fm:"sine", chip:"square",
-        bell:"sine", glass:"sine", pluck2:"triangle", vibes:"sine", choirPad:"sine", noisePad:"sine",
-        guitarish:"triangle", clavBright:"square",
-      }[preset] || "triangle");
-
-      const vStyle = (preset==="pad"||preset==="choirPad"||preset==="noisePad") ? "open" : "closed";
+      const cfg = KEY_PRESETS[preset] || KEY_PRESETS.ep;
+      const vStyle = cfg.vStyle || "closed";
       const mids = chordVoicingMidi(ch, vStyle);
 
       const gain = c.createGain();
       gain.gain.value = 0.0001;
       gain.connect(out);
 
-      const sustain = (preset==="pad"||preset==="choirPad") ? 0.65 : 0.32;
-      const release = env(gain, t0, 0.01, 0.08, sustain, 0.14, 0.35*vel);
+      let input = gain;
+      if (cfg.filter){
+        const f = c.createBiquadFilter();
+        f.type = cfg.filter.type;
+        f.frequency.value = cfg.filter.freq;
+        f.Q.value = (cfg.filter.q==null) ? 0.8 : cfg.filter.q;
+        f.connect(gain);
+        input = f;
+      }
+
+      const release = env(gain, t0, cfg.a, cfg.d, cfg.s, cfg.r, (cfg.peak||0.34)*vel);
+      const tail = (cfg.tail==null) ? 0.25 : cfg.tail;
 
       for (let i=0;i<mids.length;i++){
-        const o = osc(type);
+        const o = osc(cfg.type);
         o.frequency.setValueAtTime(midiToHz(mids[i]), t0);
-        if (preset==="pad"||preset==="choirPad"){
-          o.detune.setValueAtTime((i-1.5)*6, t0);
+        if (cfg.detune){
+          const center = (mids.length-1)/2;
+          o.detune.setValueAtTime((i-center)*cfg.detune, t0);
         }
-        o.connect(gain);
+        o.connect(input);
         o.start(t0);
-        o.stop(t0 + dur + 0.25);
+        o.stop(t0 + dur + tail);
       }
       release(t0 + dur);
     }
-
     function playBass(rootPc, preset, t0, dur, vel=0.8){
       const c = ensure();
       const {out} = createVoiceChain();
 
-      const type = ({
-        upright:"triangle", round:"sine", sub:"sine", pluck:"triangle",
-        fmBass:"sine", rubber:"triangle", acid:"sawtooth", reese:"sawtooth",
-        squareBass:"square", wobble:"square", pickBass:"triangle", muted:"triangle"
-      }[preset] || "triangle");
+      const cfg = BASS_PRESETS[preset] || BASS_PRESETS.upright;
 
       const gain = c.createGain();
       gain.gain.value = 0.0001;
       gain.connect(out);
-      const rel = env(gain, t0, 0.004, 0.06, 0.35, 0.12, 0.40*vel);
+
+      let input = gain;
+      if (cfg.filter){
+        const f = c.createBiquadFilter();
+        f.type = cfg.filter.type;
+        f.frequency.value = cfg.filter.freq;
+        f.Q.value = (cfg.filter.q==null) ? 0.7 : cfg.filter.q;
+        f.connect(gain);
+        input = f;
+      }
+
+      const rel = env(gain, t0, cfg.a, cfg.d, cfg.s, cfg.r, cfg.peak*vel);
 
       let m = 40 + pc(rootPc);
       while (m < 36) m += 12;
       while (m > 52) m -= 12;
 
-      const o = osc(type);
-      o.frequency.setValueAtTime(midiToHz(m), t0);
-      if (preset==="upright"||preset==="pluck"||preset==="pickBass"){
-        o.frequency.setValueAtTime(midiToHz(m)*1.02, t0);
-        o.frequency.exponentialRampToValueAtTime(midiToHz(m), t0+0.05);
+      const detunes = cfg.detune ? (cfg.dual ? [cfg.detune, -cfg.detune] : [cfg.detune]) : [0];
+      const tail = (cfg.tail==null) ? 0.18 : cfg.tail;
+
+      for (const det of detunes){
+        const o = osc(cfg.type);
+        o.frequency.setValueAtTime(midiToHz(m), t0);
+        if (det) o.detune.setValueAtTime(det, t0);
+        if (cfg.slide){
+          o.frequency.setValueAtTime(midiToHz(m)*1.02, t0);
+          o.frequency.exponentialRampToValueAtTime(midiToHz(m), t0+0.05);
+        }
+        o.connect(input);
+        o.start(t0);
+        o.stop(t0 + dur + tail);
       }
-      o.connect(gain);
-      o.start(t0);
-      o.stop(t0 + dur + 0.18);
       rel(t0 + dur);
     }
-
     function playDrumHit(kind, preset, t0, vel=0.8){
       const c = ensure();
       const {out} = createVoiceChain();
@@ -2666,53 +2890,41 @@
       g.gain.value = 0.0001;
       g.connect(out);
 
+      const kit = DRUM_KITS[preset] || DRUM_KITS.jazz;
+      const base = DRUM_DEFAULTS[kind] || DRUM_DEFAULTS.snare;
+      const cfg = {...base, ...(kit[kind] || {})};
+
       const n = noise();
       const f = c.createBiquadFilter();
       f.type = "bandpass";
-      f.frequency.value = (kind==="hat"||kind==="ride") ? 9000 : (kind==="snare"? 2200 : 140);
-      f.Q.value = (kind==="kick") ? 0.8 : 1.2;
+      f.frequency.value = cfg.noiseFreq;
+      f.Q.value = cfg.noiseQ;
 
       n.connect(f);
       f.connect(g);
-
-      const peak = 0.55*vel;
 
       if (kind==="kick"){
         const o = osc("sine");
         const og = c.createGain();
         og.gain.value = 0.0001;
         og.connect(out);
-        const rel1 = env(og, t0, 0.001, 0.05, 0.05, 0.12, 0.70*vel);
-        o.frequency.setValueAtTime(110, t0);
-        o.frequency.exponentialRampToValueAtTime(55, t0+0.08);
+        const rel1 = env(og, t0, cfg.toneA, cfg.toneD, cfg.toneS, cfg.toneR, cfg.tonePeak*vel);
+        o.frequency.setValueAtTime(cfg.toneStart, t0);
+        o.frequency.exponentialRampToValueAtTime(cfg.toneEnd, t0 + cfg.toneSlide);
         o.connect(og);
         o.start(t0);
-        o.stop(t0+0.20);
-        rel1(t0+0.14);
-        const relN = env(g, t0, 0.001, 0.03, 0.02, 0.10, 0.25*vel);
-        n.start(t0); n.stop(t0+0.11); relN(t0+0.07);
+        o.stop(t0 + cfg.toneDur);
+        rel1(t0 + cfg.toneDur * (cfg.toneRel ?? 0.7));
+
+        const relN = env(g, t0, 0.001, cfg.noiseD, cfg.noiseS, cfg.noiseR, cfg.noisePeak*vel);
+        const nStop = t0 + cfg.noiseDur;
+        n.start(t0); n.stop(nStop); relN(t0 + cfg.noiseDur * (cfg.noiseRel ?? 0.6));
         return;
       }
 
-      if (kind==="snare"){
-        f.frequency.value = 1800;
-        const relN = env(g, t0, 0.001, 0.06, 0.05, 0.14, peak);
-        n.start(t0); n.stop(t0+0.20); relN(t0+0.11);
-        return;
-      }
-
-      if (kind==="hat"){
-        f.frequency.value = 9500;
-        f.Q.value = 0.9;
-        const relN = env(g, t0, 0.001, 0.02, 0.04, 0.09, peak*0.75);
-        n.start(t0); n.stop(t0+0.11); relN(t0+0.055);
-        return;
-      }
-
-      f.frequency.value = 7800;
-      f.Q.value = 0.7;
-      const relN = env(g, t0, 0.001, 0.06, 0.20, 0.20, peak*0.65);
-      n.start(t0); n.stop(t0+0.38); relN(t0+0.22);
+      const relN = env(g, t0, 0.001, cfg.noiseD, cfg.noiseS, cfg.noiseR, cfg.noisePeak*vel);
+      const nStop = t0 + cfg.noiseDur;
+      n.start(t0); n.stop(nStop); relN(t0 + cfg.noiseDur * (cfg.noiseRel ?? 0.55));
     }
 
     async function resume(){
@@ -3649,9 +3861,9 @@
   function randomizeSoundsOnly(){
     if (state.lockSounds) return;
     pushHistory();
-    state.bassPreset = pick(["upright","round","sub","pluck","fmBass","rubber","acid","reese","squareBass","wobble","pickBass","muted"]);
-    state.keysPreset = pick(["ep","piano","organ","pad","fm","chip","bell","glass","pluck2","vibes","choirPad","noisePad","guitarish","clavBright"]);
-    state.drumsPreset = pick(["jazz","brushes","tight","rock","disco","lofi","minimal","electro","house","trap","perc","dnb","techno"]);
+    state.bassPreset = pick(["upright","contra","fretless","pizz","round","sub","pluck","pickBass","muted","fmBass","rubber","acid","reese","squareBass","wobble","mono"]);
+    state.keysPreset = pick(["ep","piano","organ","harpsichord","accordion","strings","pad","choirPad","noisePad","fm","chip","bell","glass","celesta","vibes","marimba","harp","pluck2","guitarish","clavBright"]);
+    state.drumsPreset = pick(["jazz","swing","shuffle","brushes","tight","rock","room","disco","lofi","minimal","ambient","electro","analog","house","trap","breaks","dnb","techno","boomBap","perc","latinKit","orchestral","free"]);
     state.drumsLevel = randBetween(35, 75);
 
     // fill/complexity often lives with “sounds/playing” too
@@ -3775,9 +3987,9 @@
 
     if (!state.lockSounds){
       // also nudge sounds even if genre didn’t
-      if (chance(0.55)) state.keysPreset = pick(["ep","piano","organ","pad","fm","chip","bell","glass","pluck2","vibes","choirPad","noisePad","guitarish","clavBright"]);
-      if (chance(0.55)) state.bassPreset = pick(["upright","round","sub","pluck","fmBass","rubber","acid","reese","squareBass","wobble","pickBass","muted"]);
-      if (chance(0.55)) state.drumsPreset = pick(["jazz","brushes","tight","rock","disco","lofi","minimal","electro","house","trap","perc","dnb","techno"]);
+      if (chance(0.55)) state.keysPreset = pick(["ep","piano","organ","harpsichord","accordion","strings","pad","choirPad","noisePad","fm","chip","bell","glass","celesta","vibes","marimba","harp","pluck2","guitarish","clavBright"]);
+      if (chance(0.55)) state.bassPreset = pick(["upright","contra","fretless","pizz","round","sub","pluck","pickBass","muted","fmBass","rubber","acid","reese","squareBass","wobble","mono"]);
+      if (chance(0.55)) state.drumsPreset = pick(["jazz","swing","shuffle","brushes","tight","rock","room","disco","lofi","minimal","ambient","electro","analog","house","trap","breaks","dnb","techno","boomBap","perc","latinKit","orchestral","free"]);
     }
 
     syncUIFromState();
