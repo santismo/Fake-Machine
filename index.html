@@ -403,9 +403,9 @@
       </div>
       <div class="cardBody">
         <div class="legend">
-          <span class="dotLegend"><span class="sw scale"></span>Scale tones</span>
+          <span class="dotLegend"><span class="sw scale"></span>Scale</span>
           <span class="dotLegend"><span class="sw root"></span>Root</span>
-          <span class="dotLegend"><span class="sw chord"></span>Chord tones</span>
+          <span class="dotLegend"><span class="sw chord"></span>Chord</span>
         </div>
         <div class="pianoBox">
           <svg id="pianoSvg" viewBox="0 0 1000 240" preserveAspectRatio="none" aria-label="Piano keyboard"></svg>
@@ -2303,7 +2303,7 @@
 
     const scaleRoot = (ch && typeof ch.scaleRoot==="number") ? ch.scaleRoot : ch.root;
     E.pianoTop.textContent = chordName(ch);
-    E.pianoHint.textContent = `Scale suggestion: ${noteName(scaleRoot)} ${mode} · Keyboard: ${state.kbOct} oct.`;
+    E.pianoHint.textContent = `Scale: ${noteName(scaleRoot)} ${mode} · Keyboard: ${state.kbOct} oct.`;
 
     const svg = E.pianoSvg;
     svg.innerHTML = "";
