@@ -2885,7 +2885,7 @@
     function start(){
       if (isPlaying) return;
       isPlaying = true;
-      E.btnPlay.textContent = "⏸️ Pause";
+      E.btnPlay.textContent = "⏸️";
       E.btnPlay.classList.add("primary");
 
       setTempo(state.tempo, state.swing);
@@ -2909,7 +2909,7 @@
       isPlaying = false;
       if (timer) window.clearTimeout(timer);
       timer = null;
-      E.btnPlay.textContent = "▶️ Play";
+      E.btnPlay.textContent = "▶️";
       E.btnPlay.classList.remove("primary");
       // keep UI + chord preview working after pause (bug fix)
       renderHeaderPills();
