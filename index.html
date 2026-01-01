@@ -585,16 +585,7 @@
           <div class="groupBody">
             <div class="controls">
               <div class="control" style="grid-column: 1 / -1;">
-                <label>Playlist URL</label>
-                <div class="inline">
-                  <input class="textInput" type="text" id="songUrl" placeholder="https://...">
-                  <button class="btn tiny" id="btnSongFetch" type="button">Fetch</button>
-                </div>
-                <div class="msg" id="songStatus" style="margin:6px 0 0 0;">Auto-loads online, or upload a file below.</div>
-              </div>
-              <div class="control" style="grid-column: 1 / -1;">
-                <label>Manual upload (.txt)</label>
-                <input class="fileInput" type="file" id="songFile" accept=".txt,.ireal,.irealbook,.csv,text/plain">
+                <div class="msg" id="songStatus" style="margin:0;">Loading default playlist...</div>
               </div>
               <div class="control">
                 <label>Search</label>
@@ -604,8 +595,13 @@
                 <label>Sort</label>
                 <select id="songSort">
                   <option value="playlist" selected>Playlist order</option>
+                  <option value="style">Style</option>
                   <option value="az">A–Z</option>
                 </select>
+              </div>
+              <div class="control">
+                <label>Random</label>
+                <button class="btn tiny" id="btnSongRandom" type="button">Load random song</button>
               </div>
               <div class="control" style="grid-column: 1 / -1;">
                 <div class="songList" id="songList"></div>
@@ -1031,6 +1027,23 @@
               <input id="kbOctNum" type="number" min="1" max="4" value="2">
             </div>
             <div class="msg" style="margin:8px 0 0 0;">2 = default (14 white keys). 4 = wider view.</div>
+          </div>
+        </div>
+
+        <div class="splitLine" hidden></div>
+
+        <div class="modalSubTitle" hidden>Songs (advanced)</div>
+        <div class="modalGrid" hidden>
+          <div class="miniCtl" style="grid-column: 1 / -1;">
+            <label>Playlist URL</label>
+            <div class="inline">
+              <input class="textInput" type="text" id="songUrl" placeholder="https://...">
+              <button class="btn tiny" id="btnSongFetch" type="button">Fetch</button>
+            </div>
+          </div>
+          <div class="miniCtl" style="grid-column: 1 / -1;">
+            <label>Manual upload (.txt)</label>
+            <input class="fileInput" type="file" id="songFile" accept=".txt,.ireal,.irealbook,.csv,text/plain">
           </div>
         </div>
 
@@ -1728,6 +1741,7 @@
     songFile: document.getElementById("songFile"),
     songSearch: document.getElementById("songSearch"),
     songSort: document.getElementById("songSort"),
+    btnSongRandom: document.getElementById("btnSongRandom"),
     songList: document.getElementById("songList"),
     songStatus: document.getElementById("songStatus"),
 
@@ -2942,7 +2956,14 @@
         (s.composer || "").toLowerCase().includes(q)
       );
     }
-    if (songSort === "az"){
+    if (songSort === "style"){
+      list.sort((a,b)=>{
+        const sa = (a.style || "").toLowerCase();
+        const sb = (b.style || "").toLowerCase();
+        if (sa && sb && sa !== sb) return sa.localeCompare(sb, undefined, {sensitivity:"base"});
+        return (a.title||"").localeCompare(b.title||"", undefined, {sensitivity:"base"});
+      });
+    } else if (songSort === "az"){
       list.sort((a,b)=> (a.title||"").localeCompare(b.title||"", undefined, {sensitivity:"base"}));
     }
     return list;
@@ -2995,7 +3016,7 @@
   async function loadPlaylistFromUrl(url){
     const normalized = normalizePlaylistUrl(url);
     if (!normalized){
-      setSongStatus("Enter a valid playlist URL.");
+      setSongStatus("No playlist configured.");
       return;
     }
     setSongStatus(`Loading ${normalized}...`);
@@ -3006,7 +3027,7 @@
       songLibrary = parseIrealPlaylist(text);
       renderSongList();
     } catch {
-      setSongStatus("Could not load URL. Use manual upload if offline.");
+      setSongStatus("Could not load playlist. Check your connection.");
       if (E.songList) E.songList.innerHTML = "";
     }
   }
@@ -5514,6 +5535,16 @@
         renderSongList();
       });
     }
+    if (E.btnSongRandom){
+      E.btnSongRandom.addEventListener("click", ()=>{
+        const list = filteredSongs();
+        if (!list.length){
+          setSongStatus("No songs to load.");
+          return;
+        }
+        loadSongToChart(pick(list));
+      });
+    }
     if (E.songFile){
       E.songFile.addEventListener("change", async ()=>{
         const file = E.songFile.files && E.songFile.files[0];
@@ -5686,10 +5717,9 @@
 
     bindUI();
     updateUndoRedoButtons();
-    if (E.songUrl){
-      E.songUrl.value = DEFAULT_PLAYLIST_URL;
-      loadPlaylistFromUrl(E.songUrl.value);
-    }
+    const playlistUrl = DEFAULT_PLAYLIST_URL;
+    if (E.songUrl) E.songUrl.value = playlistUrl;
+    loadPlaylistFromUrl(playlistUrl);
 
   }
 
