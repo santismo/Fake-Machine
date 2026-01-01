@@ -230,7 +230,7 @@
 
     /* Lead sheet */
     .sheet{display:grid;grid-template-columns: repeat(4, minmax(0, 1fr));gap:10px;}
-    @media (max-width: 640px){ .sheet{grid-template-columns: repeat(2, minmax(0, 1fr));} }
+    @media (max-width: 640px){ .sheet{grid-template-columns: repeat(4, minmax(0, 1fr));} }
     .bar{
       position:relative;min-height: 62px;background: rgba(0,0,0,.22);
       border:1px solid rgba(255,255,255,.08);border-radius: 14px;
@@ -244,6 +244,18 @@
     .bar .sym{font-weight:900;letter-spacing:.2px;font-size:16px;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:28px;}
     .bar .sym2{margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,.08);}
     .bar .num{position:absolute;top:10px;right:10px;font-size:12px;color: rgba(154,166,178,.55);}
+
+    .repeatMark{
+      position:absolute;
+      top:6px;
+      font-size:16px;
+      color: var(--pageMuted);
+      font-family: "Noto Music", "Noto Sans Symbols2", "Segoe UI Symbol", "Apple Symbols", system-ui;
+      user-select:none;
+      pointer-events:none;
+    }
+    .repeatMark.start{left:-8px;}
+    .repeatMark.end{right:-8px;}
 
     .bar .halfHit{
       position:absolute; inset:0;
@@ -585,7 +597,7 @@
           <div class="groupBody">
             <div class="controls">
               <div class="control" style="grid-column: 1 / -1;">
-                <div class="msg" id="songStatus" style="margin:0;">Loading default playlist...</div>
+                <div class="msg" id="songStatus" style="margin:0;">Loading playlist...</div>
               </div>
               <div class="control">
                 <label>Search</label>
@@ -1030,10 +1042,10 @@
           </div>
         </div>
 
-        <div class="splitLine" hidden></div>
+        <div class="splitLine"></div>
 
-        <div class="modalSubTitle" hidden>Songs (advanced)</div>
-        <div class="modalGrid" hidden>
+        <div class="modalSubTitle">Songs (advanced)</div>
+        <div class="modalGrid">
           <div class="miniCtl" style="grid-column: 1 / -1;">
             <label>Playlist URL</label>
             <div class="inline">
@@ -1632,6 +1644,8 @@
     fretNumbers: false,
     morphBg: true,
     kbOct: 2, /* 2 octaves = 14 white keys (default) */
+    playbackOrder: [],
+    currentSongTitle: ""
   };
 
   const state = {
@@ -1675,6 +1689,8 @@
     fretNumbers: DEFAULTS.fretNumbers,
     morphBg: DEFAULTS.morphBg,
     kbOct: DEFAULTS.kbOct,
+    playbackOrder: structuredClone(DEFAULTS.playbackOrder),
+    currentSongTitle: DEFAULTS.currentSongTitle,
     allowedCenters: [],
 
     weights: null,
@@ -2656,6 +2672,9 @@
 
   function parseIrealMeasures(raw){
     let measures = [];
+    let originIndices = [];
+    let repeatSections = [];
+    let baseIndex = 0;
     let startRepeatLocation = null;
     let lastChord = null;
     let endRepeatLocation = null;
@@ -2670,6 +2689,9 @@
 
     function resetVars(){
       measures = [];
+      originIndices = [];
+      repeatSections = [];
+      baseIndex = 0;
       startRepeatLocation = null;
       endRepeatLocation = null;
       lastChord = null;
@@ -2696,22 +2718,39 @@
       timeSignature = match[1];
     }
 
+    function getMeasure(idx){
+      const m = measures[idx];
+      return Array.isArray(m) ? m : null;
+    }
+
     function pushNull(){
-      if (measures.length === 0) measures.push([]);
+      if (measures.length === 0) createNewMeasure();
       measures[measures.length - 1].push(null);
     }
 
     function repeatLastMeasure(){
-      measures[measures.length - 1] = measures[measures.length - 2];
+      const prev = getMeasure(measures.length - 2);
+      if (!prev) return;
+      measures[measures.length - 1] = prev;
     }
 
     function repeatLastMeasureAndAddNew(){
-      measures[measures.length] = measures[measures.length - 1];
+      const prev = getMeasure(measures.length - 1);
+      if (!prev){
+        createNewMeasure();
+        return;
+      }
+      createNewMeasure();
+      measures[measures.length - 1] = prev;
     }
 
     function repeatLastTwoMeasures(){
-      measures[measures.length - 1] = measures[measures.length - 3];
-      measures[measures.length] = measures[measures.length - 2];
+      const prev1 = getMeasure(measures.length - 2);
+      const prev2 = getMeasure(measures.length - 3);
+      if (!prev1 || !prev2) return;
+      measures[measures.length - 1] = prev2;
+      createNewMeasure();
+      measures[measures.length - 1] = prev1;
     }
 
     function setStartRepeatLocation(){
@@ -2736,12 +2775,32 @@
     function createNewMeasure(){
       if (measures.length === 0 || measures[measures.length - 1].length !== 0){
         measures.push([]);
+        originIndices.push(baseIndex);
+        baseIndex += 1;
+      }
+    }
+
+    function appendRepeatSlice(start, end){
+      if (!Number.isFinite(start) || !Number.isFinite(end)) return;
+      const s = Math.max(0, Math.min(start, measures.length));
+      const e = Math.max(s, Math.min(end, measures.length));
+      if (e <= s) return;
+      const startIdx = originIndices[s];
+      const endIdx = originIndices[e - 1];
+      if (startIdx != null && endIdx != null) repeatSections.push({ start: startIdx, end: endIdx });
+      for (let i=s; i<e; i++){
+        measures.push(measures[i]);
+        originIndices.push(originIndices[i]);
       }
     }
 
     function repeatEverythingToEndRepeatLocation(){
-      if (!endRepeatLocation) endRepeatLocation = measures.length;
-      measures.push(...measures.slice(startRepeatLocation, endRepeatLocation));
+      if (startRepeatLocation == null){
+        createNewMeasure();
+        return;
+      }
+      if (endRepeatLocation == null) endRepeatLocation = measures.length;
+      appendRepeatSlice(startRepeatLocation, endRepeatLocation);
       createNewMeasure();
     }
 
@@ -2750,16 +2809,16 @@
         repeatEverythingToEndRepeatLocation();
         thirdEndingImminent = false;
       }
-      if (dcAlFineImminent){
-        measures.push(...measures.slice(0, fineLocation));
+      if (dcAlFineImminent && fineLocation != null){
+        appendRepeatSlice(0, fineLocation);
         dcAlFineImminent = false;
       }
-      if (dcAlCodaImminent){
-        measures.push(...measures.slice(0, codaLocation));
+      if (dcAlCodaImminent && codaLocation != null){
+        appendRepeatSlice(0, codaLocation);
         dcAlCodaImminent = false;
       }
-      if (dsAlCodaImminent){
-        measures.push(...measures.slice(segnoLocation, codaLocation));
+      if (dsAlCodaImminent && segnoLocation != null && codaLocation != null){
+        appendRepeatSlice(segnoLocation, codaLocation);
         dsAlCodaImminent = false;
       }
       if (!(thirdEndingImminent || dcAlFineImminent || dcAlCodaImminent || dsAlCodaImminent)){
@@ -2768,7 +2827,7 @@
     }
 
     function pushChordInMeasures(match){
-      if (measures.length === 0) measures.push([]);
+      if (measures.length === 0) createNewMeasure();
       let chord = match[0];
       if (chord.startsWith("W") && lastChord){
         chord = chord.replace("W", lastChord);
@@ -2778,8 +2837,15 @@
       measures[measures.length - 1].push(chord);
     }
 
-    function removeEmptyMeasures(list){
-      return list.filter(x => x.length !== 0);
+    function removeEmptyMeasures(list, origins){
+      const out = [];
+      const outOrigins = [];
+      for (let i=0;i<list.length;i++){
+        if (!Array.isArray(list[i]) || list[i].length == 0) continue;
+        out.push(list[i]);
+        if (origins) outOrigins.push(origins[i]);
+      }
+      return { measures: out, originIndices: outOrigins };
     }
 
     const rules = [
@@ -2841,7 +2907,8 @@
     }
     cleaned = unscrambleIreal(cleaned).trim();
     if (cleaned) parse(cleaned);
-    return { measures: removeEmptyMeasures(measures), timeSignature, raw: cleaned };
+    const cleanedMeasures = removeEmptyMeasures(measures, originIndices);
+    return { measures: cleanedMeasures.measures, originIndices: cleanedMeasures.originIndices, repeatSections, timeSignature, raw: cleaned };
   }
 
   function mergeSlashChords(bars){
@@ -2883,10 +2950,25 @@
   function parseIrealBars(chart){
     const parsed = parseIrealMeasures(chart);
     const measures = parsed?.measures || [];
-    const bars = [];
+    const originIndices = parsed?.originIndices || [];
+    const repeatSections = parsed?.repeatSections || [];
 
-    measures.forEach((measure)=>{
-      if (!Array.isArray(measure) || !measure.length) return;
+    const baseMap = new Map();
+    for (let i=0;i<measures.length;i++){
+      const origin = (originIndices[i] != null) ? originIndices[i] : i;
+      if (!baseMap.has(origin)) baseMap.set(origin, measures[i]);
+    }
+
+    const repeatStarts = new Set();
+    const repeatEnds = new Set();
+    repeatSections.forEach(r=>{
+      if (r && typeof r.start === "number") repeatStarts.add(r.start);
+      if (r && typeof r.end === "number") repeatEnds.add(r.end);
+    });
+
+    const bars = [];
+    for (const [origin, measure] of baseMap.entries()){
+      if (!Array.isArray(measure) || !measure.length) continue;
       const chordObjs = [];
       for (const sym of measure){
         if (!sym) continue;
@@ -2894,12 +2976,28 @@
         if (chord) chordObjs.push(chord);
         if (chordObjs.length >= 2) break;
       }
-      if (!chordObjs.length) return;
-      bars.push({ split: chordObjs.length > 1, chords: chordObjs });
-    });
+      if (!chordObjs.length) continue;
+      bars.push({
+        split: chordObjs.length > 1,
+        chords: chordObjs,
+        repeatStart: repeatStarts.has(origin),
+        repeatEnd: repeatEnds.has(origin),
+        origIndex: origin
+      });
+    }
 
     mergeSlashChords(bars);
-    return bars;
+
+    const indexMap = new Map();
+    bars.forEach((bar, idx)=>{
+      indexMap.set(bar.origIndex, idx);
+    });
+
+    const playbackOrder = originIndices.map(orig => indexMap.get(orig)).filter(v => v != null);
+
+    bars.forEach((bar)=>{ delete bar.origIndex; });
+
+    return { bars, playbackOrder };
   }
 
   function parseIrealPlaylist(text){
@@ -2935,12 +3033,18 @@
         if (!title || !music) return;
         if (music.includes("=0=0")) music = music.split("=0=0")[0];
 
-        const bars = parseIrealBars(music);
+        let parsedBars;
+        try{
+          parsedBars = parseIrealBars(music);
+        } catch {
+          return;
+        }
+        const bars = parsedBars?.bars || [];
         if (!bars.length) return;
         const dedupeKey = `${title}||${composer}||${key}`.toLowerCase();
         if (seen.has(dedupeKey)) return;
         seen.add(dedupeKey);
-        songs.push({ title, composer, style, key, bars });
+        songs.push({ title, composer, style, key, bars, playbackOrder: parsedBars.playbackOrder || [] });
       });
     });
 
@@ -3024,7 +3128,20 @@
       const res = await fetch(normalized, { cache: "no-store" });
       if (!res.ok) throw new Error("bad response");
       const text = await res.text();
-      songLibrary = parseIrealPlaylist(text);
+      let parsed = [];
+      try{
+        parsed = parseIrealPlaylist(text);
+      } catch {
+        setSongStatus("Playlist parse error. Try manual upload.");
+        if (E.songList) E.songList.innerHTML = "";
+        return;
+      }
+      songLibrary = parsed;
+      if (!songLibrary.length){
+        setSongStatus("No songs found in playlist.");
+        if (E.songList) E.songList.innerHTML = "";
+        return;
+      }
       renderSongList();
     } catch {
       setSongStatus("Could not load playlist. Check your connection.");
@@ -3036,6 +3153,10 @@
     if (!song || !Array.isArray(song.bars) || !song.bars.length) return;
     pushHistory();
     state.chartBars = structuredClone(song.bars);
+    state.playbackOrder = Array.isArray(song.playbackOrder) && song.playbackOrder.length
+      ? song.playbackOrder.slice()
+      : state.chartBars.map((_, i)=>i);
+    state.currentSongTitle = song.title || "";
     state.bars = state.chartBars.length;
     state.halfEnabled = state.chartBars.some(b=>b.split);
     state.activeBar = 0;
@@ -3116,6 +3237,19 @@
         el.appendChild(hh);
       }
 
+      if (bar?.repeatStart){
+        const rs = document.createElement("div");
+        rs.className = "repeatMark start";
+        rs.textContent = "𝄆";
+        el.appendChild(rs);
+      }
+      if (bar?.repeatEnd){
+        const re = document.createElement("div");
+        re.className = "repeatMark end";
+        re.textContent = "𝄇";
+        el.appendChild(re);
+      }
+
       el.addEventListener("click", ()=> onBarTap(b,0,true));
       E.sheet.appendChild(el);
     }
@@ -3153,7 +3287,8 @@
       E.leadKey.textContent = "—";
       return;
     }
-    E.leadKey.textContent = `Center: ${noteName(state.keyRoot)} ${state.keyMode}`;
+    const title = state.currentSongTitle ? ` · ${state.currentSongTitle}` : "";
+    E.leadKey.textContent = `Center: ${noteName(state.keyRoot)} ${state.keyMode}${title}`;
   }
 
   function placeMarker(svg, cx, cy, kind){
@@ -3981,17 +4116,33 @@
     let tempo = DEFAULTS.tempo;
     let swing = DEFAULTS.swing;
     let chart = [];
-    let atBar = 0;
+    let order = [];
+    let atStep = 0;
     let atHalf = 0;
 
     function setTempo(t, sw){
       tempo = clamp(Number(t)||120, 30, 320);
       swing = clamp(Number(sw)||58, 50, 80);
     }
-    function setChart(bars){ chart = Array.isArray(bars) ? bars : []; }
+    function setChart(bars, playbackOrder){
+      chart = Array.isArray(bars) ? bars : [];
+      if (Array.isArray(playbackOrder) && playbackOrder.length){
+        order = playbackOrder.filter(i => Number.isFinite(i) && i >= 0 && i < chart.length);
+        if (!order.length) order = chart.map((_, i)=>i);
+      } else {
+        order = chart.map((_, i)=>i);
+      }
+    }
     function jumpTo(b,h){
-      atBar = clamp(b,0,Math.max(0, chart.length-1));
-      const bar = chart[atBar];
+      if (!order.length){
+        atStep = 0;
+        atHalf = 0;
+        return;
+      }
+      const idx = order.indexOf(b);
+      atStep = (idx >= 0) ? idx : clamp(b,0,Math.max(0, order.length-1));
+      const barIdx = order[atStep] ?? b;
+      const bar = chart[barIdx];
       atHalf = clamp(h,0,Math.max(0,(bar?.chords?.length||1)-1));
     }
 
@@ -3999,25 +4150,27 @@
     function halfSeconds(){ return barSeconds()/2; }
 
     function currentChord(){
-      const bar = chart[atBar];
+      const barIdx = order[atStep] ?? atStep;
+      const bar = chart[barIdx];
       if (!bar) return null;
       const idx = clamp(atHalf,0,Math.max(0,(bar.chords?.length||1)-1));
       return bar.chords?.[idx] || null;
     }
 
     function nextStep(){
-      const bar = chart[atBar];
+      const barIdx = order[atStep] ?? atStep;
+      const bar = chart[barIdx];
       if (!bar) return;
 
       const halves = bar.split ? 2 : 1;
       if (halves===2){
         if (atHalf===0){ atHalf=1; return; }
-        atHalf=0; atBar++;
+        atHalf=0; atStep++;
       }else{
-        atHalf=0; atBar++;
+        atHalf=0; atStep++;
       }
-      if (atBar >= chart.length){
-        atBar = 0;
+      if (atStep >= order.length){
+        atStep = 0;
         atHalf = 0;
       }
     }
@@ -4026,12 +4179,13 @@
       if (!isPlaying) return;
       const t0 = AudioKit.now() + 0.02;
 
-      const bar = chart[atBar];
+      const barIdx = order[atStep] ?? atStep;
+      const bar = chart[barIdx];
       const ch = currentChord();
       if (!bar || !ch) return;
 
       // Update UI focus to stay perfectly in sync with audio “now”
-      state.activeBar = atBar;
+      state.activeBar = barIdx;
       state.activeHalf = atHalf;
       highlightActiveBar();
       renderHeaderPills();
@@ -4237,14 +4391,14 @@
       E.btnPlay.classList.add("primary");
 
       setTempo(state.tempo, state.swing);
-      setChart(state.chartBars);
-      atBar = state.activeBar;
-      atHalf = state.activeHalf;
+      setChart(state.chartBars, state.playbackOrder);
+      jumpTo(state.activeBar, state.activeHalf);
 
       // schedule loop at the length of the current step
       const tick = () => {
         if (!isPlaying) return;
-        const bar = chart[atBar];
+        const barIdx = order[atStep] ?? atStep;
+        const bar = chart[barIdx];
         const dur = (bar?.split ? halfSeconds() : barSeconds());
         scheduleStep();
         timer = window.setTimeout(tick, Math.max(40, dur*1000 - 8));
@@ -4318,7 +4472,9 @@
       fretLefty: state.fretLefty,
       fretNumbers: state.fretNumbers,
       morphBg: state.morphBg,
-      kbOct: state.kbOct
+      kbOct: state.kbOct,
+      playbackOrder: structuredClone(state.playbackOrder),
+      currentSongTitle: state.currentSongTitle
     };
   }
 
@@ -4341,7 +4497,9 @@
       scalesUsed:s.scalesUsed,
       limiter: structuredClone(s.limiter||state.limiter),
       pageTheme:s.pageTheme, pianoTheme:s.pianoTheme,
-      markerStyle:s.markerStyle, viewMode:s.viewMode, fretTheme:s.fretTheme, fretLefty:s.fretLefty, fretNumbers:s.fretNumbers, morphBg:s.morphBg, kbOct:s.kbOct
+      markerStyle:s.markerStyle, viewMode:s.viewMode, fretTheme:s.fretTheme, fretLefty:s.fretLefty, fretNumbers:s.fretNumbers, morphBg:s.morphBg, kbOct:s.kbOct,
+      playbackOrder: structuredClone(s.playbackOrder||[]),
+      currentSongTitle: s.currentSongTitle || ""
     });
 
     // push to UI
@@ -4555,6 +4713,8 @@
     assignChordModesWithLimit(bars);
 
     state.chartBars = bars;
+    state.playbackOrder = state.chartBars.map((_, i)=>i);
+    state.currentSongTitle = "";
     state.activeBar = 0;
     state.activeHalf = 0;
 
@@ -5307,6 +5467,8 @@
         fretNumbers: state.fretNumbers,
         morphBg: state.morphBg,
         kbOct: state.kbOct,
+        playbackOrder: state.playbackOrder,
+        currentSongTitle: state.currentSongTitle,
 
         locks: {
           lockProg: state.lockProg,
@@ -5364,7 +5526,13 @@
       fretNumbers: saved.fretNumbers ?? state.fretNumbers,
       morphBg: saved.morphBg ?? state.morphBg,
       kbOct: saved.kbOct ?? state.kbOct,
+      playbackOrder: Array.isArray(saved.playbackOrder) ? saved.playbackOrder : [],
+      currentSongTitle: saved.currentSongTitle ?? state.currentSongTitle
     });
+
+    if (!Array.isArray(state.playbackOrder) || !state.playbackOrder.length){
+      state.playbackOrder = state.chartBars.map((_, i)=>i);
+    }
 
     // locks
     const L = saved.locks || {};
@@ -5417,6 +5585,8 @@
       state.halfDensity = DEFAULTS.halfDensity;
       state.scalesUsed = DEFAULTS.scalesUsed;
       generateChart();
+    } else {
+      state.playbackOrder = state.chartBars.map((_, i)=>i);
     }
 
     syncUIFromState();
@@ -5551,7 +5721,20 @@
         if (!file) return;
         try{
           const text = await file.text();
-          songLibrary = parseIrealPlaylist(text);
+          let parsed = [];
+          try{
+            parsed = parseIrealPlaylist(text);
+          } catch {
+            setSongStatus("Could not parse file.");
+            if (E.songList) E.songList.innerHTML = "";
+            return;
+          }
+          songLibrary = parsed;
+          if (!songLibrary.length){
+            setSongStatus("No songs found in file.");
+            if (E.songList) E.songList.innerHTML = "";
+            return;
+          }
           renderSongList();
         } catch {
           setSongStatus("Could not read file.");
