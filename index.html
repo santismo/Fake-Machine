@@ -2033,6 +2033,11 @@
     {id:"rock", name:"Rock"},
     {id:"shuffle", name:"Shuffle"},
     {id:"hiphop", name:"Hip-hop"},
+    {id:"boomBap", name:"Boom-bap"},
+    {id:"trap", name:"Trap hats"},
+    {id:"reggae", name:"Reggae one-drop"},
+    {id:"afrobeat", name:"Afrobeat"},
+    {id:"halfTime", name:"Half-time"},
     {id:"house", name:"House"},
     {id:"techno", name:"Techno"},
     {id:"dnb", name:"DnB"},
@@ -4799,11 +4804,18 @@
       const step = dur / (beatCount*4); // 16th-ish
       const beat = step * 4;
       const mid = beat * Math.max(1, Math.floor(beatCount/2));
+      const beat2 = beat;
+      const beat3 = mid;
+      const beat4 = mid + beat;
+      const hasFourBeats = beatCount >= 4;
       const late = dur - step*2;
       const late2 = dur - step*6;
       const swingAmt = (clamp(state.swing,50,75)-50)/25; // 0..1
       const swingDelay = step*0.45*swingAmt;
       let drumHitCount = 0;
+      const isBarEnd = !isSplit || isSecondHalf;
+      const phraseEnd = isBarEnd && ((atStep + 1) % 4 === 0 || atStep === order.length - 1);
+      const fillChance = clamp(0.12 + dFill*0.6 + (phraseEnd ? 0.25 : 0), 0, 0.95);
 
       const inDur = (t)=> t < (dur - 0.002);
       function hit(kind, when, vel){
@@ -4815,80 +4827,177 @@
         if (!inDur(when)) return;
         hit(kind, when, vel);
       };
+      const hitAtHuman = (kind, when, vel, amt=0.003)=>{
+        hitAt(kind, when + human(amt), vel);
+      };
 
       // ride pattern (jazzy)
       if (groove==="swing" || groove==="free"){
         const rideBase = [];
         for (let i=0;i<beatCount;i++) rideBase.push(i*beat);
         rideBase.forEach((q, idx)=>{
-          hitAt("ride", q, 0.55 + 0.18*(idx===0));
-          // skip/and
-          hitAt("ride", q + step*3 + swingDelay, 0.42 + 0.20*dBusy);
+          hitAtHuman("ride", q, 0.52 + 0.18*(idx===0));
+          hitAtHuman("ride", q + step*3 + swingDelay, 0.38 + 0.22*dBusy);
+          if (chance(0.28 + 0.32*dBusy)) hitAtHuman("hat", q + step*2, 0.24);
         });
-        if (chance(0.25 + 0.45*dBusy)) hitAt("hat", mid, 0.42);
+        if (chance(0.30 + 0.45*dBusy)) hitAtHuman("hat", mid, 0.38);
         // light comping snare
-        if (chance(0.25 + 0.55*dBusy)) hitAt("snare", step*6 + human(0.004), 0.28);
-        if (chance(0.20 + 0.50*dBusy)) hitAt("snare", late + human(0.004), 0.26);
+        if (chance(0.28 + 0.55*dBusy)) hitAtHuman("snare", step*6, 0.26);
+        if (chance(0.24 + 0.50*dBusy)) hitAtHuman("snare", late, 0.24);
+        if (hasFourBeats){
+          if (chance(0.35 + 0.35*dBusy)) hitAtHuman("snare", beat2, 0.24);
+          if (chance(0.40 + 0.35*dBusy)) hitAtHuman("snare", beat4, 0.28);
+        }
         // occasional kick
-        if (chance(0.18 + 0.35*dBusy)) hitAt("kick", mid + human(0.004), 0.35);
+        if (chance(0.20 + 0.38*dBusy)) hitAtHuman("kick", 0, 0.32);
+        if (chance(0.20 + 0.38*dBusy)) hitAtHuman("kick", beat3, 0.30);
       }
       else if (groove==="brushBallad"){
         // gentle hats + snare swish
-        hitAt("hat", 0, 0.35);
-        hitAt("hat", mid, 0.33);
-        if (chance(0.35 + 0.35*dBusy)) hitAt("snare", late2, 0.25);
-        if (chance(0.20 + 0.30*dBusy)) hitAt("kick", step*0, 0.22);
+        hitAtHuman("hat", 0, 0.30);
+        if (hasFourBeats) hitAtHuman("hat", beat2, 0.28);
+        hitAtHuman("hat", mid, 0.30);
+        if (hasFourBeats) hitAtHuman("hat", beat4, 0.28);
+        if (chance(0.35 + 0.35*dBusy)) hitAtHuman("snare", late2, 0.23);
+        if (chance(0.20 + 0.30*dBusy)) hitAtHuman("kick", 0, 0.20);
       }
       else if (groove==="bossa" || groove==="samba" || groove==="afroCuban"){
         // simple clave-ish
-        hitAt("hat", 0, 0.35);
-        hitAt("hat", step*4, 0.30);
-        hitAt("hat", mid, 0.35);
-        hitAt("hat", mid + beat, 0.30);
-        hitAt("kick", 0, 0.35);
-        hitAt("kick", mid, 0.30);
-        if (chance(0.35 + 0.35*dBusy)) hitAt("snare", step*6, 0.25);
-        if (chance(0.35 + 0.35*dBusy)) hitAt("snare", late, 0.25);
+        hitAtHuman("hat", 0, 0.32);
+        hitAtHuman("hat", step*4, 0.28);
+        hitAtHuman("hat", mid, 0.32);
+        hitAtHuman("hat", mid + beat, 0.28);
+        hitAtHuman("kick", 0, 0.33);
+        hitAtHuman("kick", mid, 0.28);
+        if (chance(0.35 + 0.35*dBusy)) hitAtHuman("snare", step*6, 0.22);
+        if (chance(0.35 + 0.35*dBusy)) hitAtHuman("snare", late, 0.22);
+        if (chance(0.30 + 0.35*dBusy)) hitAtHuman("hat", step*2 + swingDelay, 0.22);
       }
       else if (groove==="funk" || groove==="hiphop"){
-        hitAt("hat", 0, 0.30);
-        hitAt("hat", step*4 + swingDelay, 0.28);
-        hitAt("hat", mid, 0.30);
-        hitAt("hat", mid + beat + swingDelay, 0.28);
-        hitAt("kick", 0, 0.42);
-        if (chance(0.4 + 0.4*dBusy)) hitAt("kick", late2, 0.35);
-        hitAt("snare", mid, 0.38);
+        for (let i=0;i<beatCount*4;i+=2){
+          const swing = (i%4===2) ? swingDelay : 0;
+          hitAtHuman("hat", i*step + swing, 0.24 + 0.10*dBusy + (i%8===0?0.05:0));
+          if (chance(0.25 + 0.35*dBusy) && i%4===1){
+            hitAtHuman("hat", (i+1)*step + swingDelay*0.6, 0.18 + 0.10*dBusy);
+          }
+        }
+        hitAtHuman("kick", 0, 0.42);
+        if (chance(0.45 + 0.4*dBusy)) hitAtHuman("kick", step*3, 0.34);
+        if (chance(0.45 + 0.4*dBusy)) hitAtHuman("kick", late2, 0.35);
+        if (hasFourBeats){
+          hitAtHuman("snare", beat2, 0.34);
+          hitAtHuman("snare", beat4, 0.38);
+        } else {
+          hitAtHuman("snare", mid, 0.36);
+        }
+        if (chance(0.35 + 0.35*dBusy)) hitAtHuman("snare", mid + step, 0.18);
       }
       else if (groove==="house" || groove==="techno" || groove==="disco"){
-        hitAt("kick", 0, 0.55);
-        hitAt("kick", step*4, 0.55);
-        hitAt("kick", mid, 0.55);
-        hitAt("kick", mid + beat, 0.55);
-        hitAt("hat", step*2, 0.28);
-        hitAt("hat", step*6, 0.28);
-        hitAt("hat", late2, 0.28);
-        hitAt("hat", late, 0.28);
-        if (groove==="disco") hitAt("snare", mid, 0.35);
+        hitAtHuman("kick", 0, 0.55);
+        hitAtHuman("kick", step*4, 0.55);
+        hitAtHuman("kick", mid, 0.55);
+        hitAtHuman("kick", mid + beat, 0.55);
+        hitAtHuman("hat", step*2, 0.26);
+        hitAtHuman("hat", step*6, 0.26);
+        hitAtHuman("hat", late2, 0.26);
+        hitAtHuman("hat", late, 0.26);
+        if (hasFourBeats && chance(0.55 + 0.25*dBusy)) hitAtHuman("snare", beat2, 0.30);
+        if (hasFourBeats && chance(0.55 + 0.25*dBusy)) hitAtHuman("snare", beat4, 0.33);
+        if (groove==="disco") hitAtHuman("snare", mid, 0.34);
       }
       else if (groove==="dnb" || groove==="breaks"){
-        hitAt("kick", 0, 0.55);
-        hitAt("snare", mid, 0.45);
-        if (chance(0.5 + 0.4*dBusy)) hitAt("kick", step*6, 0.40);
-        if (chance(0.5 + 0.4*dBusy)) hitAt("snare", late, 0.34);
-        hitAt("hat", step*2, 0.28);
-        hitAt("hat", step*4, 0.26);
-        hitAt("hat", step*6, 0.28);
-        hitAt("hat", late2, 0.26);
-        hitAt("hat", mid + beat, 0.28);
+        hitAtHuman("kick", 0, 0.55);
+        if (hasFourBeats) hitAtHuman("snare", beat2, 0.40);
+        hitAtHuman("snare", mid, 0.45);
+        if (chance(0.5 + 0.4*dBusy)) hitAtHuman("kick", step*6, 0.40);
+        if (chance(0.5 + 0.4*dBusy)) hitAtHuman("snare", late, 0.34);
+        hitAtHuman("hat", step*2, 0.28);
+        hitAtHuman("hat", step*4, 0.26);
+        hitAtHuman("hat", step*6, 0.28);
+        hitAtHuman("hat", late2, 0.26);
+        hitAtHuman("hat", mid + beat, 0.28);
+        if (chance(0.35 + 0.35*dBusy)) hitAtHuman("kick", beat3 + step*2, 0.32);
       }
       else if (groove==="rock" || groove==="shuffle"){
-        hitAt("kick", 0, 0.55);
-        hitAt("snare", mid, 0.50);
-        if (chance(0.45 + 0.35*dBusy)) hitAt("kick", late2, 0.40);
-        hitAt("hat", step*2 + swingDelay*0.5, 0.32);
-        hitAt("hat", step*6 + swingDelay*0.5, 0.30);
-        hitAt("hat", late2 + swingDelay*0.5, 0.32);
-        hitAt("hat", late + swingDelay*0.5, 0.30);
+        hitAtHuman("kick", 0, 0.55);
+        if (hasFourBeats){
+          hitAtHuman("snare", beat2, 0.46);
+          hitAtHuman("snare", beat4, 0.50);
+        } else {
+          hitAtHuman("snare", mid, 0.50);
+        }
+        if (chance(0.45 + 0.35*dBusy)) hitAtHuman("kick", late2, 0.40);
+        hitAtHuman("hat", step*2 + swingDelay*0.5, 0.30);
+        hitAtHuman("hat", step*6 + swingDelay*0.5, 0.28);
+        hitAtHuman("hat", late2 + swingDelay*0.5, 0.30);
+        hitAtHuman("hat", late + swingDelay*0.5, 0.28);
+        if (chance(0.30 + 0.35*dBusy)) hitAtHuman("kick", beat3 + step, 0.32);
+      }
+      else if (groove==="boomBap"){
+        for (let i=0;i<beatCount*4;i+=2){
+          const swing = (i%4===2) ? swingDelay : 0;
+          hitAtHuman("hat", i*step + swing, 0.22 + 0.08*dBusy + (i%8===0?0.05:0));
+          if (chance(0.22 + 0.35*dBusy) && i%8===4){
+            hitAtHuman("hat", (i+1)*step + swingDelay*0.4, 0.16 + 0.08*dBusy);
+          }
+        }
+        hitAtHuman("kick", 0, 0.45);
+        if (chance(0.45 + 0.35*dBusy)) hitAtHuman("kick", step*5, 0.32);
+        if (hasFourBeats){
+          hitAtHuman("snare", beat2, 0.40);
+          hitAtHuman("snare", beat4, 0.44);
+        } else {
+          hitAtHuman("snare", mid, 0.42);
+        }
+        if (chance(0.30 + 0.35*dBusy)) hitAtHuman("snare", mid + step*2, 0.18);
+      }
+      else if (groove==="trap"){
+        for (let i=0;i<beatCount*4;i++){
+          const swing = (i%2===1) ? swingDelay*0.6 : 0;
+          hitAtHuman("hat", i*step + swing, 0.20 + 0.12*dBusy + (i%4===0?0.06:0));
+          if (chance(0.20 + 0.35*dBusy) && i%4===2){
+            hitAtHuman("hat", (i+0.5)*step + swingDelay*0.4, 0.14 + 0.10*dBusy);
+          }
+        }
+        hitAtHuman("kick", 0, 0.50);
+        if (chance(0.55 + 0.35*dBusy)) hitAtHuman("kick", step*3, 0.38);
+        if (chance(0.45 + 0.35*dBusy)) hitAtHuman("kick", late2, 0.36);
+        hitAtHuman("snare", mid, 0.42);
+      }
+      else if (groove==="reggae"){
+        for (let i=0;i<beatCount*4;i+=2){
+          hitAtHuman("hat", i*step, 0.20 + 0.08*dBusy + (i%4===2?0.06:0));
+        }
+        hitAtHuman("kick", beat3, 0.38);
+        if (hasFourBeats){
+          hitAtHuman("snare", beat2 + step*2, 0.24);
+          hitAtHuman("snare", beat4 + step*2, 0.28);
+        } else {
+          hitAtHuman("snare", mid + step*2, 0.26);
+        }
+      }
+      else if (groove==="afrobeat"){
+        hitAtHuman("kick", 0, 0.42);
+        if (chance(0.45 + 0.35*dBusy)) hitAtHuman("kick", step*5, 0.34);
+        if (chance(0.45 + 0.35*dBusy)) hitAtHuman("kick", mid + step*2, 0.34);
+        for (let i=0;i<beatCount*4;i+=2){
+          hitAtHuman("hat", i*step + (i%4===2 ? swingDelay*0.5 : 0), 0.22 + 0.10*dBusy);
+        }
+        if (hasFourBeats){
+          hitAtHuman("snare", beat2, 0.34);
+          hitAtHuman("snare", beat4, 0.38);
+        } else {
+          hitAtHuman("snare", mid, 0.36);
+        }
+        if (chance(0.30 + 0.35*dBusy)) hitAtHuman("snare", late2, 0.20);
+      }
+      else if (groove==="halfTime"){
+        for (let i=0;i<beatCount*4;i+=2){
+          hitAtHuman("hat", i*step, 0.22 + 0.10*dBusy + (i%8===0?0.05:0));
+        }
+        hitAtHuman("kick", 0, 0.50);
+        if (chance(0.45 + 0.35*dBusy)) hitAtHuman("kick", beat3 + step*2, 0.36);
+        hitAtHuman("snare", mid, 0.46);
       }
       else if (groove==="ambient"){
         if (chance(0.25 + 0.55*dBusy)) hitAt("hat", step*2, 0.18);
@@ -4896,11 +5005,28 @@
       }
 
       // drum fill near end
-      if (chance(dFill*0.45)){
-        hitAt("hat", dur*0.86, 0.22 + 0.25*dBusy);
-        hitAt("snare", dur*0.92, 0.22 + 0.25*dBusy);
+      if (isBarEnd && chance(fillChance)){
+        const fillSlots = [
+          dur*0.74, dur*0.80, dur*0.86, dur*0.92
+        ];
+        const fillType = Math.random();
+        if (fillType < 0.33){
+          hitAtHuman("hat", fillSlots[0], 0.18 + 0.16*dBusy);
+          hitAtHuman("snare", fillSlots[1], 0.22 + 0.22*dBusy);
+          hitAtHuman("snare", fillSlots[2], 0.26 + 0.24*dBusy);
+          hitAtHuman("kick", fillSlots[3], 0.28 + 0.22*dBusy);
+        } else if (fillType < 0.66){
+          hitAtHuman("snare", fillSlots[0], 0.22 + 0.20*dBusy);
+          hitAtHuman("snare", fillSlots[1], 0.24 + 0.22*dBusy);
+          hitAtHuman("snare", fillSlots[2], 0.28 + 0.26*dBusy);
+          hitAtHuman("hat", fillSlots[3], 0.20 + 0.18*dBusy);
+        } else {
+          hitAtHuman("kick", fillSlots[0], 0.28 + 0.20*dBusy);
+          hitAtHuman("kick", fillSlots[1], 0.26 + 0.20*dBusy);
+          hitAtHuman("snare", fillSlots[2], 0.30 + 0.26*dBusy);
+          hitAtHuman("hat", fillSlots[3], 0.22 + 0.20*dBusy);
+        }
       }
-
       if (drumHitCount===0 && dLvl>0.01){
         hitAt("kick", 0, 0.45);
         hitAt("hat", mid, 0.25);
@@ -5576,8 +5702,11 @@
     // some realism: match logic to groove loosely
     if (state.grooveStyle==="bossa" || state.grooveStyle==="afroCuban") state.progressionLogic = "latinTurns";
     if (state.grooveStyle==="rock") state.progressionLogic = "rockLogic";
+    if (state.grooveStyle==="halfTime") state.progressionLogic = "rockLogic";
     if (state.grooveStyle==="disco") state.progressionLogic = "discoLogic";
-    if (state.grooveStyle==="house" || state.grooveStyle==="techno") state.progressionLogic = "edmLogic";
+    if (state.grooveStyle==="house" || state.grooveStyle==="techno" || state.grooveStyle==="trap") state.progressionLogic = "edmLogic";
+    if (state.grooveStyle==="boomBap" || state.grooveStyle==="afrobeat") state.progressionLogic = "grooveFunk";
+    if (state.grooveStyle==="reggae") state.progressionLogic = "dubReggae";
     if (state.grooveStyle==="swing") state.progressionLogic = "jazzFunctional";
 
     syncUIFromState();
