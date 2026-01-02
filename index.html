@@ -580,11 +580,17 @@
 
               <div class="control">
                 <label>Scales used (1–32)</label>
+                <div class="checkRow" style="margin-bottom:8px;">
+                  <label class="chip" style="width:100%;justify-content:space-between;">
+                    <span>Limit</span>
+                    <input type="checkbox" id="scaleLimitEnabled" checked>
+                  </label>
+                </div>
                 <div class="inline">
                   <input id="scalesUsed" type="range" min="1" max="32" value="8">
                   <input id="scalesUsedNum" type="number" min="1" max="32" value="8">
                 </div>
-                <div class="msg" style="margin:6px 0 0 0;"> </div>
+                <div class="msg" id="scalesUsedMsg" style="margin:6px 0 0 0;"> </div>
               </div>
 
             </div>
@@ -756,6 +762,14 @@
           </summary>
           <div class="groupBody">
             <div class="controls">
+
+              <div class="control">
+                <label>SoundFont engine</label>
+                <label class="chip" style="width:100%;justify-content:space-between;margin:0;">
+                  <span>Enable SoundFont</span>
+                  <input type="checkbox" id="sfEnabled" checked>
+                </label>
+              </div>
 
               <div class="control">
                 <label>Bass sound (minimal)</label>
@@ -1153,6 +1167,11 @@
     G:7, "G#":8, Ab:8, A:9, "A#":10, Bb:10, B:11, Cb:11
   };
   const pc = (n)=>((n%12)+12)%12;
+  const pcDistance = (a,b)=>{
+    const d1 = (a - b + 12) % 12;
+    const d2 = (b - a + 12) % 12;
+    return Math.min(d1, d2);
+  };
   const clamp = (n,a,b)=>Math.max(a,Math.min(b,n));
   const rint = (a,b)=>Math.floor(a + Math.random()*(b-a+1));
   const pick = (arr)=>arr[Math.floor(Math.random()*arr.length)];
@@ -1378,7 +1397,7 @@
     return base;
   }
 
-  function assignChordModesWithLimit(chartBars, overrideLimit){
+  function assignChordModesWithLimit(chartBars, overrideLimit, overrideLimiterEnabled){
     if (!Array.isArray(chartBars) || !chartBars.length) return;
 
     const slots = [];
@@ -1393,7 +1412,11 @@
     }
     if (!slots.length) return;
 
-    const limit = clamp(Number(overrideLimit ?? state.scalesUsed)||1, 1, Math.max(1, Object.keys(SCALES).length));
+    const limitEnabled = (overrideLimiterEnabled != null) ? overrideLimiterEnabled : (state.scaleLimitEnabled ?? true);
+    const maxLimit = 32;
+    const limit = limitEnabled
+      ? clamp(Number(overrideLimit ?? state.scalesUsed)||1, 1, maxLimit)
+      : Number.POSITIVE_INFINITY;
 
     const contextSpan = 4;
     const sameChord = (a,b)=>{
@@ -1422,7 +1445,7 @@
     };
 
     // Single-scale hard clamp: force all chords to key root/mode
-    if (limit===1 && SCALES[state.keyMode]){
+    if (limitEnabled && limit===1 && SCALES[state.keyMode]){
       const rootPc = pc(state.keyRoot);
       for (const slot of slots){
         slot.chord.mode = state.keyMode;
@@ -1518,7 +1541,10 @@
     // Exact cover (limit=2): pick signatures that cover all chords with best total score
     const sigArr = [...sigTotals.keys()];
     let palette = [];
-    if (limit === 2 && sigArr.length){
+    if (!limitEnabled){
+      palette = sigArr.slice();
+    }
+    if (limitEnabled && limit === 2 && sigArr.length){
       let bestScore = -Infinity;
       let bestPair = null;
       for (let a=0;a<sigArr.length;a++){
@@ -1553,7 +1579,7 @@
       return cand.some(c=>c.sig===sig && chordFits(slots[idx].chord, c.center, c.mode));
     }
 
-    while (palette.length < limit && allSigs.size){
+    while (limitEnabled && palette.length < limit && allSigs.size){
       let bestSig = null, bestGain = -Infinity;
       for (const sig of allSigs){
         let gain = 0;
@@ -1674,7 +1700,7 @@
         }
         rootPc = best;
       }
-      const q = chooseQuality(limiters, weights, scaleSet, rootPc);
+      const q = chooseQuality(limiters, weights, scaleSet, rootPc, scaleSet);
       const replacement = makeChord(rootPc, q);
       replacement.mode = mode;
       replacement.scaleRoot = pc(scaleRoot);
@@ -1759,7 +1785,7 @@
       if (!sigMeta.has(sig)) sigMeta.set(sig, {root: pc(slot.chord.scaleRoot ?? slot.chord.root), mode: slot.chord.mode||"mixo"});
     });
 
-    if (usedCounts.size > limit){
+    if (limitEnabled && usedCounts.size > limit){
       const keep = [...usedCounts.entries()].sort((a,b)=>b[1]-a[1]).slice(0, limit).map(([sig])=>sig);
       const keepSet = new Set(keep);
       slots.forEach(slot=>{
@@ -1812,6 +1838,7 @@
     drumsComplex: 65,
     drumsFill: 40,
     scalesUsed: 2,
+    scaleLimitEnabled: true,
     limiter: {
       qMaj7:true, qMin7:true, qDom7:true, qDim7:false,
       qHalfDim:true, qSus:false, qMinMaj:false,
@@ -1863,6 +1890,7 @@
     drumsComplex: DEFAULTS.drumsComplex,
     drumsFill: DEFAULTS.drumsFill,
     scalesUsed: DEFAULTS.scalesUsed,
+    scaleLimitEnabled: DEFAULTS.scaleLimitEnabled,
     limiter: {...DEFAULTS.limiter},
 
     pageTheme: DEFAULTS.pageTheme,
@@ -1970,6 +1998,8 @@
 
     scalesUsed: document.getElementById("scalesUsed"),
     scalesUsedNum: document.getElementById("scalesUsedNum"),
+    scaleLimitEnabled: document.getElementById("scaleLimitEnabled"),
+    scalesUsedMsg: document.getElementById("scalesUsedMsg"),
 
     bassPreset: document.getElementById("bassPreset"),
     keysPreset: document.getElementById("keysPreset"),
@@ -2283,6 +2313,47 @@
       tension:      Math.round(10 + c*80),
       memoryKill:   Math.round(40 + c*50),
     };
+  }
+
+  function modeHasLeadingTone(mode){
+    const scale = SCALES[mode];
+    return scale ? scale.includes(11) : true;
+  }
+
+  function degreeIndexForRoot(rootPc, keyRoot, keyMode){
+    const scale = SCALES[keyMode];
+    if (!scale) return -1;
+    const rel = pc(rootPc - keyRoot);
+    return scale.indexOf(rel);
+  }
+
+  function functionGroupForDegree(deg, hasLeadingTone){
+    if (deg < 0) return "other";
+    if (deg===0 || deg===2 || deg===5) return "tonic";
+    if (deg===1 || deg===3) return "predom";
+    if (deg===4) return "dominant";
+    if (deg===6) return hasLeadingTone ? "dominant" : "predom";
+    return "other";
+  }
+
+  function buildCadencePlan(totalBars, keyRoot, keyMode, weights){
+    const plan = new Map();
+    if (!SCALES[keyMode] || totalBars < 2) return plan;
+    const f = clamp(weights.functional,0,100)/100;
+    const rootPc = pc(keyRoot);
+    const dom = pc(keyRoot + 7);
+    const subdom = pc(keyRoot + 5);
+
+    plan.set(totalBars-1, {root: rootPc, weight: 0.45 + 0.45*f});
+    plan.set(totalBars-2, {root: dom, weight: 0.25 + 0.35*f});
+
+    if (totalBars >= 6){
+      const mid = Math.floor(totalBars/2) - 1;
+      if (mid > 0 && mid < totalBars-2){
+        plan.set(mid, {root: subdom, weight: 0.18 + 0.25*f});
+      }
+    }
+    return plan;
   }
 
   const PROGRESSION_LOGICS = {
@@ -3417,7 +3488,7 @@
       state.keyMode = keyInfo.mode;
     }
 
-    assignChordModesWithLimit(state.chartBars, Object.keys(SCALES).length);
+    assignChordModesWithLimit(state.chartBars);
     renderAll();
     saveAll();
     if (E.msg){
@@ -5116,6 +5187,7 @@
       drumsComplex: state.drumsComplex,
       drumsFill: state.drumsFill,
       scalesUsed: state.scalesUsed,
+      scaleLimitEnabled: state.scaleLimitEnabled,
       limiter: structuredClone(state.limiter),
       pageTheme: state.pageTheme,
       pianoTheme: state.pianoTheme,
@@ -5148,6 +5220,7 @@
       bassComplex:s.bassComplex, bassFill:s.bassFill,
       drumsComplex:s.drumsComplex, drumsFill:s.drumsFill,
       scalesUsed:s.scalesUsed,
+      scaleLimitEnabled: s.scaleLimitEnabled ?? state.scaleLimitEnabled,
       limiter: structuredClone(s.limiter||state.limiter),
       pageTheme:s.pageTheme, pianoTheme:s.pianoTheme,
       markerStyle:s.markerStyle, viewMode:s.viewMode, fretTheme:s.fretTheme, fretLefty:s.fretLefty, fretNumbers:s.fretNumbers, morphBg:s.morphBg, kbOct:s.kbOct,
@@ -5196,34 +5269,113 @@
 
   /* ---------- Generation (improved but still lightweight) ---------- */
   function chooseKeyCenter(){
-    // "scalesUsed" now caps distinct scales/modes we use and still guides center drift
+    // "scalesUsed" caps distinct scales when limiter is on and still guides center drift
     // while keeping a visible “Center” line for reference (not strict)
     state.keyRoot = rint(0,11);
     state.keyMode = pick(["ionian","dorian","mixolydian","aeolian","lydian"]);
   }
 
-  function stepRoot(prevRoot, weights, allowedSet=null){
-    // functional gravity: favor 5th motion when functional is high
+  function stepRoot(prevRoot, weights, ctx={}){
+    // functional + key-aware root motion with short memory
     const f = clamp(weights.functional,0,100)/100;
     const rc = clamp(weights.rootChaos,0,100)/100;
+    const ks = clamp(weights.keyStability,0,100)/100;
+    const mem = clamp(weights.memoryKill,0,100)/100;
 
-    const opts = [
-      {v: pc(prevRoot + 7), w: 18*f + 2},   // up a 5th
-      {v: pc(prevRoot - 5), w: 18*f + 2},   // also up a 5th (same)
-      {v: pc(prevRoot + 2), w: 7*f + 3},    // step
-      {v: pc(prevRoot - 2), w: 7*f + 3},
-      {v: pc(prevRoot + 1), w: 2 + 10*rc},  // chromatic
-      {v: pc(prevRoot - 1), w: 2 + 10*rc},
-      {v: rint(0,11), w: 1 + 18*rc}
-    ];
-    const filtered = allowedSet ? opts.filter(o=>allowedSet.has(pc(o.v))) : opts;
-    return weightedPick(filtered.length ? filtered : opts);
+    const allowedSet = (ctx && ctx.allowedSet instanceof Set) ? ctx.allowedSet : null;
+    const prevRoots = Array.isArray(ctx.prevRoots) ? ctx.prevRoots : [];
+
+    const opts = new Map();
+    const add = (root, w)=>{
+      if (!Number.isFinite(w) || w<=0) return;
+      const r = pc(root);
+      opts.set(r, (opts.get(r)||0) + w);
+    };
+
+    add(prevRoot + 7, 18*f + 2);
+    add(prevRoot - 5, 18*f + 2);
+    add(prevRoot + 2, 7*f + 3);
+    add(prevRoot - 2, 7*f + 3);
+    add(prevRoot + 1, 2 + 10*rc);
+    add(prevRoot - 1, 2 + 10*rc);
+
+    const chaosFill = 0.5 + 8*rc;
+    for (let r=0;r<12;r++) add(r, chaosFill/12);
+
+    const keyMode = ctx?.keyMode;
+    const keyRoot = (ctx && typeof ctx.keyRoot === "number") ? pc(ctx.keyRoot) : null;
+    const keyScale = keyMode && SCALES[keyMode] ? SCALES[keyMode] : null;
+    const keySet = (keyScale && keyRoot!=null) ? new Set(keyScale.map(i=>pc(keyRoot+i))) : null;
+
+    if (keySet && keyRoot!=null){
+      const modePull = ({keyed:1, drifting:0.6, orbiting:0.8, freefall:0.15}[ctx?.rootMode] ?? 0.7);
+      const keyBias = ks * modePull;
+
+      for (const r of keySet) add(r, 1 + 7*keyBias);
+      add(keyRoot, 1.5 + 10*keyBias);
+      add(pc(keyRoot+7), 1 + 8*keyBias);
+
+      if (ctx?.rootMode === "orbiting"){
+        for (const r of keySet){
+          const d = pcDistance(r, keyRoot);
+          add(r, (6 - d) * 0.6 * keyBias);
+        }
+      }
+
+      const hasLeadingTone = modeHasLeadingTone(keyMode);
+      const prevDeg = degreeIndexForRoot(prevRoot, keyRoot, keyMode);
+      const prevFunc = functionGroupForDegree(prevDeg, hasLeadingTone);
+      if (prevFunc !== "other"){
+        const targets = (prevFunc === "tonic")
+          ? [{group:"predom", w:1.2}, {group:"dominant", w:0.8}]
+          : (prevFunc === "predom")
+            ? [{group:"dominant", w:1.6}, {group:"tonic", w:0.5}]
+            : [{group:"tonic", w:2.0}, {group:"predom", w:0.5}];
+        const funcBias = 10 * f * modePull;
+        for (const r of keySet){
+          const deg = degreeIndexForRoot(r, keyRoot, keyMode);
+          const func = functionGroupForDegree(deg, hasLeadingTone);
+          for (const t of targets){
+            if (func === t.group) add(r, funcBias * t.w);
+          }
+        }
+      }
+    }
+
+    if (typeof ctx?.cadenceRoot === "number"){
+      const weight = Number(ctx.cadenceWeight ?? 0.35);
+      add(ctx.cadenceRoot, 6*weight + 10*f*weight);
+    }
+
+    let list = [...opts.entries()].map(([v,w])=>({v, w}));
+
+    if (allowedSet){
+      const filtered = list.filter(o=>allowedSet.has(pc(o.v)));
+      if (filtered.length){
+        list = filtered;
+      } else if (allowedSet.size){
+        list = [...allowedSet].map(r=>({v:r, w:1}));
+      }
+    }
+
+    if (prevRoots.length){
+      list = list.map(o=>{
+        let mult = 1;
+        prevRoots.forEach((r, idx)=>{
+          if (pc(r) === pc(o.v)) mult *= (1 - mem * (0.55/(idx+1)));
+        });
+        return {v:o.v, w: Math.max(0.05, o.w * mult)};
+      });
+    }
+
+    return weightedPick(list.length ? list : [{v:pc(prevRoot), w:1}]);
   }
 
-  function chooseQuality(limit, weights, scaleSet=null, chordRoot=null){
+  function chooseQuality(limit, weights, scaleSet=null, chordRoot=null, preferSet=null){
     const base = buildQualityOptions(limit);
     const qc = clamp(weights.qualityChaos,0,100)/100;
     const t  = clamp(weights.tension,0,100)/100;
+    const ks = clamp(weights.keyStability,0,100)/100;
     const rootPc = chordRoot!=null ? pc(chordRoot) : null;
     // tilt toward more colorful when chaos/tension higher
     const filtered = base.filter(o=>{
@@ -5237,7 +5389,13 @@
       if (o.v.family==="dom" && (o.v.symbol.includes("b9")||o.v.symbol.includes("sharp9"))) w *= (1 + 1.2*t);
       if (o.v.symbol.includes("9") || o.v.symbol.includes("11") || o.v.symbol.includes("13")) w *= (1 + 0.6*qc);
       if (o.v.family==="dim"||o.v.family==="hdim") w *= (1 + 0.4*qc);
-      return {v:o.v, w};
+      if (preferSet && rootPc!=null){
+        const tones = (CHORDS[o.v.symbol] || []).map(iv=>pc(rootPc + iv));
+        const inPrefer = tones.every(p=>preferSet.has(p));
+        const bias = 0.35 + 0.9*ks;
+        w *= inPrefer ? (1 + bias) : (1 - bias*0.6);
+      }
+      return {v:o.v, w: Math.max(0.05, w)};
     }));
   }
 
@@ -5288,9 +5446,14 @@
 
     chooseKeyCenter();
 
-    const singleScale = (state.scalesUsed===1 && SCALES[state.keyMode])
+    const scaleLimiterOn = state.scaleLimitEnabled ?? true;
+    const singleScale = (scaleLimiterOn && state.scalesUsed===1 && SCALES[state.keyMode])
       ? new Set(SCALES[state.keyMode].map(i=>pc(state.keyRoot+i)))
       : null;
+    const keyScaleSet = SCALES[state.keyMode]
+      ? new Set(SCALES[state.keyMode].map(i=>pc(state.keyRoot+i)))
+      : null;
+    const preferSet = (state.rootMode === "freefall") ? null : (singleScale || keyScaleSet);
     const ensureInScale = (r)=>{
       if (!singleScale) return pc(r);
       const rp = pc(r);
@@ -5308,9 +5471,11 @@
     const barsTarget = clamp(Number(state.bars)||8, 2, 32);
 
     const limit = state.limiter;
+    const cadencePlan = buildCadencePlan(barsTarget, state.keyRoot, state.keyMode, w);
 
     const bars = [];
     let root = ensureInScale(state.keyRoot);
+    const recentRoots = [];
 
     // controlled “center drift”: allow only N center changes, spread across bars
     const driftBudget = clamp(Number(state.scalesUsed)||8, 1, 32);
@@ -5326,16 +5491,27 @@
       for (let h=0;h<chordCount;h++){
         // occasional drift
         const driftChance = clamp(w.rootChaos,0,100)/100 * 0.30 + (b>0 && (b-lastDriftAt)>3 ? 0.07 : 0);
+        const cadence = cadencePlan.get(b);
+        const cadenceRoot = (cadence && h===chordCount-1) ? cadence.root : null;
+        const cadenceWeight = cadence ? cadence.weight : 0;
         if (driftLeft>0 && chance(driftChance)){
           root = ensureInScale(rint(0,11));
           driftLeft--;
           lastDriftAt = b;
         } else {
-          root = ensureInScale(stepRoot(root, w, singleScale));
+          root = ensureInScale(stepRoot(root, w, {
+            allowedSet: singleScale,
+            keyRoot: state.keyRoot,
+            keyMode: state.keyMode,
+            rootMode: state.rootMode,
+            prevRoots: recentRoots,
+            cadenceRoot,
+            cadenceWeight
+          }));
         }
 
         // pick quality (tied to limiters)
-        const q = chooseQuality(limit, w, singleScale, root);
+        const q = chooseQuality(limit, w, singleScale, root, preferSet);
         let ch = makeChord(root, q);
 
         // more “jazz” feeling: nudge dom chords toward ii-V-ish by biasing a ii before V
@@ -5358,6 +5534,8 @@
         }
 
         chordArr.push(ch);
+        recentRoots.unshift(root);
+        if (recentRoots.length > 4) recentRoots.pop();
       }
 
       bars.push({ split, chords: chordArr });
@@ -5579,7 +5757,7 @@
       }
     }
 
-    assignChordModesWithLimit(state.chartBars, Object.keys(SCALES).length);
+    assignChordModesWithLimit(state.chartBars);
     renderAll();
     saveAll();
     closeEdit();
@@ -5618,7 +5796,7 @@
       bar.chords = bar.chords.map(x=>x||fallback);
     }
 
-    assignChordModesWithLimit(state.chartBars, Object.keys(SCALES).length);
+    assignChordModesWithLimit(state.chartBars);
     renderAll();
     saveAll();
     closeEdit();
@@ -5934,6 +6112,15 @@
     numEl.addEventListener("change", pullNum);
   }
 
+  function syncScaleLimiterUI(){
+    if (!E.scalesUsedMsg) return;
+    if (state.scaleLimitEnabled){
+      E.scalesUsedMsg.textContent = "Limiter on";
+    } else {
+      E.scalesUsedMsg.textContent = "Limiter off";
+    }
+  }
+
   function syncUIFromState(){
     E.bars.value = String(state.bars);
     E.barsNum.value = String(state.bars);
@@ -5961,6 +6148,8 @@
 
     E.scalesUsed.value = String(state.scalesUsed);
     E.scalesUsedNum.value = String(state.scalesUsed);
+    if (E.scaleLimitEnabled) E.scaleLimitEnabled.checked = !!state.scaleLimitEnabled;
+    syncScaleLimiterUI();
 
     E.bassPreset.value = state.bassPreset;
     E.keysPreset.value = state.keysPreset;
@@ -6119,6 +6308,7 @@
         drumsComplex: state.drumsComplex,
         drumsFill: state.drumsFill,
         scalesUsed: state.scalesUsed,
+        scaleLimitEnabled: state.scaleLimitEnabled,
         limiter: state.limiter,
 
         pageTheme: state.pageTheme,
@@ -6180,6 +6370,7 @@
       drumsComplex: saved.drumsComplex ?? state.drumsComplex,
       drumsFill: saved.drumsFill ?? state.drumsFill,
       scalesUsed: saved.scalesUsed ?? state.scalesUsed,
+      scaleLimitEnabled: saved.scaleLimitEnabled ?? state.scaleLimitEnabled,
       limiter: saved.limiter ?? state.limiter,
 
       pageTheme: saved.pageTheme ?? state.pageTheme,
@@ -6271,10 +6462,19 @@
     bindRangePair(E.chaos, E.chaosNum, (v)=>{ state.chaos=v; saveAll(); });
     bindRangePair(E.scalesUsed, E.scalesUsedNum, (v)=>{
       state.scalesUsed=v;
-      assignChordModesWithLimit(state.chartBars, Object.keys(SCALES).length);
+      assignChordModesWithLimit(state.chartBars);
       renderPianoForActive();
       saveAll();
     });
+    if (E.scaleLimitEnabled){
+      E.scaleLimitEnabled.addEventListener("change", ()=>{
+        state.scaleLimitEnabled = !!E.scaleLimitEnabled.checked;
+        syncScaleLimiterUI();
+        assignChordModesWithLimit(state.chartBars);
+        renderPianoForActive();
+        saveAll();
+      });
+    }
 
     bindRangePair(E.drumsLevel, E.drumsLevelNum, (v)=>{ state.drumsLevel=v; saveAll(); });
 
@@ -6583,7 +6783,7 @@
 
     // hydrate UI
     syncUIFromState();
-    assignChordModesWithLimit(state.chartBars, Object.keys(SCALES).length);
+    assignChordModesWithLimit(state.chartBars);
 
     // if no saved chart, generate a default
     if (!loaded || !Array.isArray(state.chartBars) || state.chartBars.length===0){
