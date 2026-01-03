@@ -4763,12 +4763,14 @@
     applyEditVisuals();
   }
 
-  function midiToVexKey(midi){
-    const names = ["c","c#","d","d#","e","f","f#","g","g#","a","a#","b"];
+  function midiToVexKey(midi, preferFlats = false){
+    const sharpNames = ["c","c#","d","d#","e","f","f#","g","g#","a","a#","b"];
+    const flatNames = ["c","db","d","eb","e","f","gb","g","ab","a","bb","b"];
     const p = pc(midi);
     const oct = Math.floor(midi / 12) - 1;
-    const name = names[p] || "c";
-    return { key: `${name}/${oct}`, accidental: name.includes("#") ? "#" : null };
+    const name = (preferFlats ? flatNames[p] : sharpNames[p]) || "c";
+    const accidental = name.includes("b") ? "b" : (name.includes("#") ? "#" : null);
+    return { key: `${name}/${oct}`, accidental };
   }
 
   function quantizeDuration(ticks, ticksPerBeat){
@@ -4874,31 +4876,62 @@
     }
   }
 
+  function pickQuantizationGrid(barNotes, ticksPerBeat){
+    const notes = barNotes || [];
+    const candidates = [
+      ticksPerBeat / 2,
+      ticksPerBeat / 3,
+      ticksPerBeat / 4,
+      ticksPerBeat / 6,
+      ticksPerBeat / 8,
+      ticksPerBeat / 12,
+      ticksPerBeat / 16
+    ].filter(v => Number.isFinite(v) && v > 0);
+    if (!notes.length || !candidates.length) return ticksPerBeat / 2;
+
+    const calcError = (grid)=>{
+      let total = 0;
+      let count = 0;
+      notes.forEach(n=>{
+        if (Number.isFinite(n.start)){
+          total += Math.abs(n.start - Math.round(n.start / grid) * grid);
+          count += 1;
+        }
+        if (Number.isFinite(n.dur)){
+          total += Math.abs(n.dur - Math.round(n.dur / grid) * grid);
+          count += 1;
+        }
+      });
+      if (!count) return Number.POSITIVE_INFINITY;
+      return total / (count * grid);
+    };
+
+    const scored = candidates.map(grid => ({ grid, error: calcError(grid) }));
+    scored.sort((a,b)=> a.error - b.error || a.grid - b.grid);
+    const bestError = scored[0]?.error ?? 0;
+    const close = scored.filter(s => s.error <= Math.max(0.12, bestError + 0.04));
+    if (close.length){
+      return close.reduce((min, s)=> s.grid < min ? s.grid : min, close[0].grid);
+    }
+    return scored[0]?.grid ?? ticksPerBeat / 2;
+  }
+
+  function shouldPreferFlats(){
+    if (!Number.isFinite(state.keyRoot)) return false;
+    const keyName = noteName(state.keyRoot);
+    return keyName.includes("b");
+  }
+
   function buildBarTickables(barNotes, ticksPerBeat, beatsPerBar, beatValue=4){
     const barTicks = ticksPerBeat * 4 * (beatsPerBar / beatValue);
     const notes = (barNotes || []).slice().sort((a,b)=>a.start-b.start);
     const VF = window.Vex && window.Vex.Flow;
-    let grid = ticksPerBeat / 2;
-    let useTripletGrid = false;
+    const grid = pickQuantizationGrid(notes, ticksPerBeat);
     const tripletGrid = ticksPerBeat / 3;
-    if (notes.length){
-      let minGap = Number.POSITIVE_INFINITY;
-      for (let i=1;i<notes.length;i++){
-        const gap = notes[i].start - notes[i-1].start;
-        if (gap > 0) minGap = Math.min(minGap, gap);
-      }
-      let minDur = Number.POSITIVE_INFINITY;
-      notes.forEach(n=>{
-        if (Number.isFinite(n.dur)) minDur = Math.min(minDur, n.dur);
-      });
-      const nearTriplet = (Math.abs(minGap - tripletGrid) <= tripletGrid * 0.25)
-        || (Math.abs(minDur - tripletGrid) <= tripletGrid * 0.25);
-      const needs16th = (minGap <= ticksPerBeat / 4 + 0.5) || (minDur <= ticksPerBeat / 4 + 0.5);
-      if (nearTriplet){
-        grid = tripletGrid;
-        useTripletGrid = true;
-      } else if (needs16th) grid = ticksPerBeat / 4;
-    }
+    const useTripletGrid = Math.abs(grid - tripletGrid) < 0.01
+      || Math.abs(grid - ticksPerBeat / 6) < 0.01
+      || Math.abs(grid - ticksPerBeat / 12) < 0.01;
+    const preferFlats = shouldPreferFlats();
 
     const tickables = [];
     const ties = [];
@@ -4916,7 +4949,7 @@
     };
 
     const addNote = (noteTicks, midi, startTicks)=>{
-      const { key, accidental } = midiToVexKey(midi);
+      const { key, accidental } = midiToVexKey(midi, preferFlats);
       const direction = (VF && VF.Stem && Number.isFinite(midi))
         ? (midi >= 71 ? VF.Stem.DOWN : VF.Stem.UP)
         : null;
@@ -4925,11 +4958,15 @@
         if (accidental) n.addAccidental(0, new Vex.Flow.Accidental(accidental));
         if (direction != null && typeof n.setStemDirection === "function") n.setStemDirection(direction);
         applyDots(n, part.dots);
-        if (part.triplet && useTripletGrid && part.dur === "8" && Number.isFinite(partStart)){
+        if (part.triplet && useTripletGrid && (part.dur === "8" || part.dur === "16") && Number.isFinite(partStart)){
           const beatIndex = Math.floor(partStart / ticksPerBeat);
           const within = partStart - beatIndex * ticksPerBeat;
           const slot = Math.round(within / grid);
-          if (slot >= 0 && slot <= 2) n._tripletSlot = { beatIndex, slot };
+          const group = Math.floor(slot / 3);
+          const slotInGroup = slot - group * 3;
+          if (slotInGroup >= 0 && slotInGroup <= 2){
+            n._tripletSlot = { beatIndex, group, slot: slotInGroup };
+          }
         }
         return n;
       };
@@ -4996,8 +5033,9 @@
           prevSlot = null;
           return;
         }
-        if (!group || group.beatIndex !== info.beatIndex || info.slot !== prevSlot + 1){
-          group = { beatIndex: info.beatIndex, notes: [] };
+        const groupKey = `${info.beatIndex}-${info.group || 0}`;
+        if (!group || group.key !== groupKey || info.slot !== prevSlot + 1){
+          group = { key: groupKey, notes: [] };
         }
         group.notes.push(n);
         prevSlot = info.slot;
