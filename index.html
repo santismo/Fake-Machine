@@ -281,23 +281,41 @@
     }
     .melodyWrap.on{display:block;}
     .melodyHead{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+    .melodyControls{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end;}
+    .zoomControl{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--pageMuted);}
+    .zoomRange{width:120px;}
+    .zoomValue{min-width:42px;text-align:right;}
+    @media (max-width: 600px){ .zoomRange{width:90px;} }
     .melodySheet{width:100%;overflow-x:auto;padding:6px 4px 2px;}
     .melodyEmpty{font-size:12px;color:var(--pageMuted);padding:6px 4px;}
     .melodyRow{margin-bottom:8px;}
 
     .biabSheet{
+      --biabZoom:1;
       background:#ffffff;
       color:#111111;
       border-radius:12px;
       padding:10px;
       border:1px solid rgba(0,0,0,.12);
     }
-    .biabRow{margin-bottom:12px;}
+    .biabRow{position:relative;margin-bottom:12px;}
+    .biabPlayhead{
+      position:absolute;
+      top:0;
+      bottom:0;
+      width:2px;
+      background:#ff4b4b;
+      box-shadow: 0 0 6px rgba(255,75,75,.55);
+      transform: translateX(0);
+      opacity:0;
+      pointer-events:none;
+      z-index:4;
+    }
     .biabChords{
       display:grid;
       gap:6px;
       margin:0 0 6px 0;
-      font-size:13px;
+      font-size:calc(13px * var(--biabZoom));
       font-weight:700;
       color:#111111;
     }
@@ -306,18 +324,32 @@
       gap:4px;
       text-align:left;
       justify-items:start;
-      padding:2px 4px 6px;
+      padding:calc(2px * var(--biabZoom)) calc(4px * var(--biabZoom)) calc(6px * var(--biabZoom));
       border-bottom:1px solid rgba(0,0,0,.12);
     }
     .biabChordSlot{
       font-weight:700;
-      font-size:12px;
+      font-size:calc(12px * var(--biabZoom));
       color:#111111;
     }
     .biabChordSlot.empty{
       color:transparent;
     }
     .biabSvg{background:#ffffff;}
+
+    .biabSheet.biabDark{
+      background:#0f1115;
+      color:#f2f2f2;
+      border:1px solid rgba(255,255,255,.12);
+    }
+    .biabSheet.biabDark .biabChords,
+    .biabSheet.biabDark .biabChordSlot{
+      color:#f2f2f2;
+    }
+    .biabSheet.biabDark .biabChordCell{
+      border-bottom:1px solid rgba(255,255,255,.18);
+    }
+    .biabSheet.biabDark .biabSvg{background:#0f1115;}
 
     .bar{
       position:relative;min-height: 62px;background: rgba(0,0,0,.22);
@@ -625,7 +657,14 @@
         <div class="melodyWrap" id="melodyWrap">
           <div class="melodyHead">
             <div class="title">Lead Sheet + Melody (BIAB)</div>
-            <div class="msg" id="melodyStatus">No BIAB melody loaded.</div>
+            <div class="melodyControls">
+              <div class="zoomControl">
+                <span class="zoomLabel">Zoom</span>
+                <input class="zoomRange" type="range" id="biabZoom" min="60" max="120" step="5" value="100">
+                <span class="zoomValue" id="biabZoomValue">100%</span>
+              </div>
+              <div class="msg" id="melodyStatus">No BIAB melody loaded.</div>
+            </div>
           </div>
           <div class="melodySheet" id="melodySheet"></div>
         </div>
@@ -1950,6 +1989,8 @@
     pageTheme: "terminal",
     pianoTheme: "classic",
     markerStyle: "dots",
+    biabZoom: 1,
+    biabNotationTheme: "light",
     viewMode: "piano",
     fretTheme: "rosewood",
     fretLefty: false,
@@ -2011,6 +2052,8 @@
     pageTheme: DEFAULTS.pageTheme,
     pianoTheme: DEFAULTS.pianoTheme,
     markerStyle: DEFAULTS.markerStyle,
+    biabZoom: DEFAULTS.biabZoom,
+    biabNotationTheme: DEFAULTS.biabNotationTheme,
     viewMode: DEFAULTS.viewMode,
     fretTheme: DEFAULTS.fretTheme,
     fretLefty: DEFAULTS.fretLefty,
@@ -2072,6 +2115,8 @@
     melodyWrap: document.getElementById("melodyWrap"),
     melodySheet: document.getElementById("melodySheet"),
     melodyStatus: document.getElementById("melodyStatus"),
+    biabZoom: document.getElementById("biabZoom"),
+    biabZoomValue: document.getElementById("biabZoomValue"),
     leadKey: document.getElementById("leadKey"),
 
     pianoSvg: document.getElementById("pianoSvg"),
@@ -4058,15 +4103,12 @@
 
   function buildMelodyBars(events, barTicks, barCount){
     const bars = Array.from({length: barCount}, () => []);
-    let noteId = 0;
     (events || []).forEach((note)=>{
       if (!note || !Number.isFinite(note.tick) || !Number.isFinite(note.dur) || !Number.isFinite(note.midi)) return;
       let tick = note.tick;
       let dur = note.dur;
       const channel = Number.isFinite(note.channel) ? note.channel : 0;
       const vel = Number.isFinite(note.vel) ? note.vel : 90;
-      const id = noteId++;
-      let firstSlice = true;
       while (dur > 0){
         const barIdx = Math.floor(tick / barTicks);
         if (barIdx < 0 || barIdx >= barCount) break;
@@ -4076,22 +4118,10 @@
         const remaining = Math.max(0, barTicks - relStart);
         const slice = Math.min(dur, remaining);
         if (slice > 0){
-          const tieIn = !firstSlice;
-          const tieOut = dur > slice;
-          bars[barIdx].push({
-            start: relStart,
-            dur: slice,
-            midi: note.midi,
-            vel,
-            channel,
-            id,
-            tieIn,
-            tieOut
-          });
+          bars[barIdx].push({ start: relStart, dur: slice, midi: note.midi, vel, channel });
         }
         tick += slice;
         dur -= slice;
-        firstSlice = false;
         if (slice <= 0) break;
       }
     });
@@ -4283,7 +4313,7 @@
       }
     }
 
-    const allEvents = events.slice();
+    let allEvents = events.slice();
     const melodyChannel = pickMelodyChannel(allEvents);
 
     const midiChordBars = buildMidiChordBars(allEvents, barTicks, biabBars.length, melodyChannel);
@@ -4330,15 +4360,19 @@
       melodyGenerated = true;
     }
     let melodyBars = buildMelodyBars(melodyEvents, barTicks, bars.length);
+    let shiftTicks = 0;
     const firstMelodyBar = melodyBars.findIndex(bar => bar && bar.length);
     if (firstMelodyBar > 0 && bars?.[0]?.chords?.length){
       // BIAB often includes a lead-in bar; only pull one bar to avoid erasing real intros.
       const shiftBars = Math.min(1, firstMelodyBar);
-      const shiftTicks = shiftBars * barTicks;
+      shiftTicks = shiftBars * barTicks;
       if (shiftTicks > 0){
         melodyEvents = melodyEvents.map(e => ({ ...e, tick: Math.max(0, e.tick - shiftTicks) }));
         melodyBars = buildMelodyBars(melodyEvents, barTicks, bars.length);
       }
+    }
+    if (shiftTicks > 0 && allEvents.length){
+      allEvents = allEvents.map(e => ({ ...e, tick: Math.max(0, e.tick - shiftTicks) }));
     }
     const midiBars = (allEvents.length
       ? buildMelodyBars(allEvents, barTicks, bars.length)
@@ -4710,6 +4744,12 @@
   }
 
   function renderLeadSheet(){
+    if (state.biabActive){
+      if (state.editMode) state.editMode = false;
+      if (E.sheet) E.sheet.innerHTML = "";
+      applyEditVisuals();
+      return;
+    }
     E.sheet.innerHTML = "";
     for (let b=0;b<state.chartBars.length;b++){
       const bar = state.chartBars[b];
@@ -4774,14 +4814,12 @@
     applyEditVisuals();
   }
 
-  function midiToVexKey(midi, preferFlats = false){
-    const sharpNames = ["c","c#","d","d#","e","f","f#","g","g#","a","a#","b"];
-    const flatNames = ["c","db","d","eb","e","f","gb","g","ab","a","bb","b"];
+  function midiToVexKey(midi){
+    const names = ["c","c#","d","d#","e","f","f#","g","g#","a","a#","b"];
     const p = pc(midi);
     const oct = Math.floor(midi / 12) - 1;
-    const name = (preferFlats ? flatNames[p] : sharpNames[p]) || "c";
-    const accidental = name.includes("b") ? "b" : (name.includes("#") ? "#" : null);
-    return { key: `${name}/${oct}`, accidental };
+    const name = names[p] || "c";
+    return { key: `${name}/${oct}`, accidental: name.includes("#") ? "#" : null };
   }
 
   function quantizeDuration(ticks, ticksPerBeat){
@@ -4844,10 +4882,7 @@
         best = c;
       }
     });
-    const tolBase = opts.triplet ? ticksPerBeat / 6 : ticksPerBeat / 4;
-    const tol = (opts.grid && Number.isFinite(opts.grid))
-      ? Math.max(tolBase, opts.grid * 0.45)
-      : tolBase;
+    const tol = opts.triplet ? ticksPerBeat / 5 : ticksPerBeat / 3;
     if (best && bestDiff <= tol) return best;
     return null;
   }
@@ -4890,72 +4925,76 @@
     }
   }
 
-  function pickQuantizationGrid(barNotes, ticksPerBeat){
-    const notes = barNotes || [];
-    const candidates = [
-      ticksPerBeat / 2,
-      ticksPerBeat / 3,
-      ticksPerBeat / 4,
-      ticksPerBeat / 6,
-      ticksPerBeat / 8,
-      ticksPerBeat / 12,
-      ticksPerBeat / 16
-    ].filter(v => Number.isFinite(v) && v > 0);
-    if (!notes.length || !candidates.length) return ticksPerBeat / 2;
-
-    const calcError = (grid)=>{
-      let total = 0;
-      let count = 0;
-      notes.forEach(n=>{
-        if (Number.isFinite(n.start)){
-          total += Math.abs(n.start - Math.round(n.start / grid) * grid);
-          count += 1;
-        }
-        if (Number.isFinite(n.dur)){
-          total += Math.abs(n.dur - Math.round(n.dur / grid) * grid);
-          count += 1;
-        }
-      });
-      if (!count) return Number.POSITIVE_INFINITY;
-      return total / (count * grid);
-    };
-
-    const scored = candidates.map(grid => ({ grid, error: calcError(grid) }));
-    scored.sort((a,b)=> a.error - b.error || a.grid - b.grid);
-    const bestError = scored[0]?.error ?? 0;
-    const close = scored.filter(s => s.error <= Math.max(0.12, bestError + 0.04));
-    if (close.length){
-      return close.reduce((min, s)=> s.grid < min ? s.grid : min, close[0].grid);
-    }
-    return scored[0]?.grid ?? ticksPerBeat / 2;
-  }
-
-  function shouldPreferFlats(){
-    if (!Number.isFinite(state.keyRoot)) return false;
-    const keyName = noteName(state.keyRoot);
-    return keyName.includes("b");
-  }
-
   function buildBarTickables(barNotes, ticksPerBeat, beatsPerBar, beatValue=4){
     const barTicks = ticksPerBeat * 4 * (beatsPerBar / beatValue);
     const notes = (barNotes || []).slice().sort((a,b)=>a.start-b.start);
     const VF = window.Vex && window.Vex.Flow;
-    const grid = pickQuantizationGrid(notes, ticksPerBeat);
+    let grid = ticksPerBeat / 2;
+    let useTripletGrid = false;
     const tripletGrid = ticksPerBeat / 3;
-    const useTripletGrid = Math.abs(grid - tripletGrid) < 0.01
-      || Math.abs(grid - ticksPerBeat / 6) < 0.01
-      || Math.abs(grid - ticksPerBeat / 12) < 0.01;
-    const preferFlats = shouldPreferFlats();
+    if (notes.length){
+      let minGap = Number.POSITIVE_INFINITY;
+      let minDur = Number.POSITIVE_INFINITY;
+      let gapCount = 0;
+      let tripletHits = 0;
+      let smallHits = 0;
+      const tripletTol = tripletGrid * 0.18;
+      const sixteenth = ticksPerBeat / 4;
+      const sixteenthTol = sixteenth * 0.15;
+
+      for (let i=1;i<notes.length;i++){
+        const gap = notes[i].start - notes[i-1].start;
+        if (gap > 0){
+          gapCount += 1;
+          minGap = Math.min(minGap, gap);
+          if (Math.abs(gap - tripletGrid) <= tripletTol) tripletHits += 1;
+          if (gap <= sixteenth + sixteenthTol) smallHits += 1;
+        }
+      }
+      notes.forEach(n=>{
+        if (Number.isFinite(n.dur)){
+          minDur = Math.min(minDur, n.dur);
+          if (Math.abs(n.dur - tripletGrid) <= tripletTol) tripletHits += 1;
+          if (n.dur <= sixteenth + sixteenthTol) smallHits += 1;
+        }
+      });
+      const tripletScore = tripletHits / Math.max(1, gapCount + notes.length);
+      const nearTriplet = tripletHits >= 2 && tripletScore >= 0.25;
+      const sixteenthScore = smallHits / Math.max(1, gapCount + notes.length);
+      const needs16th = sixteenthScore >= 0.35 || minDur <= sixteenth * 0.9 || minGap <= sixteenth * 0.9;
+      if (nearTriplet){
+        grid = tripletGrid;
+        useTripletGrid = true;
+      } else if (needs16th) grid = ticksPerBeat / 4;
+    }
+
+    const mergeTol = grid * 0.7;
+    const restTol = grid * 0.8;
+    const mergedNotes = [];
+    notes.forEach((n)=>{
+      if (!mergedNotes.length){
+        mergedNotes.push({ ...n });
+        return;
+      }
+      const prev = mergedNotes[mergedNotes.length - 1];
+      if (n.midi === prev.midi){
+        const gap = n.start - (prev.start + prev.dur);
+        if (Math.abs(gap) <= mergeTol){
+          const end = Math.max(prev.start + prev.dur, n.start + n.dur);
+          prev.dur = end - prev.start;
+          return;
+        }
+      }
+      mergedNotes.push({ ...n });
+    });
 
     const tickables = [];
     const ties = [];
     const tuplets = [];
-    const tieIns = new Map();
-    const tieOuts = new Map();
     let cursor = 0;
 
     const pushRest = (ticks)=>{
-      if (ticks <= 0) return;
+      if (ticks <= restTol) return;
       const durations = splitTicksToDurations(ticks, ticksPerBeat, { triplet: useTripletGrid });
       durations.forEach(part=>{
         const n = new Vex.Flow.StaveNote({ keys:["b/4"], duration: part.dur + "r" });
@@ -4964,9 +5003,8 @@
       });
     };
 
-    const addNote = (noteTicks, midi, startTicks, noteMeta)=>{
     const addNote = (noteTicks, midi, startTicks)=>{
-      const { key, accidental } = midiToVexKey(midi, preferFlats);
+      const { key, accidental } = midiToVexKey(midi);
       const direction = (VF && VF.Stem && Number.isFinite(midi))
         ? (midi >= 71 ? VF.Stem.DOWN : VF.Stem.UP)
         : null;
@@ -4975,25 +5013,18 @@
         if (accidental) n.addAccidental(0, new Vex.Flow.Accidental(accidental));
         if (direction != null && typeof n.setStemDirection === "function") n.setStemDirection(direction);
         applyDots(n, part.dots);
-        if (part.triplet && useTripletGrid && (part.dur === "8" || part.dur === "16") && Number.isFinite(partStart)){
+        if (part.triplet && useTripletGrid && part.dur === "8" && Number.isFinite(partStart)){
           const beatIndex = Math.floor(partStart / ticksPerBeat);
           const within = partStart - beatIndex * ticksPerBeat;
           const slot = Math.round(within / grid);
-          const group = Math.floor(slot / 3);
-          const slotInGroup = slot - group * 3;
-          if (slotInGroup >= 0 && slotInGroup <= 2){
-            n._tripletSlot = { beatIndex, group, slot: slotInGroup };
-          }
+          if (slot >= 0 && slot <= 2) n._tripletSlot = { beatIndex, slot };
         }
         return n;
       };
 
-      const single = pickSingleDuration(noteTicks, ticksPerBeat, { triplet: useTripletGrid, grid });
+      const single = pickSingleDuration(noteTicks, ticksPerBeat, { triplet: useTripletGrid });
       if (single){
-        const n = makeNote(single, startTicks);
-        tickables.push(n);
-        if (noteMeta?.tieIn) tieIns.set(noteMeta.id, n);
-        if (noteMeta?.tieOut) tieOuts.set(noteMeta.id, n);
+        tickables.push(makeNote(single, startTicks));
         return;
       }
 
@@ -5005,8 +5036,6 @@
         return n;
       });
       parts.forEach(p=>tickables.push(p));
-      if (noteMeta?.tieIn) tieIns.set(noteMeta.id, parts[0]);
-      if (noteMeta?.tieOut) tieOuts.set(noteMeta.id, parts[parts.length - 1]);
       if (parts.length > 1){
         for (let i=0;i<parts.length-1;i++){
           const tie = new Vex.Flow.StaveTie({ first_note: parts[i], last_note: parts[i+1] });
@@ -5019,23 +5048,28 @@
       }
     };
 
-    notes.forEach((note)=>{
+    mergedNotes.forEach((note)=>{
       if (!Number.isFinite(note.start) || !Number.isFinite(note.dur)) return;
       let start = Math.round(note.start / grid) * grid;
       let dur = Math.max(grid, Math.round(note.dur / grid) * grid);
       if (start < 0) start = 0;
       if (start >= barTicks) return;
       const gap = start - cursor;
-      const snapTol = grid * 0.4;
+      const snapTol = grid * 0.85;
       if (Math.abs(gap) > 0 && Math.abs(gap) < snapTol){
         start = cursor;
       }
       if (start < cursor - grid * 0.5) return;
       if (start > cursor){
-        pushRest(start - cursor);
+        const restGap = start - cursor;
+        if (restGap > restTol){
+          pushRest(restGap);
+        } else {
+          start = cursor;
+        }
       }
       dur = Math.min(dur, barTicks - start);
-      addNote(dur, note.midi, start, note);
+      addNote(dur, note.midi, start);
       cursor = start + dur;
     });
 
@@ -5054,9 +5088,8 @@
           prevSlot = null;
           return;
         }
-        const groupKey = `${info.beatIndex}-${info.group || 0}`;
-        if (!group || group.key !== groupKey || info.slot !== prevSlot + 1){
-          group = { key: groupKey, notes: [] };
+        if (!group || group.beatIndex !== info.beatIndex || info.slot !== prevSlot + 1){
+          group = { beatIndex: info.beatIndex, notes: [] };
         }
         group.notes.push(n);
         prevSlot = info.slot;
@@ -5067,14 +5100,16 @@
         }
       });
     }
-    return { tickables, ties, tuplets, tieIns, tieOuts };
+    return { tickables, ties, tuplets };
   }
 
   function renderMelodySheet(){
     if (!E.melodyWrap || !E.melodySheet) return;
     const show = !!state.biabActive;
     E.melodyWrap.classList.toggle("on", show);
+    if (E.sheet) E.sheet.style.display = show ? "none" : "";
     E.melodySheet.classList.toggle("biabSheet", show);
+    E.melodySheet.classList.toggle("biabDark", show && state.biabNotationTheme === "dark");
     if (!show){
       E.melodySheet.innerHTML = "";
       return;
@@ -5096,31 +5131,48 @@
     const ticksPerBeat = state.biabTicksPerBeat || BIAB_TICKS_PER_BEAT;
     const beatsPerBar = (state.biabTimeSig && state.biabTimeSig.num) ? state.biabTimeSig.num : 4;
     const beatValue = (state.biabTimeSig && state.biabTimeSig.den) ? state.biabTimeSig.den : 4;
+    const dark = state.biabNotationTheme === "dark";
+    const ink = dark ? "#f2f2f2" : "#111111";
+    const staff = dark ? "rgba(255,255,255,.85)" : "rgba(0,0,0,.85)";
+    const zoom = clamp(state.biabZoom || 1, 0.6, 1.2);
+    E.melodySheet.style.setProperty("--biabZoom", String(zoom));
     const sheetWidth = Math.max(320, Math.floor(E.melodySheet.clientWidth || 900));
-    const isCompact = sheetWidth < 520;
-    const minBarWidth = isCompact ? 140 : 180;
-    const maxBarsPerRow = isCompact ? 7 : 6;
-    let barsPerRow = Math.floor(sheetWidth / minBarWidth);
+    const minBarWidth = 180;
+    const maxBarsPerRow = 6;
+    const scaledMinBarWidth = minBarWidth * zoom;
+    let barsPerRow = Math.floor(sheetWidth / scaledMinBarWidth);
     if (!Number.isFinite(barsPerRow) || barsPerRow < 2) barsPerRow = 4;
     barsPerRow = clamp(barsPerRow, 2, maxBarsPerRow);
-    const barWidth = Math.max(minBarWidth, Math.floor(sheetWidth / barsPerRow));
-    const staveHeight = isCompact ? 100 : 120;
+    const barWidth = Math.max(minBarWidth, Math.floor(sheetWidth / barsPerRow / zoom));
+    const staveHeight = 120;
+    const inkStyle = { fillStyle: ink, strokeStyle: ink };
+    const staveStyle = { fillStyle: ink, strokeStyle: staff };
+    const textStyle = { fillStyle: ink, strokeStyle: ink };
+    const styleTickable = (note)=>{
+      if (!note) return;
+      if (typeof note.setStyle === "function") note.setStyle(inkStyle);
+      if (typeof note.setLedgerLineStyle === "function") note.setLedgerLineStyle(inkStyle);
+    };
 
     E.melodySheet.innerHTML = "";
     const totalBars = bars.length;
     const rowCount = Math.ceil(totalBars / barsPerRow);
-    let pendingTieOuts = null;
     for (let r=0;r<rowCount;r++){
       const rowWrap = document.createElement("div");
       rowWrap.className = "biabRow";
       const rowBars = Math.min(barsPerRow, totalBars - r * barsPerRow);
       const rowWidth = barWidth * rowBars;
-      rowWrap.style.width = `${rowWidth}px`;
+      const scaledRowWidth = Math.round(rowWidth * zoom);
+      rowWrap.style.width = `${scaledRowWidth}px`;
+      rowWrap.dataset.start = String(r * barsPerRow);
+      rowWrap.dataset.bars = String(rowBars);
+      rowWrap.dataset.barWidth = String(barWidth);
+      rowWrap.dataset.zoom = String(zoom);
 
       const chordRow = document.createElement("div");
       chordRow.className = "biabChords";
       chordRow.style.gridTemplateColumns = `repeat(${rowBars}, minmax(0, 1fr))`;
-      chordRow.style.width = `${rowWidth}px`;
+      chordRow.style.width = `${scaledRowWidth}px`;
       for (let i=0;i<rowBars;i++){
         const barIndex = r * barsPerRow + i;
         const bar = chordBars[barIndex] || {};
@@ -5152,13 +5204,16 @@
 
       const svgWrap = document.createElement("div");
       svgWrap.className = "biabSvg";
-      svgWrap.style.width = `${rowWidth}px`;
+      svgWrap.style.width = `${scaledRowWidth}px`;
       const renderer = new VF.Renderer(svgWrap, VF.Renderer.Backends.SVG);
-      renderer.resize(rowWidth, staveHeight);
+      renderer.resize(scaledRowWidth, Math.round(staveHeight * zoom));
       const ctx = renderer.getContext();
+      if (zoom !== 1 && ctx && typeof ctx.scale === "function") ctx.scale(zoom, zoom);
+      if (ctx && typeof ctx.setFillStyle === "function"){
+        ctx.setFillStyle(ink);
+        ctx.setStrokeStyle(ink);
+      }
 
-      const rowTieIns = [];
-      const rowTieOuts = [];
       for (let i=0;i<rowBars;i++){
         const barIndex = r * barsPerRow + i;
         const x = i * barWidth;
@@ -5167,6 +5222,8 @@
         if (barIndex == 0){
           stave.addClef("treble").addTimeSignature(`${beatsPerBar}/${beatValue}`);
         }
+        if (typeof stave.setStyle === "function") stave.setStyle(staveStyle);
+        if (typeof stave.setTextStyle === "function") stave.setTextStyle(textStyle);
         stave.setContext(ctx).draw();
 
         const barNotes = bars[barIndex] || [];
@@ -5174,54 +5231,112 @@
         const tickables = built.tickables.length
           ? built.tickables
           : [new VF.StaveNote({ keys:["b/4"], duration:"wr" })];
-        rowTieIns[i] = built.tieIns;
-        rowTieOuts[i] = built.tieOuts;
+        tickables.forEach(styleTickable);
 
         const voice = new VF.Voice({ num_beats: beatsPerBar, beat_value: beatValue });
         voice.setMode(VF.Voice.Mode.SOFT);
         voice.addTickables(tickables);
         const beamables = tickables.filter(n => n && typeof n.isRest === "function" && !n.isRest());
+        const timeSig = `${beatsPerBar}/${beatValue}`;
         const groups = (VF.Beam && typeof VF.Beam.getDefaultBeamGroups === "function")
-          ? VF.Beam.getDefaultBeamGroups(`${beatsPerBar}/${beatValue}`)
+          ? VF.Beam.getDefaultBeamGroups(timeSig)
           : ((VF.Fraction) ? [new VF.Fraction(1, beatValue)] : undefined);
-        const groups = (VF.Fraction) ? [new VF.Fraction(1, beatValue)] : undefined;
         const beams = VF.Beam.generateBeams(beamables, {
           groups,
           beam_rests: false,
-          maintain_stem_directions: true
+          maintain_stem_directions: false
         });
+        beams.forEach(b => { if (typeof b.setStyle === "function") b.setStyle(inkStyle); });
         new VF.Formatter().joinVoices([voice]).format([voice], barWidth - 12);
         voice.draw(ctx, stave);
-        built.ties.forEach(t => t.setContext(ctx).draw());
+        built.ties.forEach(t => {
+          if (typeof t.setStyle === "function") t.setStyle(inkStyle);
+          t.setContext(ctx).draw();
+        });
         if (built.tuplets && built.tuplets.length){
-          built.tuplets.forEach(t => t.setContext(ctx).draw());
+          built.tuplets.forEach(t => {
+            if (typeof t.setStyle === "function") t.setStyle(inkStyle);
+            t.setContext(ctx).draw();
+          });
         }
         beams.forEach(b => b.setContext(ctx).draw());
       }
-      for (let i=0;i<rowBars-1;i++){
-        const outs = rowTieOuts[i];
-        const ins = rowTieIns[i+1];
-        if (!outs || !ins) continue;
-        outs.forEach((noteObj, id)=>{
-          const target = ins.get(id);
-          if (!target) return;
-          const tie = new VF.StaveTie({ first_note: noteObj, last_note: target });
-          tie.setContext(ctx).draw();
-        });
-      }
       rowWrap.appendChild(svgWrap);
+      const playhead = document.createElement("div");
+      playhead.className = "biabPlayhead";
+      rowWrap.appendChild(playhead);
       E.melodySheet.appendChild(rowWrap);
     }
+    updateMelodyPlayhead(0);
   }
 
 
+  function updateMelodyPlayhead(stepSeconds = 0){
+    if (!state.biabActive || !E.melodySheet) return;
+    const rows = E.melodySheet.querySelectorAll(".biabRow");
+    if (!rows.length) return;
+    const barIndex = clamp(state.activeBar, 0, Math.max(0, state.chartBars.length - 1));
+    const bar = state.chartBars[barIndex];
+    rows.forEach((row)=>{
+      const start = Number(row.dataset.start || 0);
+      const rowBars = Number(row.dataset.bars || 0);
+      const barWidth = Number(row.dataset.barWidth || 0);
+      const zoom = Number(row.dataset.zoom || 1);
+      const playhead = row.querySelector(".biabPlayhead");
+      if (!playhead || !Number.isFinite(barWidth) || !Number.isFinite(zoom)) return;
+      if (barIndex < start || barIndex >= start + rowBars){
+        playhead.style.opacity = "0";
+        return;
+      }
+      playhead.style.opacity = "1";
+      const barPx = barWidth * zoom;
+      const rowPx = barPx * rowBars;
+      let startPx = (barIndex - start) * barPx;
+      if (bar?.split && state.activeHalf === 1) startPx += barPx / 2;
+      let endPx = startPx + (bar?.split ? (barPx / 2) : barPx);
+      startPx = clamp(startPx, 0, rowPx);
+      endPx = clamp(endPx, 0, rowPx);
+      if (stepSeconds > 0){
+        playhead.style.transition = "none";
+        playhead.style.transform = `translateX(${startPx}px)`;
+        requestAnimationFrame(()=>{
+          playhead.style.transition = `transform ${stepSeconds}s linear`;
+          playhead.style.transform = `translateX(${endPx}px)`;
+        });
+      } else {
+        playhead.style.transition = "none";
+        playhead.style.transform = `translateX(${startPx}px)`;
+      }
+    });
+  }
+
+  function syncLeadSheetButton(){
+    if (!E.btnEdit) return;
+    if (state.biabActive){
+      const dark = state.biabNotationTheme === "dark";
+      E.btnEdit.textContent = dark ? "☀️" : "🌙";
+      E.btnEdit.title = dark ? "Switch to light notation" : "Switch to dark notation";
+      E.btnEdit.classList.remove("primary");
+      return;
+    }
+    E.btnEdit.textContent = "✏️";
+    E.btnEdit.title = "Edit chart";
+  }
+
   function applyEditVisuals(){
+    if (state.biabActive){
+      if (E.editHint) E.editHint.style.display = "none";
+      if (E.btnEdit) E.btnEdit.classList.remove("primary");
+      syncLeadSheetButton();
+      return;
+    }
     const nodes = E.sheet.querySelectorAll(".bar");
     nodes.forEach(n=>{
       n.classList.toggle("editing", !!state.editMode);
     });
-    E.editHint.style.display = state.editMode ? "block" : "none";
-    E.btnEdit.classList.toggle("primary", !!state.editMode);
+    if (E.editHint) E.editHint.style.display = state.editMode ? "block" : "none";
+    if (E.btnEdit) E.btnEdit.classList.toggle("primary", !!state.editMode);
+    syncLeadSheetButton();
   }
 
   function highlightActiveBar(){
@@ -5574,43 +5689,30 @@
     }
 
     const ch = activeChord();
-    const melodyPcs = getActiveMelodyPcs();
-    let scalePCs = [];
-    let chordPCs = [];
-    let scaleRoot = null;
-    let mode = state.keyMode || "ionian";
-    let chordRoot = null;
-    let needWide = false;
-
-    if (ch){
-      const prev = (state.activeBar>0) ? (state.chartBars[state.activeBar-1]?.chords?.slice(-1)[0] || null) : null;
-      const next = (state.activeBar<state.chartBars.length-1) ? (state.chartBars[state.activeBar+1]?.chords?.[0] || null) : null;
-      const scaleInfo = scalePCsForChordLocal(ch, prev, next);
-      scalePCs = scaleInfo.pcs || [];
-      mode = scaleInfo.mode || mode;
-      chordPCs = chordTonesPCs(ch);
-      scaleRoot = (typeof ch.scaleRoot==="number") ? ch.scaleRoot : ch.root;
-      chordRoot = ch.root;
-      needWide = (ch.intervals?.length||0) >= 5;
-      E.pianoTop.textContent = chordName(ch);
-      E.pianoHint.textContent = `Scale: ${noteName(scaleRoot)} ${mode} · Keyboard: ${state.kbOct} oct.`;
-    } else {
-      const keyMode = SCALES[state.keyMode] ? state.keyMode : "ionian";
-      mode = keyMode;
-      scaleRoot = Number.isFinite(state.keyRoot) ? state.keyRoot : 0;
-      scalePCs = (SCALES[keyMode] || []).map(i=>pc(scaleRoot + i));
-      chordPCs = [];
-      chordRoot = null;
-      needWide = false;
-      E.pianoTop.textContent = `Key: ${noteName(scaleRoot)} ${mode}`;
-      E.pianoHint.textContent = `Keyboard: ${state.kbOct} oct.`;
+    if (!ch){
+      E.pianoSvg.innerHTML = "";
+      E.pianoTop.textContent = "—";
+      E.pianoHint.textContent = "—";
+      return;
     }
+
+    const prev = (state.activeBar>0) ? (state.chartBars[state.activeBar-1]?.chords?.slice(-1)[0] || null) : null;
+    const next = (state.activeBar<state.chartBars.length-1) ? (state.chartBars[state.activeBar+1]?.chords?.[0] || null) : null;
+
+    const {pcs: scalePCs, mode} = scalePCsForChordLocal(ch, prev, next);
+    const chordPCs = chordTonesPCs(ch);
+    const melodyPcs = getActiveMelodyPcs();
+
+    const scaleRoot = (ch && typeof ch.scaleRoot==="number") ? ch.scaleRoot : ch.root;
+    E.pianoTop.textContent = chordName(ch);
+    E.pianoHint.textContent = `Scale: ${noteName(scaleRoot)} ${mode} · Keyboard: ${state.kbOct} oct.`;
 
     const svg = E.pianoSvg;
     svg.innerHTML = "";
 
     const W = 1000, H = 240;
     const baseOct = clamp(Number(state.kbOct)||2, 1, 4);
+    const needWide = (ch.intervals?.length||0) >= 5;
     const oct = clamp(needWide ? Math.max(baseOct, 3) : baseOct, 1, 4);
     const whiteKeyCount = 7 * oct;
     const whiteW = W / whiteKeyCount;
@@ -5644,7 +5746,7 @@
       svg.appendChild(rect);
 
       const isChord = chordPCs.includes(p);
-      const isRoot = chordRoot != null && p === pc(chordRoot);
+      const isRoot = p === pc(ch.root);
       if (isChord){
         placeMarker(svg, k.x + whiteW*0.5, 175, isRoot ? "root" : "chord");
       }
@@ -5676,7 +5778,7 @@
         svg.appendChild(rect);
 
         const isChord = chordPCs.includes(p);
-        const isRoot = chordRoot != null && p === pc(chordRoot);
+        const isRoot = p === pc(ch.root);
         if (isChord){
           placeMarker(svg, x0 + blackW*0.5, 95, isRoot ? "root" : "chord");
         }
@@ -5692,14 +5794,8 @@
     renderKeyLine();
     renderSongRandomLabel();
     renderLeadSheet();
+    renderMelodySheet();
     renderPianoForActive();
-    try{
-      renderMelodySheet();
-    } catch (err){
-      console.warn("Melody render failed", err);
-      if (E.melodySheet) E.melodySheet.innerHTML = "";
-      setMelodyStatus("Melody render failed.");
-    }
   }
 
   /* ---------- SoundFont mappings ---------- */
@@ -6528,16 +6624,20 @@
       // Length
       const dur = (bar.split ? halfSeconds() : barSeconds());
       if (state.biabActive){
-        scheduleBiabMidi(barIdx, atHalf, t0);
-        scheduleBiabMelody(barIdx, atHalf, t0, { playAudio: false, highlight: true });
+        const hasMidi = Array.isArray(state.biabMidiBars) && state.biabMidiBars.some(bar => bar && bar.length);
+        if (hasMidi) scheduleBiabMidi(barIdx, atHalf, t0);
+        scheduleBiabMelody(barIdx, atHalf, t0, { playAudio: !hasMidi, highlight: true });
+      } else {
+        scheduleBiabMelody(barIdx, atHalf, t0);
+      }
+      updateMelodyPlayhead(dur);
+
+      const ch = currentChord();
+      if (!ch){
         nextStep();
         return;
       }
 
-      const ch = currentChord();
-      if (!ch) return;
-
-      scheduleBiabMelody(barIdx, atHalf, t0);
       const isSplit = !!bar.split;
       const isSecondHalf = isSplit && atHalf===1;
       const splitScale = isSplit ? 0.65 : 1;
@@ -7339,6 +7439,7 @@
     highlightActiveBar();
     renderHeaderPills();
     renderPianoForActive();
+    updateMelodyPlayhead(0);
 
     // If edit mode, open editor instead of preview
     if (state.editMode){
@@ -8056,6 +8157,11 @@
     E.pageTheme.value = state.pageTheme;
     E.pianoTheme.value = state.pianoTheme;
     E.fretTheme.value = state.fretTheme;
+    if (E.biabZoom){
+      const zoomPct = Math.round(clamp(state.biabZoom || 1, 0.6, 1.2) * 100);
+      E.biabZoom.value = String(zoomPct);
+      if (E.biabZoomValue) E.biabZoomValue.textContent = `${zoomPct}%`;
+    }
     E.fretLefty.checked = !!state.fretLefty;
     E.fretNumbers.checked = !!state.fretNumbers;
     E.markerStyle.value = state.markerStyle;
@@ -8195,6 +8301,8 @@
         pageTheme: state.pageTheme,
         pianoTheme: state.pianoTheme,
         markerStyle: state.markerStyle,
+        biabZoom: state.biabZoom,
+        biabNotationTheme: state.biabNotationTheme,
         viewMode: state.viewMode,
         fretTheme: state.fretTheme,
         fretLefty: state.fretLefty,
@@ -8258,6 +8366,8 @@
       pageTheme: saved.pageTheme ?? state.pageTheme,
       pianoTheme: saved.pianoTheme ?? state.pianoTheme,
       markerStyle: saved.markerStyle ?? state.markerStyle,
+      biabZoom: saved.biabZoom ?? state.biabZoom,
+      biabNotationTheme: saved.biabNotationTheme ?? state.biabNotationTheme,
       viewMode: saved.viewMode ?? state.viewMode,
       fretTheme: saved.fretTheme ?? state.fretTheme,
       fretLefty: saved.fretLefty ?? state.fretLefty,
@@ -8425,6 +8535,15 @@
     bindRangePair(E.drumsFill, E.drumsFillNum, (v)=>{ state.drumsFill=v; saveAll(); });
 
     bindRangePair(E.kbOct, E.kbOctNum, (v)=>{ state.kbOct=v; saveAll(); renderPianoForActive(); });
+    if (E.biabZoom){
+      E.biabZoom.addEventListener("input", ()=>{
+        const pct = clamp(Number(E.biabZoom.value || 100), 60, 120);
+        state.biabZoom = pct / 100;
+        if (E.biabZoomValue) E.biabZoomValue.textContent = `${pct}%`;
+        renderMelodySheet();
+        saveAll();
+      });
+    }
 
     // checkboxes
     E.halfChords.addEventListener("change", ()=>{
@@ -8684,6 +8803,13 @@
 
     // edit mode toggle
     E.btnEdit.addEventListener("click", ()=>{
+      if (state.biabActive){
+        state.biabNotationTheme = state.biabNotationTheme === "dark" ? "light" : "dark";
+        renderMelodySheet();
+        applyEditVisuals();
+        saveAll();
+        return;
+      }
       state.editMode = !state.editMode;
       applyEditVisuals();
       saveAll();
