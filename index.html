@@ -7,6 +7,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/js-synthesizer@1.11.0/externals/libfluidsynth-2.4.6.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/js-synthesizer@1.11.0/dist/js-synthesizer.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vexflow@3.0.9/releases/vexflow-min.js"></script>
 
   <style>
     :root{
@@ -33,6 +34,7 @@
       --accent:#2f6bff;  /* scale fill */
       --good:#3fe18b;    /* root marker */
       --chord:#b67cff;   /* chord marker */
+      --melody:#ff4b4b;  /* melody highlight */
 
       --fretWood:#2a1a12;
       --fretLine: rgba(255,255,255,.20);
@@ -271,6 +273,52 @@
       .bar .num{font-size:8px;gap:2px;top:7px;right:7px;}
       .repeatGlyph{font-size:8px;}
     }
+    .melodyWrap{
+      margin-top:10px;
+      border-top:1px solid rgba(255,255,255,.08);
+      padding-top:10px;
+      display:none;
+    }
+    .melodyWrap.on{display:block;}
+    .melodyHead{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+    .melodySheet{width:100%;overflow-x:auto;padding:6px 4px 2px;}
+    .melodyEmpty{font-size:12px;color:var(--pageMuted);padding:6px 4px;}
+    .melodyRow{margin-bottom:8px;}
+
+    .biabSheet{
+      background:#ffffff;
+      color:#111111;
+      border-radius:12px;
+      padding:10px;
+      border:1px solid rgba(0,0,0,.12);
+    }
+    .biabRow{margin-bottom:12px;}
+    .biabChords{
+      display:grid;
+      gap:6px;
+      margin:0 0 6px 0;
+      font-size:13px;
+      font-weight:700;
+      color:#111111;
+    }
+    .biabChordCell{
+      display:grid;
+      gap:4px;
+      text-align:left;
+      justify-items:start;
+      padding:2px 4px 6px;
+      border-bottom:1px solid rgba(0,0,0,.12);
+    }
+    .biabChordSlot{
+      font-weight:700;
+      font-size:12px;
+      color:#111111;
+    }
+    .biabChordSlot.empty{
+      color:transparent;
+    }
+    .biabSvg{background:#ffffff;}
+
     .bar{
       position:relative;min-height: 62px;background: rgba(0,0,0,.22);
       border:1px solid rgba(255,255,255,.08);border-radius: 14px;
@@ -312,6 +360,7 @@
     .sw.scale{background: var(--accent); border-color: rgba(47,107,255,.95)}
     .sw.root{background: var(--good); border-color: rgba(63,225,139,.95)}
     .sw.chord{background: var(--chord); border-color: rgba(182,124,255,.95)}
+    .sw.melody{background: var(--melody); border-color: rgba(255,75,75,.9)}
     .pianoBox{border:1px solid rgba(255,255,255,.10);border-radius: 16px;background: rgba(0,0,0,.18);overflow:hidden;}
     svg{display:block;width:100%;height:auto}
     .hint{margin-top:10px;color: rgba(154,166,178,.85);font-size:12px;line-height:1.2;user-select:none;}
@@ -550,6 +599,7 @@
           <span class="dotLegend"><span class="sw scale"></span>Scale</span>
           <span class="dotLegend"><span class="sw root"></span>Root</span>
           <span class="dotLegend"><span class="sw chord"></span>Chord</span>
+          <span class="dotLegend"><span class="sw melody"></span>Melody</span>
         </div>
         <div class="pianoBox" id="pianoBox">
           <svg id="pianoSvg" viewBox="0 0 1000 240" preserveAspectRatio="none" aria-label="Piano keyboard"></svg>
@@ -572,6 +622,13 @@
       </div>
       <div class="cardBody">
         <div class="sheet" id="sheet"></div>
+        <div class="melodyWrap" id="melodyWrap">
+          <div class="melodyHead">
+            <div class="title">Lead Sheet + Melody (BIAB)</div>
+            <div class="msg" id="melodyStatus">No BIAB melody loaded.</div>
+          </div>
+          <div class="melodySheet" id="melodySheet"></div>
+        </div>
         <div class="msg" id="editHint" style="display:none;margin-top:10px;">
           Edit mode ON: tap a bar (or half) to change that chord. Use “Clear” to remove it.
         </div>
@@ -665,6 +722,11 @@
                   <button class="btn tiny" id="btnSongRandom" type="button">Load random song</button>
                   <div class="songRandomLabel" id="songRandomLabel">No song loaded</div>
                 </div>
+              </div>
+              <div class="control" style="grid-column: 1 / -1;">
+                <label>BIAB upload (.mgu/.sgu/.mg1/.sg1...)</label>
+                <input class="fileInput" type="file" id="biabFile" accept=".mgu,.sgu,.mg1,.sg1,.mg2,.sg2,.mg3,.sg3,.mg4,.sg4,.mg5,.sg5,application/octet-stream">
+                <div class="msg" id="biabStatus"> </div>
               </div>
               <div class="control" style="grid-column: 1 / -1;">
                 <div class="songList" id="songList"></div>
@@ -1131,8 +1193,8 @@
             </div>
           </div>
           <div class="miniCtl" style="grid-column: 1 / -1;">
-            <label>Manual upload (.txt)</label>
-            <input class="fileInput" type="file" id="songFile" accept=".txt,.ireal,.irealbook,.csv,text/plain">
+            <label>Manual upload (.txt/.ireal/.mgu)</label>
+            <input class="fileInput" type="file" id="songFile" accept=".txt,.ireal,.irealbook,.csv,.mgu,.sgu,.mg1,.sg1,.mg2,.sg2,.mg3,.sg3,.mg4,.sg4,.mg5,.sg5,application/octet-stream">
           </div>
         </div>
 
@@ -1220,6 +1282,10 @@
     try{ return JSON.parse(s); }catch{ return fallback; }
   }
 
+  function safeStorageGet(key){
+    try{ return localStorage.getItem(key); }catch{ return null; }
+  }
+
   /* ---------- Scales / chords ---------- */
   const SCALES = {
     ionian:[0,2,4,5,7,9,11],
@@ -1238,6 +1304,8 @@
   };
 
   const CHORDS = {
+    maj:[0,4,7],
+    min:[0,3,7],
     maj7:[0,4,7,11],
     maj9:[0,4,7,11,14],
     maj6:[0,4,7,9],
@@ -1443,7 +1511,9 @@
     }
     if (!slots.length) return;
 
-    const limitEnabled = (overrideLimiterEnabled != null) ? overrideLimiterEnabled : (state.scaleLimitEnabled ?? true);
+    const limitEnabled = (overrideLimiterEnabled != null)
+      ? overrideLimiterEnabled
+      : (state.biabActive ? false : (state.scaleLimitEnabled ?? true));
     const maxLimit = 32;
     const limit = limitEnabled
       ? clamp(Number(overrideLimit ?? state.scalesUsed)||1, 1, maxLimit)
@@ -1900,6 +1970,18 @@
     activeBar: 0,
     activeHalf: 0,
 
+    biabActive: false,
+    biabMeta: null,
+    biabMelody: [],
+    biabMelodyBars: [],
+    biabDisplayBars: [],
+    biabMidiBars: [],
+    biabMidiPrograms: [],
+    biabTicksPerBeat: 120,
+    biabBarTicks: 480,
+    biabTimeSig: { num: 4, den: 4 },
+    biabMelodyGenerated: false,
+
     bars: DEFAULTS.bars,
     halfEnabled: DEFAULTS.halfEnabled,
     halfDensity: DEFAULTS.halfDensity,
@@ -1987,6 +2069,9 @@
     lockLimitMini: document.getElementById("lockLimitMini"),
 
     sheet: document.getElementById("sheet"),
+    melodyWrap: document.getElementById("melodyWrap"),
+    melodySheet: document.getElementById("melodySheet"),
+    melodyStatus: document.getElementById("melodyStatus"),
     leadKey: document.getElementById("leadKey"),
 
     pianoSvg: document.getElementById("pianoSvg"),
@@ -2003,6 +2088,8 @@
     songUrl: document.getElementById("songUrl"),
     btnSongFetch: document.getElementById("btnSongFetch"),
     songFile: document.getElementById("songFile"),
+    biabFile: document.getElementById("biabFile"),
+    biabStatus: document.getElementById("biabStatus"),
     sfEnabled: document.getElementById("sfEnabled"),
     sfUrl: document.getElementById("sfUrl"),
     btnSfLoad: document.getElementById("btnSfLoad"),
@@ -2913,6 +3000,9 @@
 
   function qualityMetaFromSymbol(sym){
     const map = {
+      "maj": {symbol:"maj", family:"maj", key:"maj", display:""},
+      "m": {symbol:"min", family:"min", key:"min", display:"m"},
+      "min": {symbol:"min", family:"min", key:"min", display:"m"},
       "maj7": {symbol:"maj7", family:"maj", key:"maj7", display:"maj7"},
       "maj9": {symbol:"maj9", family:"maj", key:"maj9", display:"maj9"},
       "6": {symbol:"maj6", family:"maj", key:"maj6", display:"6"},
@@ -3365,6 +3455,1040 @@
     return songs;
   }
 
+  /* ---------- BIAB loader ---------- */
+  const BIAB_TICKS_PER_BEAT = 120;
+  const BIAB_STYLES = [
+    [4,4], [12,8], [4,4], [4,4], [4,4], [4,4], [4,4], [3,4],
+    [4,4], [4,4], [4,4], [4,4], [4,4], [4,4], [4,4], [4,4],
+    [3,4], [4,4], [4,4], [4,4], [4,4], [12,8], [12,8], [4,4]
+  ];
+  const BIAB_ROOT_PCS = [0,0,1,2,3,4,5,6,7,8,9,10,11,1,3,6,8,10];
+  const BIAB_CHORD_NAMES = {
+    1: "",
+    2: "Maj",
+    3: "5b",
+    4: "+",
+    5: "6",
+    6: "Maj7",
+    7: "Maj9",
+    8: "Maj9#11",
+    9: "Maj13#11",
+    10: "Maj13",
+    11: "Maj9(no 3)",
+    12: "+",
+    13: "Maj7#5",
+    14: "69",
+    15: "2",
+    16: "m",
+    17: "m+",
+    18: "mMaj7",
+    19: "m7",
+    20: "m9",
+    21: "m11",
+    22: "m13",
+    23: "m6",
+    24: "m#5",
+    25: "m7#5",
+    26: "m69",
+    27: "Lyd",
+    28: "Maj7Lyd",
+    29: "Maj7b5",
+    32: "m7b5",
+    33: "dim",
+    34: "m9b5",
+    40: "5",
+    56: "7+",
+    57: "9+",
+    58: "13+",
+    59: "(blues)",
+    60: "7(Blues)",
+    64: "7",
+    65: "13",
+    66: "7b13",
+    67: "7#11",
+    68: "13#11",
+    69: "7#11b13",
+    70: "9",
+    72: "9b13",
+    73: "9#11",
+    74: "13#11",
+    75: "9#11b13",
+    76: "7b9",
+    77: "13b9",
+    78: "7b9b13",
+    79: "7b9#11",
+    80: "13b9#11",
+    81: "7b9#11b13",
+    82: "7#9",
+    83: "13#9",
+    84: "7#9b13",
+    85: "9#11",
+    86: "13#9#11",
+    87: "7#9#11b13",
+    88: "7b5",
+    89: "13b5",
+    90: "7b5b13",
+    91: "9b5",
+    92: "9b5b13",
+    93: "7b5b9",
+    94: "13b5b9",
+    95: "7b5b9b13",
+    96: "7b5#9",
+    97: "13b5#9",
+    98: "7b5#9b13",
+    99: "7#5",
+    100: "13#5",
+    101: "7#5#11",
+    102: "13#5#11",
+    103: "9#5",
+    104: "9#5#11",
+    105: "7#5b9",
+    106: "13#5b9",
+    107: "7#5b9#11",
+    108: "13#5b9#11",
+    109: "7#5#9",
+    110: "13#5#9#11",
+    111: "7#5#9#11",
+    112: "13#5#9#11",
+    113: "7alt",
+    128: "7sus",
+    129: "13sus",
+    130: "7susb13",
+    131: "7sus#11",
+    132: "13sus#11",
+    133: "7sus#11b13",
+    134: "9sus",
+    135: "9susb13",
+    136: "9sus#11",
+    137: "13sus#11",
+    138: "13sus#11",
+    139: "9sus#11b13",
+    140: "7susb9",
+    141: "13susb9",
+    142: "7susb9b13",
+    143: "7susb9#11",
+    144: "13susb9#11",
+    145: "7susb9#11b13",
+    146: "7sus#9",
+    147: "13sus#9",
+    148: "7sus#9b13",
+    149: "9sus#11",
+    150: "13sus#9#11",
+    151: "7sus#9#11b13",
+    152: "7susb5",
+    153: "13susb5",
+    154: "7susb5b13",
+    155: "9susb5",
+    156: "9susb5b13",
+    157: "7susb5b9",
+    158: "13susb5b9",
+    159: "7susb5b9b13",
+    160: "7susb5#9",
+    161: "13susb5#9",
+    162: "7susb5#9b13",
+    163: "7sus#5",
+    164: "13sus#5",
+    165: "7sus#5#11",
+    166: "13sus#5#11",
+    167: "9sus#5",
+    168: "9sus#5#11",
+    169: "7sus#5b9",
+    170: "13sus#5b9",
+    171: "7sus#5b9#11",
+    172: "13sus#5b9#11",
+    173: "7sus#5#9",
+    174: "13sus#5#9#11",
+    175: "7sus#5#9#11",
+    176: "13sus#5#9#11",
+    177: "4",
+    184: "sus",
+    185: "dim7",
+    186: "sus2",
+    187: "maddb13",
+    188: "add#13",
+    189: "add#11#13",
+    190: "add#13",
+    191: "6add9",
+    192: "sus4",
+    193: "11",
+    194: "Maj11",
+    195: "Tristan",
+    196: "m7add11",
+    197: "Maj7add13",
+    198: "madd9",
+    199: "m9Maj7",
+    200: "5",
+    201: "m11b5",
+    202: "dim7add#7",
+    203: "aug9",
+    204: "omit5",
+    205: "aug7",
+    206: "aug9",
+    207: "aug13",
+    210: "Maj7#11",
+    211: "Maj9#5",
+    212: "Maj7#9",
+    213: "add2",
+    214: "add9",
+    215: "susb9",
+    216: "Maj7sus",
+    217: "Maj9sus",
+    220: "m7b9",
+    221: "m7b13",
+    222: "Phryg",
+    223: "madd2",
+    230: "7b9#9",
+    240: "sus#4",
+    241: "Maj7b13",
+  };
+
+  function biabChordNameToSymbol(name){
+    const raw = String(name || "").trim();
+    if (!raw) return "maj";
+    const lower = raw.toLowerCase();
+    const has = (s)=> lower.includes(s);
+    const starts = (s)=> lower.startsWith(s);
+
+    if (has("sus")){
+      return (has("7") || has("9") || has("11") || has("13") || has("b9") || has("#9")) ? "7sus" : "sus";
+    }
+
+    if (starts("m") && !starts("maj")){
+      if (has("maj7") || has("maj9")) return has("9") ? "mMaj9" : "mMaj7";
+      if (has("b5")) return "ø7";
+      if (has("11")) return "m11";
+      if (has("9")) return "m9";
+      if (has("6") && !has("7")) return "m6";
+      if (has("7")) return "m7";
+      return "m";
+    }
+
+    if (has("dim")) return "dim7";
+    if (has("tristan")) return "dim7";
+    if (has("lyd")) return "maj9sharp11";
+    if (has("phryg")) return "m7";
+
+    if (starts("maj") || has("maj")){
+      if (has("#11")) return "maj9sharp11";
+      if (has("69") || (has("6") && has("9"))) return "6/9";
+      if (has("11")) return "maj9";
+      if (has("9")) return "maj9";
+      if (has("13")) return "maj9";
+      if (has("7")) return "maj7";
+      if (has("6")) return "6";
+      if (has("add") || has("2")) return "add9";
+      return "maj";
+    }
+
+    if (has("add")){
+      if (has("6") && has("9")) return "6/9";
+      if (has("9") || has("2")) return "add9";
+    }
+
+    if (raw == "4") return "sus";
+    if (raw == "5" || raw == "5b" || raw == "5#") return "maj";
+    if (has("omit5")) return "maj";
+
+    if (has("alt")) return "7";
+    if (has("b9") && has("#9")) return "7(b9)";
+    if (has("#9")) return "7(#9)";
+    if (has("b9")) return "7(b9)";
+    if (has("b13")) return "7(b13)";
+    if (has("13")) return "13";
+    if (has("11")) return "11";
+    if (has("9")) return "9";
+    if (has("7")) return "7";
+    if (has("6") && !has("7")) return "6";
+    return "maj";
+  }
+
+  function biabChordSymbolFromId(id){
+    if (!Number.isFinite(id)) return "7";
+    if (!Object.prototype.hasOwnProperty.call(BIAB_CHORD_NAMES, id)) return "7";
+    return biabChordNameToSymbol(BIAB_CHORD_NAMES[id]);
+  }
+
+
+  const BIAB_EXTS = new Set(["mgu","sgu","mg1","sg1","mg2","sg2","mg3","sg3","mg4","sg4","mg5","sg5"]);
+  function isBiabFileName(name){
+    const ext = String(name || "").split(".").pop().toLowerCase();
+    return BIAB_EXTS.has(ext);
+  }
+
+
+  let melodyTimers = [];
+  const melodyActive = new Map();
+
+  function setBiabStatus(text){
+    if (E.biabStatus) E.biabStatus.textContent = text;
+  }
+
+  function setMelodyStatus(text){
+    if (E.melodyStatus) E.melodyStatus.textContent = text;
+  }
+
+  function clearMelodyTimers(){
+    melodyTimers.forEach((id)=> window.clearTimeout(id));
+    melodyTimers = [];
+    melodyActive.clear();
+  }
+
+  function setMelodyActive(midi, on){
+    if (!Number.isFinite(midi)) return;
+    const key = Math.round(midi);
+    const cur = melodyActive.get(key) || 0;
+    if (on) melodyActive.set(key, cur + 1);
+    else if (cur <= 1) melodyActive.delete(key);
+    else melodyActive.set(key, cur - 1);
+    renderPianoForActive();
+  }
+
+  function getActiveMelodyPcs(){
+    const pcs = new Set();
+    melodyActive.forEach((count, midi)=>{
+      if (count > 0) pcs.add(pc(midi));
+    });
+    return pcs;
+  }
+
+  function clearBiab(){
+    state.biabActive = false;
+    state.biabMeta = null;
+    state.biabMelody = [];
+    state.biabMelodyBars = [];
+    state.biabDisplayBars = [];
+    state.biabMidiBars = [];
+    state.biabMidiPrograms = [];
+    state.biabMelodyGenerated = false;
+    clearMelodyTimers();
+    if (E.melodyWrap) E.melodyWrap.classList.remove("on");
+    if (E.melodySheet) E.melodySheet.innerHTML = "";
+    setMelodyStatus("No BIAB melody loaded.");
+    setBiabStatus(" ");
+  }
+
+  function readU8(data, idx){
+    return data[idx] || 0;
+  }
+
+  function readU16(data, idx){
+    return (data[idx] || 0) + ((data[idx + 1] || 0) << 8);
+  }
+
+  function readU32(data, idx){
+    return (readU16(data, idx) + (readU16(data, idx + 2) << 16)) >>> 0;
+  }
+
+  function readAscii(data, idx, len){
+    let out = "";
+    for (let i=0;i<len && idx + i < data.length;i++){
+      const v = data[idx + i];
+      if (v === 0) break;
+      out += String.fromCharCode(v);
+    }
+    return out;
+  }
+
+  function biabSymbolToMeta(sym){
+    if (sym === "maj9sharp11") return {symbol:"maj9sharp11", family:"maj", key:"maj9sharp11", display:"maj9(#11)"};
+    if (sym === "mMaj9") return {symbol:"minMaj9", family:"minmaj", key:"minMaj9", display:"mMaj9"};
+    return qualityMetaFromSymbol(sym);
+  }
+
+  function biabChordFromRaw(raw){
+    const rootPc = BIAB_ROOT_PCS[raw.root] ?? 0;
+    const sym = biabChordSymbolFromId(raw.ext);
+    const meta = biabSymbolToMeta(sym);
+    const chord = makeChord(rootPc, meta);
+    if (raw.bass){
+      const bassPc = BIAB_ROOT_PCS[raw.bass];
+      if (bassPc != null && pc(bassPc) !== pc(rootPc)) chord.slash = bassPc;
+    }
+    return chord;
+  }
+
+  function biabChordEqual(a,b){
+    if (!a || !b) return false;
+    const aSlash = (a.slash!=null) ? pc(a.slash) : null;
+    const bSlash = (b.slash!=null) ? pc(b.slash) : null;
+    return pc(a.root)===pc(b.root) && a.symbol===b.symbol && aSlash===bSlash;
+  }
+
+  function biabChordsToBars(rawChords, measures, beatsPerBar){
+    const sorted = rawChords.filter(c => Number.isFinite(c.beat) && c.root != null && c.ext != null)
+      .sort((a,b)=>a.beat-b.beat);
+    if (!sorted.length) return [];
+    if (sorted[0].beat > 0){
+      sorted.unshift({ ...sorted[0], beat: 0 });
+    }
+    const lastBeat = sorted[sorted.length - 1].beat || 0;
+    const totalBars = Math.max(1, measures || Math.ceil((lastBeat + beatsPerBar) / beatsPerBar));
+    const bars = [];
+    let idx = 0;
+    let current = sorted[0];
+
+    for (let b=0;b<totalBars;b++){
+      const barStart = b * beatsPerBar;
+      const halfBeat = barStart + beatsPerBar / 2;
+      while (idx + 1 < sorted.length && sorted[idx + 1].beat <= barStart){
+        idx++;
+        current = sorted[idx];
+      }
+      const first = biabChordFromRaw(current);
+
+      let halfIdx = idx;
+      let halfRaw = current;
+      while (halfIdx + 1 < sorted.length && sorted[halfIdx + 1].beat <= halfBeat){
+        halfIdx++;
+        halfRaw = sorted[halfIdx];
+      }
+      const second = biabChordFromRaw(halfRaw);
+      const split = !biabChordEqual(first, second);
+      bars.push({ split, chords: split ? [first, second] : [first] });
+    }
+    return bars;
+  }
+
+
+  function biabChordsToDisplayBars(rawChords, measures, beatsPerBar){
+    const sorted = rawChords.filter(c => Number.isFinite(c.beat) && c.root != null && c.ext != null)
+      .sort((a,b)=>a.beat-b.beat);
+    if (!sorted.length) return [];
+    if (sorted[0].beat > 0){
+      sorted.unshift({ ...sorted[0], beat: 0 });
+    }
+    const totalBars = Math.max(1, measures || Math.ceil((sorted[sorted.length - 1].beat + beatsPerBar) / beatsPerBar));
+    const bars = [];
+    let idx = 0;
+    let current = sorted[0];
+    for (let b=0;b<totalBars;b++){
+      const slots = [];
+      for (let beat=0; beat<beatsPerBar; beat++){
+        const absBeat = b * beatsPerBar + beat;
+        while (idx + 1 < sorted.length && sorted[idx + 1].beat <= absBeat){
+          idx++;
+          current = sorted[idx];
+        }
+        slots.push(current ? biabChordFromRaw(current) : null);
+      }
+      bars.push({ slots });
+    }
+    return bars;
+  }
+
+  function pickMelodyChannel(events){
+    const stats = channelStats(events);
+    let best = null;
+    stats.forEach((stat, ch)=>{
+      if (ch === 9) return;
+      const polyRatio = stat.onsetCount ? (stat.polyOnsets / stat.onsetCount) : 0;
+      const monoScore = (1 - polyRatio) * 2 + (1 / Math.max(1, stat.avgChordSize || 1));
+      const pitchScore = (stat.avgPitch / 24) + (stat.pitchSpan > 12 ? 0.2 : 0);
+      const densityScore = stat.noteCount / 200;
+      const score = monoScore + pitchScore + densityScore;
+      if (!best || score > best.score){
+        best = { ch, score };
+      }
+    });
+    return best ? best.ch : null;
+  }
+
+  function channelStats(events){
+    const byChannel = new Map();
+    (events || []).forEach((e)=>{
+      const ch = Number.isFinite(e.channel) ? e.channel : 0;
+      let stat = byChannel.get(ch);
+      if (!stat){
+        stat = {
+          noteCount: 0,
+          onsetCounts: new Map(),
+          polyOnsets: 0,
+          avgChordSize: 0,
+          sumPitch: 0,
+          minPitch: Number.POSITIVE_INFINITY,
+          maxPitch: Number.NEGATIVE_INFINITY
+        };
+        byChannel.set(ch, stat);
+      }
+      stat.noteCount += 1;
+      if (Number.isFinite(e.midi)){
+        stat.sumPitch += e.midi;
+        if (e.midi < stat.minPitch) stat.minPitch = e.midi;
+        if (e.midi > stat.maxPitch) stat.maxPitch = e.midi;
+      }
+      const key = Math.round(e.tick || 0);
+      stat.onsetCounts.set(key, (stat.onsetCounts.get(key) || 0) + 1);
+    });
+    byChannel.forEach((stat)=>{
+      let onsets = 0;
+      let total = 0;
+      let poly = 0;
+      stat.onsetCounts.forEach((count)=>{
+        onsets += 1;
+        total += count;
+        if (count >= 2) poly += 1;
+      });
+      stat.onsetCount = onsets;
+      stat.polyOnsets = poly;
+      stat.avgChordSize = onsets ? (total / onsets) : 0;
+      stat.avgPitch = stat.noteCount ? (stat.sumPitch / stat.noteCount) : 0;
+      stat.pitchSpan = Number.isFinite(stat.minPitch) && Number.isFinite(stat.maxPitch)
+        ? (stat.maxPitch - stat.minPitch)
+        : 0;
+    });
+    return byChannel;
+  }
+
+  function pickCompChannel(events, melodyChannel){
+    const stats = channelStats(events);
+    let best = null;
+    stats.forEach((stat, ch)=>{
+      if (ch === melodyChannel || ch === 9) return;
+      if (stat.avgChordSize < 1.3 && stat.polyOnsets < 1) return;
+      const score = stat.polyOnsets * 2 + stat.avgChordSize + (stat.noteCount / 50);
+      if (!best || score > best.score){
+        best = { ch, score, noteCount: stat.noteCount };
+      }
+    });
+    if (best) return best.ch;
+    stats.forEach((stat, ch)=>{
+      if (ch === melodyChannel || ch === 9) return;
+      if (!best || stat.noteCount > best.noteCount){
+        best = { ch, noteCount: stat.noteCount };
+      }
+    });
+    return best ? best.ch : null;
+  }
+
+  function notesInWindow(events, start, end){
+    const list = [];
+    (events || []).forEach((e)=>{
+      if (!Number.isFinite(e.tick) || !Number.isFinite(e.dur)) return;
+      const eEnd = e.tick + e.dur;
+      if (e.tick < end && eEnd > start) list.push(e);
+    });
+    return list;
+  }
+
+  function chordFromNotes(notes){
+    const pcs = new Map();
+    let bassMidi = null;
+    (notes || []).forEach((n)=>{
+      if (!Number.isFinite(n.midi)) return;
+      const p = pc(n.midi);
+      pcs.set(p, (pcs.get(p) || 0) + 1);
+      if (bassMidi == null || n.midi < bassMidi) bassMidi = n.midi;
+    });
+    const pcList = [...pcs.keys()];
+    if (pcList.length < 2) return null;
+    const symbols = ["maj","maj7","maj6","6/9","add9","m","m7","m6","m9","m11","mMaj7","7","9","13","sus","7sus","ø7","dim7"];
+    let best = null;
+    for (let root=0; root<12; root++){
+      for (const sym of symbols){
+        const meta = qualityMetaFromSymbol(sym);
+        const intervals = CHORDS[meta.key] || CHORDS[meta.symbol];
+        if (!intervals || !intervals.length) continue;
+        const chordPcs = intervals.map(iv => pc(root + iv));
+        let match = 0;
+        chordPcs.forEach((p)=>{ if (pcs.has(p)) match += 1; });
+        const missing = chordPcs.length - match;
+        const extras = pcList.length - match;
+        let score = match * 2 - missing * 0.7 - extras * 0.35;
+        if (pcs.has(root)) score += 1.2;
+        score += (pcs.get(root) || 0) * 0.08;
+        if (!best || score > best.score || (score === best.score && chordPcs.length < best.size)){
+          best = { root, meta, score, size: chordPcs.length, chordPcs };
+        }
+      }
+    }
+    if (!best || best.score < 2.5) return null;
+    const chord = makeChord(best.root, best.meta);
+    const bassPc = (bassMidi != null) ? pc(bassMidi) : null;
+    if (bassPc != null && bassPc !== pc(chord.root) && best.chordPcs.includes(bassPc)){
+      chord.slash = bassPc;
+    }
+    return chord;
+  }
+
+  function buildMidiChordBars(events, barTicks, barCount, melodyChannel){
+    if (!events || !events.length) return [];
+    const compChannel = pickCompChannel(events, melodyChannel);
+    const stats = channelStats(events);
+    let compChannels = [];
+    if (compChannel != null){
+      compChannels = [compChannel];
+      stats.forEach((stat, ch)=>{
+        if (ch === melodyChannel || ch === 9 || ch === compChannel) return;
+        if (stat.avgChordSize >= 1.6 || stat.polyOnsets >= 2) compChannels.push(ch);
+      });
+    } else {
+      stats.forEach((stat, ch)=>{
+        if (ch === melodyChannel || ch === 9) return;
+        if (stat.avgChordSize >= 1.3 || stat.polyOnsets > 0) compChannels.push(ch);
+      });
+    }
+    if (!compChannels.length) return [];
+    const compEvents = events.filter(e => compChannels.includes((Number.isFinite(e.channel) ? e.channel : 0)));
+    if (!compEvents.length) return [];
+
+    const bars = [];
+    const halfTicks = barTicks / 2;
+    for (let b=0; b<barCount; b++){
+      const barStart = b * barTicks;
+      const firstNotes = notesInWindow(compEvents, barStart, barStart + halfTicks);
+      const secondNotes = notesInWindow(compEvents, barStart + halfTicks, barStart + barTicks);
+      const first = chordFromNotes(firstNotes);
+      const second = chordFromNotes(secondNotes);
+      if (first && second && !biabChordEqual(first, second)){
+        bars.push({ split: true, chords: [first, second] });
+      } else if (first || second){
+        bars.push({ split: false, chords: [first || second] });
+      } else {
+        bars.push({ split: false, chords: [] });
+      }
+    }
+
+    let last = null;
+    bars.forEach((bar)=>{
+      if (!bar.chords.length && last) bar.chords = [last];
+      if (bar.chords.length) last = bar.chords[bar.chords.length - 1];
+    });
+    return bars;
+  }
+
+  function buildMelodyBars(events, barTicks, barCount){
+    const bars = Array.from({length: barCount}, () => []);
+    (events || []).forEach((note)=>{
+      if (!note || !Number.isFinite(note.tick) || !Number.isFinite(note.dur) || !Number.isFinite(note.midi)) return;
+      let tick = note.tick;
+      let dur = note.dur;
+      const channel = Number.isFinite(note.channel) ? note.channel : 0;
+      const vel = Number.isFinite(note.vel) ? note.vel : 90;
+      while (dur > 0){
+        const barIdx = Math.floor(tick / barTicks);
+        if (barIdx < 0 || barIdx >= barCount) break;
+        if (!bars[barIdx]) bars[barIdx] = [];
+        const barStart = barIdx * barTicks;
+        const relStart = tick - barStart;
+        const remaining = Math.max(0, barTicks - relStart);
+        const slice = Math.min(dur, remaining);
+        if (slice > 0){
+          bars[barIdx].push({ start: relStart, dur: slice, midi: note.midi, vel, channel });
+        }
+        tick += slice;
+        dur -= slice;
+        if (slice <= 0) break;
+      }
+    });
+    bars.forEach(list => list.sort((a,b)=>a.start-b.start));
+    return bars;
+  }
+
+
+  function extractMelodyLine(events){
+    const byStart = new Map();
+    events.forEach((e)=>{
+      if (!Number.isFinite(e.tick) || !Number.isFinite(e.dur)) return;
+      if (!Number.isFinite(e.midi)) return;
+      const list = byStart.get(e.tick) || [];
+      list.push(e);
+      byStart.set(e.tick, list);
+    });
+    const starts = [...byStart.keys()].sort((a,b)=>a-b);
+    const out = [];
+    for (let i=0;i<starts.length;i++){
+      const tick = starts[i];
+      const list = byStart.get(tick) || [];
+      list.sort((a,b)=> (b.midi - a.midi) || (b.vel - a.vel) || (b.dur - a.dur));
+      const picked = list[0];
+      if (!picked) continue;
+      const nextTick = (i+1 < starts.length) ? starts[i+1] : null;
+      let dur = picked.dur;
+      if (nextTick != null && picked.tick + dur > nextTick){
+        dur = Math.max(1, nextTick - picked.tick);
+      }
+      out.push({ ...picked, dur });
+    }
+    return out;
+  }
+
+  function generateFallbackMelody(bars, barTicks){
+    const events = [];
+    const baseMidi = 60;
+    bars.forEach((bar, idx)=>{
+      const chords = bar?.chords || [];
+      if (!chords.length) return;
+      const first = chords[0];
+      const second = chords[1] || first;
+      if (bar.split){
+        events.push({ tick: idx * barTicks, dur: barTicks / 2, midi: baseMidi + pc(first.root), vel: 92, channel: 0 });
+        events.push({ tick: idx * barTicks + barTicks / 2, dur: barTicks / 2, midi: baseMidi + pc(second.root), vel: 92, channel: 0 });
+      } else {
+        events.push({ tick: idx * barTicks, dur: barTicks, midi: baseMidi + pc(first.root), vel: 90, channel: 0 });
+      }
+    });
+    return events;
+  }
+
+  function parseBiabBuffer(buffer, fileName){
+    const data = new Uint8Array(buffer);
+    if (!data.length) return null;
+    const eventStart = readU16(data, data.length - 4);
+    const eventCount = readU16(data, data.length - 2);
+    const chordLimit = (eventStart && eventStart > 0 && eventStart < data.length) ? eventStart : data.length;
+    let idx = 0;
+    const titleLen = readU8(data, idx + 1);
+    const title = readAscii(data, idx + 2, titleLen);
+    idx += 2 + titleLen;
+    idx += 2;
+
+    const style = readU8(data, idx) - 1;
+    idx += 1;
+    const keyIdx = readU8(data, idx);
+    idx += 1;
+    const bpm = readU8(data, idx) + (readU8(data, idx + 1) << 8);
+    idx += 2;
+    idx += 2;
+
+    const sig = BIAB_STYLES[style] || [4,4];
+    const beatsPerBar = sig[0] || 4;
+    const beatUnit = sig[1] || 4;
+    const beatScale = beatsPerBar / beatUnit;
+
+    let bar = readU8(data, idx);
+    idx += 1;
+    while (bar < 255 && idx < chordLimit){
+      const val = readU8(data, idx);
+      idx += 1;
+      if (val == 0){
+        bar += readU8(data, idx);
+        idx += 1;
+      } else {
+        bar += 1;
+      }
+    }
+
+    const rawChords = [];
+    let beat = 0;
+    while (beat < (255 * 4) && idx < chordLimit){
+      const val = readU8(data, idx);
+      idx += 1;
+      if (val == 0){
+        beat += readU8(data, idx);
+        idx += 1;
+      } else {
+        rawChords.push({ beat, ext: val });
+        beat += 1;
+      }
+    }
+
+    let roots = 0;
+    beat = 0;
+    while (beat < (255 * 4) && idx < chordLimit){
+      const val = readU8(data, idx);
+      idx += 1;
+      if (val == 0){
+        beat += readU8(data, idx);
+        idx += 1;
+      } else {
+        const root = val % 18;
+        let bass = (root - 1 + Math.floor(val / 18)) % 18 + 1;
+        if (root == bass) bass = 0;
+        if (rawChords[roots]){
+          rawChords[roots].root = root;
+          rawChords[roots].bass = bass;
+        }
+        roots += 1;
+        beat += 1;
+      }
+    }
+
+
+    const firstChord = rawChords.find(c => c.root != null && c.ext != null);
+    if (firstChord && firstChord.beat > 0 && !rawChords.some(c => c.beat === 0)){
+      let seed = null;
+      for (const c of rawChords){
+        if (c.root == null || c.ext == null) continue;
+        const sym = biabChordSymbolFromId(c.ext);
+        const meta = biabSymbolToMeta(sym);
+        if (meta.family === "maj"){
+          seed = c;
+          break;
+        }
+      }
+      seed = seed || firstChord;
+      rawChords.unshift({ beat: 0, root: seed.root, bass: seed.bass || 0, ext: seed.ext, synthetic: true });
+    }
+
+    const oddBeats = rawChords.filter(c => (c.beat % 2) === 1).length;
+    const needsHalf = rawChords.length && (oddBeats / rawChords.length) > 0.6;
+    rawChords.forEach(c => {
+      c.beat = c.beat * beatScale;
+    });
+    const maxBeat = rawChords.reduce((m,c)=> Math.max(m, Number.isFinite(c.beat) ? c.beat : 0), 0);
+
+    let measures = Math.floor((maxBeat + beatsPerBar - 1) / beatsPerBar) + 1;
+    if (readU8(data, idx) === 1) idx += 1;
+    const startChorus = readU8(data, idx);
+    idx += 1;
+    const endChorus = readU8(data, idx);
+    idx += 1;
+    idx += 1;
+    if (endChorus && endChorus > startChorus && endChorus <= 255){
+      measures = endChorus;
+    }
+    const biabBars = biabChordsToBars(rawChords, measures, beatsPerBar);
+    const displayBars = biabChordsToDisplayBars(rawChords, measures, beatsPerBar);
+
+    let events = [];
+    const barTicks = BIAB_TICKS_PER_BEAT * 4 * (beatsPerBar / beatUnit);
+    const endTick = measures * barTicks;
+    if (eventCount && eventStart && eventStart + eventCount * 12 <= data.length){
+      let eidx = eventStart;
+      let lastLen = 0;
+      for (let i=0;i<eventCount && eidx + 12 <= data.length - 4;i++){
+        const rawTick = readU32(data, eidx);
+        const status = readU8(data, eidx + 4);
+        const data1 = readU8(data, eidx + 5);
+        const data2 = readU8(data, eidx + 6);
+        const statusCh = status & 0x0F;
+        let channel = readU8(data, eidx + 7);
+        if (channel > 15 || (channel === 0 && statusCh !== 0)) channel = statusCh;
+        let dur = readU32(data, eidx + 8);
+        if (dur === 0) dur = lastLen;
+        if (dur > 0) lastLen = dur;
+        if ((status & 0xF0) === 0x90 && data2 > 0){
+          let tick = rawTick - (BIAB_TICKS_PER_BEAT * 4);
+          if (tick < 0) tick = 0;
+          if (tick < endTick){
+            events.push({ tick, dur, midi: data1, vel: data2, channel });
+          }
+        }
+        eidx += 12;
+      }
+    }
+
+    const allEvents = events.slice();
+    const melodyChannel = pickMelodyChannel(allEvents);
+
+    const midiChordBars = buildMidiChordBars(allEvents, barTicks, biabBars.length, melodyChannel);
+    const bars = midiChordBars.length ? midiChordBars : biabBars;
+
+    const midiPrograms = [];
+    if (eventCount && eventStart && eventStart + eventCount * 12 <= data.length){
+      const bankMsb = new Array(16).fill(0);
+      const bankLsb = new Array(16).fill(0);
+      const programs = new Array(16).fill(null);
+      let eidx = eventStart;
+      for (let i=0;i<eventCount && eidx + 12 <= data.length - 4;i++){
+        const status = readU8(data, eidx + 4);
+        const data1 = readU8(data, eidx + 5);
+        const data2 = readU8(data, eidx + 6);
+        const statusCh = status & 0x0F;
+        let channel = readU8(data, eidx + 7);
+        if (channel > 15 || (channel === 0 && statusCh !== 0)) channel = statusCh;
+        const type = status & 0xF0;
+        if (type === 0xB0){
+          if (data1 === 0) bankMsb[channel] = data2;
+          if (data1 === 32) bankLsb[channel] = data2;
+        } else if (type === 0xC0){
+          programs[channel] = data1;
+        }
+        eidx += 12;
+      }
+      for (let ch=0; ch<16; ch++){
+        if (programs[ch] == null) continue;
+        const bank = bankMsb[ch] * 128 + bankLsb[ch];
+        midiPrograms.push({ channel: ch, program: programs[ch], bank });
+      }
+    }
+
+    let melodyEvents = events;
+    if (melodyChannel != null){
+      melodyEvents = melodyEvents.filter(e => e.channel === melodyChannel);
+    }
+    melodyEvents = extractMelodyLine(melodyEvents);
+
+    let melodyGenerated = false;
+    if (!melodyEvents.length){
+      melodyEvents = generateFallbackMelody(bars, barTicks);
+      melodyGenerated = true;
+    }
+    let melodyBars = buildMelodyBars(melodyEvents, barTicks, bars.length);
+    const firstMelodyBar = melodyBars.findIndex(bar => bar && bar.length);
+    if (firstMelodyBar > 0 && bars?.[0]?.chords?.length){
+      // BIAB often includes a lead-in bar; only pull one bar to avoid erasing real intros.
+      const shiftBars = Math.min(1, firstMelodyBar);
+      const shiftTicks = shiftBars * barTicks;
+      if (shiftTicks > 0){
+        melodyEvents = melodyEvents.map(e => ({ ...e, tick: Math.max(0, e.tick - shiftTicks) }));
+        melodyBars = buildMelodyBars(melodyEvents, barTicks, bars.length);
+      }
+    }
+    const midiBars = (allEvents.length
+      ? buildMelodyBars(allEvents, barTicks, bars.length)
+      : buildMelodyBars(melodyEvents, barTicks, bars.length));
+
+    return {
+      title: title || fileName || "Untitled",
+      tempo: bpm || 120,
+      bars,
+      displayBars,
+      melodyEvents: melodyEvents,
+      melodyBars,
+      midiBars,
+      midiPrograms,
+      barTicks,
+      ticksPerBeat: BIAB_TICKS_PER_BEAT,
+      timeSig: { num: beatsPerBar, den: beatUnit },
+      melodyGenerated
+    };
+  }
+
+  async function loadBiabFromFile(file){
+    if (!file) return;
+    setBiabStatus(`Loading ${file.name}...`);
+    try{
+      const buffer = await file.arrayBuffer();
+      const parsed = parseBiabBuffer(buffer, file.name);
+      if (!parsed || !parsed.bars || !parsed.bars.length){
+        setBiabStatus("Could not parse BIAB file.");
+        return;
+      }
+      clearBiab();
+
+      state.biabActive = true;
+      state.biabMeta = { title: parsed.title, tempo: parsed.tempo, fileName: file.name };
+      state.biabMelody = parsed.melodyEvents || [];
+      state.biabMelodyBars = parsed.melodyBars || [];
+      state.biabDisplayBars = parsed.displayBars || [];
+      state.biabMidiBars = parsed.midiBars || [];
+      state.biabMidiPrograms = parsed.midiPrograms || [];
+      state.biabTicksPerBeat = parsed.ticksPerBeat;
+      state.biabBarTicks = parsed.barTicks;
+      state.biabTimeSig = parsed.timeSig || { num: 4, den: 4 };
+      state.biabMelodyGenerated = parsed.melodyGenerated;
+
+      state.chartBars = parsed.bars;
+      state.playbackOrder = parsed.bars.map((_, i)=>i);
+      state.bars = parsed.bars.length;
+      state.halfEnabled = parsed.bars.some(b => b.split);
+      state.activeBar = 0;
+      state.activeHalf = 0;
+      state.currentSongTitle = parsed.title || file.name || "";
+      state.tempo = clamp(parsed.tempo || 120, 30, 320);
+
+      if (state.chartBars[0]?.chords?.[0]){
+        state.keyRoot = state.chartBars[0].chords[0].root;
+      }
+
+      assignChordModesWithLimit(state.chartBars);
+      syncUIFromState();
+      renderAll();
+      applyBiabPrograms();
+      saveAll();
+
+      setSongStatus(`Loaded BIAB: ${state.currentSongTitle}`);
+      setBiabStatus(state.biabMelodyGenerated ? "Loaded BIAB (melody generated)." : "Loaded BIAB with melody.");
+      setMelodyStatus(state.biabMelodyGenerated ? "Melody auto-generated from chords." : "Melody loaded from BIAB.");
+    } catch (err){
+      setBiabStatus("Could not read BIAB file.");
+    }
+  }
+
+    function applyBiabPrograms(){
+    if (!state.biabActive) return;
+    if (!AudioKit || !AudioKit.soundFontActive || !AudioKit.soundFontActive()) return;
+
+    if (state.biabMidiPrograms?.length){
+      state.biabMidiPrograms.forEach((p)=>{
+        if (!p || !Number.isFinite(p.channel) || !Number.isFinite(p.program)) return;
+        AudioKit.setMidiProgram(p.channel, p.program, p.bank);
+      });
+      return;
+    }
+
+    if (!state.biabMidiBars?.length) return;
+    const flat = [];
+    const barTicks = state.biabBarTicks || (BIAB_TICKS_PER_BEAT * 4);
+    state.biabMidiBars.forEach((bar, idx)=>{
+      (bar || []).forEach((note)=>{
+        flat.push({ ...note, tick: (note.start || 0) + idx * barTicks });
+      });
+    });
+    if (!flat.length) return;
+
+    const stats = channelStats(flat);
+    const prog = soundFontProgramsForState();
+    stats.forEach((stat, ch)=>{
+      if (ch === 9){
+        AudioKit.setMidiProgram(ch, prog.drums, null);
+        return;
+      }
+      const low = stat.avgPitch < 52 && stat.avgChordSize < 1.4;
+      const program = low ? prog.bass : prog.keys;
+      AudioKit.setMidiProgram(ch, program, 0);
+    });
+  }
+
+  function scheduleBiabMelody(barIdx, atHalf, t0, opts = {}){
+    if (!state.biabActive || !state.biabMelodyBars?.length) return;
+    const barNotes = state.biabMelodyBars[barIdx] || [];
+    if (!barNotes.length) return;
+
+    const playAudio = opts.playAudio !== false;
+    const highlight = opts.highlight !== false;
+
+    const bar = state.chartBars[barIdx];
+    const barTicks = state.biabBarTicks || (BIAB_TICKS_PER_BEAT * 4);
+    const isSplit = !!bar?.split;
+    const stepStart = (isSplit && atHalf===1) ? barTicks / 2 : 0;
+    const stepTicks = isSplit ? (barTicks / 2) : barTicks;
+    const stepEnd = stepStart + stepTicks;
+    const tickSeconds = (60 / clamp(state.tempo || 120, 30, 320)) / (state.biabTicksPerBeat || BIAB_TICKS_PER_BEAT);
+
+    barNotes.forEach((note)=>{
+      if (note.start < stepStart || note.start >= stepEnd) return;
+      const offset = (note.start - stepStart) * tickSeconds;
+      const durSec = Math.max(0.04, note.dur * tickSeconds);
+      const midi = note.midi;
+      const vel = clamp((note.vel || 90) / 127, 0.2, 0.9);
+      if (playAudio){
+        AudioKit.playNote(midi, state.keysPreset, t0 + offset, durSec, vel);
+      }
+      if (highlight){
+        const startDelay = Math.max(0, (t0 + offset - AudioKit.now()) * 1000);
+        const endDelay = Math.max(0, (t0 + offset + durSec - AudioKit.now()) * 1000);
+        melodyTimers.push(window.setTimeout(()=> setMelodyActive(midi, true), startDelay));
+        melodyTimers.push(window.setTimeout(()=> setMelodyActive(midi, false), endDelay));
+      }
+    });
+  }
+
+  function scheduleBiabMidi(barIdx, atHalf, t0){
+    if (!state.biabActive || !state.biabMidiBars?.length) return;
+    const barNotes = state.biabMidiBars[barIdx] || [];
+    if (!barNotes.length) return;
+
+    const bar = state.chartBars[barIdx];
+    const barTicks = state.biabBarTicks || (BIAB_TICKS_PER_BEAT * 4);
+    const isSplit = !!bar?.split;
+    const stepStart = (isSplit && atHalf===1) ? barTicks / 2 : 0;
+    const stepTicks = isSplit ? (barTicks / 2) : barTicks;
+    const stepEnd = stepStart + stepTicks;
+    const tickSeconds = (60 / clamp(state.tempo || 120, 30, 320)) / (state.biabTicksPerBeat || BIAB_TICKS_PER_BEAT);
+
+    barNotes.forEach((note)=>{
+      if (note.start < stepStart || note.start >= stepEnd) return;
+      const offset = (note.start - stepStart) * tickSeconds;
+      const durSec = Math.max(0.04, note.dur * tickSeconds);
+      const midi = note.midi;
+      const vel = clamp((note.vel || 90) / 127, 0.2, 1);
+      const channel = Number.isFinite(note.channel) ? note.channel : 0;
+      AudioKit.playMidiNote(midi, channel, t0 + offset, durSec, vel);
+    });
+  }
+
   function filteredSongs(){
     let list = songLibrary.slice();
     if (songQuery){
@@ -3480,6 +4604,7 @@
       state.soundFontUrl = normalized;
       setSoundFontStatus(`Loaded SoundFont: ${normalized.split("/").slice(-1)[0]}`);
       AudioKit.updateSoundFontPrograms();
+      applyBiabPrograms();
       saveAll();
       return true;
     } catch (err){
@@ -3497,6 +4622,7 @@
       await AudioKit.loadSoundFontBuffer(buf, file.name);
       setSoundFontStatus(`Loaded SoundFont: ${file.name}`);
       AudioKit.updateSoundFontPrograms();
+      applyBiabPrograms();
       saveAll();
       return true;
     } catch {
@@ -3569,6 +4695,10 @@
   }
 
   function renderLeadSheet(){
+    if (state.biabActive){
+      if (E.sheet) E.sheet.innerHTML = "";
+      return;
+    }
     E.sheet.innerHTML = "";
     for (let b=0;b<state.chartBars.length;b++){
       const bar = state.chartBars[b];
@@ -3632,6 +4762,380 @@
     highlightActiveBar();
     applyEditVisuals();
   }
+
+  function midiToVexKey(midi){
+    const names = ["c","c#","d","d#","e","f","f#","g","g#","a","a#","b"];
+    const p = pc(midi);
+    const oct = Math.floor(midi / 12) - 1;
+    const name = names[p] || "c";
+    return { key: `${name}/${oct}`, accidental: name.includes("#") ? "#" : null };
+  }
+
+  function quantizeDuration(ticks, ticksPerBeat){
+    const choices = [
+      {ticks: ticksPerBeat * 4, dur: "w"},
+      {ticks: ticksPerBeat * 2, dur: "h"},
+      {ticks: ticksPerBeat, dur: "q"},
+      {ticks: ticksPerBeat / 2, dur: "8"},
+      {ticks: ticksPerBeat / 4, dur: "16"},
+      {ticks: ticksPerBeat / 8, dur: "32"}
+    ];
+    let best = choices[0];
+    let bestDiff = Math.abs(ticks - best.ticks);
+    for (let i=1;i<choices.length;i++){
+      const diff = Math.abs(ticks - choices[i].ticks);
+      if (diff < bestDiff){
+        bestDiff = diff;
+        best = choices[i];
+      }
+    }
+    return best.dur;
+  }
+
+
+  function durationChoices(ticksPerBeat, opts = {}){
+    const base = [
+      {ticks: ticksPerBeat * 4, dur: "w"},
+      {ticks: ticksPerBeat * 2, dur: "h"},
+      {ticks: ticksPerBeat, dur: "q"},
+      {ticks: ticksPerBeat / 2, dur: "8"},
+      {ticks: ticksPerBeat / 4, dur: "16"},
+      {ticks: ticksPerBeat / 8, dur: "32"}
+    ];
+    const out = [];
+    base.forEach((v)=>{
+      out.push({ ticks: v.ticks, dur: v.dur, dots: 0, triplet: false });
+      out.push({ ticks: v.ticks * 1.5, dur: v.dur, dots: 1, triplet: false });
+    });
+    if (opts.triplet){
+      const trip = [
+        { ticks: ticksPerBeat * 2 / 3, dur: "q" },
+        { ticks: ticksPerBeat / 3, dur: "8" },
+        { ticks: ticksPerBeat / 6, dur: "16" }
+      ];
+      trip.forEach((v)=>{
+        out.push({ ticks: v.ticks, dur: v.dur, dots: 0, triplet: true });
+      });
+    }
+    return out.sort((a,b)=> b.ticks - a.ticks);
+  }
+
+  function pickSingleDuration(ticks, ticksPerBeat, opts = {}){
+    const choices = durationChoices(ticksPerBeat, opts);
+    let best = null;
+    let bestDiff = Number.POSITIVE_INFINITY;
+    choices.forEach((c)=>{
+      const diff = Math.abs(ticks - c.ticks);
+      if (diff < bestDiff){
+        bestDiff = diff;
+        best = c;
+      }
+    });
+    const tol = opts.triplet ? ticksPerBeat / 6 : ticksPerBeat / 4;
+    if (best && bestDiff <= tol) return best;
+    return null;
+  }
+
+  function splitTicksToDurations(ticks, ticksPerBeat, opts = {}){
+    const choices = durationChoices(ticksPerBeat, opts);
+    const out = [];
+    let remain = ticks;
+    const minTicks = opts.triplet ? ticksPerBeat / 6 : ticksPerBeat / 8;
+    let safety = 0;
+    while (remain >= minTicks * 0.9 && safety < 64){
+      safety++;
+      let picked = null;
+      for (const c of choices){
+        if (remain >= c.ticks - 0.001){
+          picked = c;
+          break;
+        }
+      }
+      if (!picked){
+        out.push({ dur: "32", dots: 0, ticks: ticksPerBeat / 8, triplet: false });
+        break;
+      }
+      out.push({ dur: picked.dur, dots: picked.dots, ticks: picked.ticks, triplet: picked.triplet });
+      remain -= picked.ticks;
+    }
+    if (!out.length) out.push({ dur: "32", dots: 0, ticks: ticksPerBeat / 8, triplet: false });
+    return out;
+  }
+
+  function applyDots(note, dots){
+    if (!note || !dots) return;
+    if (typeof note.addDotToAll === "function"){
+      for (let i=0;i<dots;i++) note.addDotToAll();
+      return;
+    }
+    const VF = window.Vex && window.Vex.Flow;
+    if (VF && VF.Dot && typeof VF.Dot.buildAndAttach === "function"){
+      for (let i=0;i<dots;i++) VF.Dot.buildAndAttach([note], { all: true });
+    }
+  }
+
+  function buildBarTickables(barNotes, ticksPerBeat, beatsPerBar, beatValue=4){
+    const barTicks = ticksPerBeat * 4 * (beatsPerBar / beatValue);
+    const notes = (barNotes || []).slice().sort((a,b)=>a.start-b.start);
+    const VF = window.Vex && window.Vex.Flow;
+    let grid = ticksPerBeat / 2;
+    let useTripletGrid = false;
+    const tripletGrid = ticksPerBeat / 3;
+    if (notes.length){
+      let minGap = Number.POSITIVE_INFINITY;
+      for (let i=1;i<notes.length;i++){
+        const gap = notes[i].start - notes[i-1].start;
+        if (gap > 0) minGap = Math.min(minGap, gap);
+      }
+      let minDur = Number.POSITIVE_INFINITY;
+      notes.forEach(n=>{
+        if (Number.isFinite(n.dur)) minDur = Math.min(minDur, n.dur);
+      });
+      const nearTriplet = (Math.abs(minGap - tripletGrid) <= tripletGrid * 0.25)
+        || (Math.abs(minDur - tripletGrid) <= tripletGrid * 0.25);
+      const needs16th = (minGap <= ticksPerBeat / 4 + 0.5) || (minDur <= ticksPerBeat / 4 + 0.5);
+      if (nearTriplet){
+        grid = tripletGrid;
+        useTripletGrid = true;
+      } else if (needs16th) grid = ticksPerBeat / 4;
+    }
+
+    const tickables = [];
+    const ties = [];
+    const tuplets = [];
+    let cursor = 0;
+
+    const pushRest = (ticks)=>{
+      if (ticks <= 0) return;
+      const durations = splitTicksToDurations(ticks, ticksPerBeat, { triplet: useTripletGrid });
+      durations.forEach(part=>{
+        const n = new Vex.Flow.StaveNote({ keys:["b/4"], duration: part.dur + "r" });
+        applyDots(n, part.dots);
+        tickables.push(n);
+      });
+    };
+
+    const addNote = (noteTicks, midi, startTicks)=>{
+      const { key, accidental } = midiToVexKey(midi);
+      const direction = (VF && VF.Stem && Number.isFinite(midi))
+        ? (midi >= 71 ? VF.Stem.DOWN : VF.Stem.UP)
+        : null;
+      const makeNote = (part, partStart)=>{
+        const n = new Vex.Flow.StaveNote({ keys:[key], duration: part.dur });
+        if (accidental) n.addAccidental(0, new Vex.Flow.Accidental(accidental));
+        if (direction != null && typeof n.setStemDirection === "function") n.setStemDirection(direction);
+        applyDots(n, part.dots);
+        if (part.triplet && useTripletGrid && part.dur === "8" && Number.isFinite(partStart)){
+          const beatIndex = Math.floor(partStart / ticksPerBeat);
+          const within = partStart - beatIndex * ticksPerBeat;
+          const slot = Math.round(within / grid);
+          if (slot >= 0 && slot <= 2) n._tripletSlot = { beatIndex, slot };
+        }
+        return n;
+      };
+
+      const single = pickSingleDuration(noteTicks, ticksPerBeat, { triplet: useTripletGrid });
+      if (single){
+        tickables.push(makeNote(single, startTicks));
+        return;
+      }
+
+      const durations = splitTicksToDurations(noteTicks, ticksPerBeat, { triplet: useTripletGrid });
+      let offset = 0;
+      const parts = durations.map(part=>{
+        const n = makeNote(part, startTicks + offset);
+        offset += part.ticks || 0;
+        return n;
+      });
+      parts.forEach(p=>tickables.push(p));
+      const hasFlagged = durations.some(part => part.dur.includes("8") || part.dur.includes("16") || part.dur.includes("32"));
+      if (parts.length > 1 && !hasFlagged){
+        for (let i=0;i<parts.length-1;i++){
+          const tie = new Vex.Flow.StaveTie({ first_note: parts[i], last_note: parts[i+1] });
+          if (direction != null){
+            if (typeof tie.setDirection === "function") tie.setDirection(direction);
+            else tie.direction = direction;
+          }
+          ties.push(tie);
+        }
+      }
+    };
+
+    notes.forEach((note)=>{
+      if (!Number.isFinite(note.start) || !Number.isFinite(note.dur)) return;
+      let start = Math.round(note.start / grid) * grid;
+      let dur = Math.max(grid, Math.round(note.dur / grid) * grid);
+      if (start < 0) start = 0;
+      if (start >= barTicks) return;
+      const gap = start - cursor;
+      const snapTol = grid * 0.4;
+      if (Math.abs(gap) > 0 && Math.abs(gap) < snapTol){
+        start = cursor;
+      }
+      if (start < cursor - grid * 0.5) return;
+      if (start > cursor){
+        pushRest(start - cursor);
+      }
+      dur = Math.min(dur, barTicks - start);
+      addNote(dur, note.midi, start);
+      cursor = start + dur;
+    });
+
+    if (cursor < barTicks){
+      pushRest(barTicks - cursor);
+    }
+
+    if (useTripletGrid && VF && typeof VF.Tuplet === "function"){
+      let group = null;
+      let prevSlot = null;
+      tickables.forEach((n)=>{
+        if (!n || typeof n.isRest !== "function") return;
+        const info = n._tripletSlot;
+        if (!info){
+          group = null;
+          prevSlot = null;
+          return;
+        }
+        if (!group || group.beatIndex !== info.beatIndex || info.slot !== prevSlot + 1){
+          group = { beatIndex: info.beatIndex, notes: [] };
+        }
+        group.notes.push(n);
+        prevSlot = info.slot;
+        if (group.notes.length === 3){
+          tuplets.push(new VF.Tuplet(group.notes, { num_notes: 3, notes_occupied: 2 }));
+          group = null;
+          prevSlot = null;
+        }
+      });
+    }
+    return { tickables, ties, tuplets };
+  }
+
+  function renderMelodySheet(){
+    if (!E.melodyWrap || !E.melodySheet) return;
+    const show = !!state.biabActive;
+    E.melodyWrap.classList.toggle("on", show);
+    if (E.sheet) E.sheet.style.display = show ? "none" : "";
+    E.melodySheet.classList.toggle("biabSheet", show);
+    if (!show){
+      E.melodySheet.innerHTML = "";
+      return;
+    }
+    const VF = window.Vex && window.Vex.Flow;
+    if (!VF){
+      setMelodyStatus("VexFlow not available.");
+      E.melodySheet.innerHTML = "";
+      return;
+    }
+    const bars = state.biabMelodyBars || [];
+    if (!bars.length){
+      setMelodyStatus("No melody to display.");
+      E.melodySheet.innerHTML = '<div class="melodyEmpty">No melody to display.</div>';
+      return;
+    }
+
+    const chordBars = state.chartBars || [];
+    const ticksPerBeat = state.biabTicksPerBeat || BIAB_TICKS_PER_BEAT;
+    const beatsPerBar = (state.biabTimeSig && state.biabTimeSig.num) ? state.biabTimeSig.num : 4;
+    const beatValue = (state.biabTimeSig && state.biabTimeSig.den) ? state.biabTimeSig.den : 4;
+    const sheetWidth = Math.max(320, Math.floor(E.melodySheet.clientWidth || 900));
+    const minBarWidth = 180;
+    const maxBarsPerRow = 6;
+    let barsPerRow = Math.floor(sheetWidth / minBarWidth);
+    if (!Number.isFinite(barsPerRow) || barsPerRow < 2) barsPerRow = 4;
+    barsPerRow = clamp(barsPerRow, 2, maxBarsPerRow);
+    const barWidth = Math.max(minBarWidth, Math.floor(sheetWidth / barsPerRow));
+    const staveHeight = 120;
+
+    E.melodySheet.innerHTML = "";
+    const totalBars = bars.length;
+    const rowCount = Math.ceil(totalBars / barsPerRow);
+    for (let r=0;r<rowCount;r++){
+      const rowWrap = document.createElement("div");
+      rowWrap.className = "biabRow";
+      const rowBars = Math.min(barsPerRow, totalBars - r * barsPerRow);
+      const rowWidth = barWidth * rowBars;
+      rowWrap.style.width = `${rowWidth}px`;
+
+      const chordRow = document.createElement("div");
+      chordRow.className = "biabChords";
+      chordRow.style.gridTemplateColumns = `repeat(${rowBars}, minmax(0, 1fr))`;
+      chordRow.style.width = `${rowWidth}px`;
+      for (let i=0;i<rowBars;i++){
+        const barIndex = r * barsPerRow + i;
+        const bar = chordBars[barIndex] || {};
+        const chords = Array.isArray(bar.chords) ? bar.chords : [];
+        const first = chords[0] || null;
+        const second = (bar.split && chords[1]) ? chords[1] : null;
+        const showSplit = !!(second && !biabChordEqual(first, second));
+        const slotCount = showSplit ? 2 : 1;
+
+        const cell = document.createElement("div");
+        cell.className = "biabChordCell";
+        cell.style.gridTemplateColumns = `repeat(${slotCount}, minmax(0, 1fr))`;
+
+        const slots = showSplit ? [first, second] : [first];
+        slots.forEach((ch)=>{
+          const span = document.createElement("span");
+          span.className = "biabChordSlot";
+          if (ch){
+            span.textContent = chordName(ch);
+          } else {
+            span.textContent = "";
+            span.classList.add("empty");
+          }
+          cell.appendChild(span);
+        });
+        chordRow.appendChild(cell);
+      }
+      rowWrap.appendChild(chordRow);
+
+      const svgWrap = document.createElement("div");
+      svgWrap.className = "biabSvg";
+      svgWrap.style.width = `${rowWidth}px`;
+      const renderer = new VF.Renderer(svgWrap, VF.Renderer.Backends.SVG);
+      renderer.resize(rowWidth, staveHeight);
+      const ctx = renderer.getContext();
+
+      for (let i=0;i<rowBars;i++){
+        const barIndex = r * barsPerRow + i;
+        const x = i * barWidth;
+        const stave = new VF.Stave(x, 10, barWidth);
+        stave.setNumLines(5);
+        if (barIndex == 0){
+          stave.addClef("treble").addTimeSignature(`${beatsPerBar}/${beatValue}`);
+        }
+        stave.setContext(ctx).draw();
+
+        const barNotes = bars[barIndex] || [];
+        const built = buildBarTickables(barNotes, ticksPerBeat, beatsPerBar, beatValue);
+        const tickables = built.tickables.length
+          ? built.tickables
+          : [new VF.StaveNote({ keys:["b/4"], duration:"wr" })];
+
+        const voice = new VF.Voice({ num_beats: beatsPerBar, beat_value: beatValue });
+        voice.setMode(VF.Voice.Mode.SOFT);
+        voice.addTickables(tickables);
+        const beamables = tickables.filter(n => n && typeof n.isRest === "function");
+        const groups = (VF.Fraction) ? [new VF.Fraction(1, beatValue)] : undefined;
+        const beams = VF.Beam.generateBeams(beamables, {
+          groups,
+          beam_rests: false,
+          maintain_stem_directions: true
+        });
+        new VF.Formatter().joinVoices([voice]).format([voice], barWidth - 12);
+        voice.draw(ctx, stave);
+        built.ties.forEach(t => t.setContext(ctx).draw());
+        if (built.tuplets && built.tuplets.length){
+          built.tuplets.forEach(t => t.setContext(ctx).draw());
+        }
+        beams.forEach(b => b.setContext(ctx).draw());
+      }
+      rowWrap.appendChild(svgWrap);
+      E.melodySheet.appendChild(rowWrap);
+    }
+  }
+
 
   function applyEditVisuals(){
     const nodes = E.sheet.querySelectorAll(".bar");
@@ -3776,6 +5280,18 @@
     svg.appendChild(tri);
   }
 
+  function placeMelodyMarker(svg, cx, cy, isBlack){
+    const dot = document.createElementNS("http://www.w3.org/2000/svg","circle");
+    dot.setAttribute("cx", String(cx));
+    dot.setAttribute("cy", String(cy));
+    dot.setAttribute("r", isBlack ? "7" : "8.5");
+    dot.setAttribute("fill", "var(--melody)");
+    dot.setAttribute("stroke", "rgba(0,0,0,.6)");
+    dot.setAttribute("stroke-width", "1.4");
+    svg.appendChild(dot);
+  }
+
+
   function renderFretboardForActive(){
     const ch = activeChord();
     if (!ch){
@@ -3791,6 +5307,7 @@
     const {pcs: scalePCs, mode} = scalePCsForChordLocal(ch, prev, next);
     const scaleSet = new Set(scalePCs);
     const chordSet = new Set(chordTonesPCs(ch));
+    const melodyPcs = getActiveMelodyPcs();
     const scaleRoot = (ch && typeof ch.scaleRoot==="number") ? ch.scaleRoot : ch.root;
 
     E.pianoTop.textContent = chordName(ch);
@@ -3947,6 +5464,18 @@
         svg.appendChild(dot);
       }
     }
+
+    if (melodyPcs.size){
+      for (let s=0;s<6;s++){
+        const y = marginY + s*stringGap;
+        for (let f=0; f<=frets; f++){
+          const note = (openPcs[s] + f) % 12;
+          if (!melodyPcs.has(note)) continue;
+          const x = (f===0) ? openX : ((f - 0.5) * space);
+          placeMelodyMarker(svg, x, y, false);
+        }
+      }
+    }
   }
 
   function renderPianoForActive(){
@@ -3979,6 +5508,7 @@
 
     const {pcs: scalePCs, mode} = scalePCsForChordLocal(ch, prev, next);
     const chordPCs = chordTonesPCs(ch);
+    const melodyPcs = getActiveMelodyPcs();
 
     const scaleRoot = (ch && typeof ch.scaleRoot==="number") ? ch.scaleRoot : ch.root;
     E.pianoTop.textContent = chordName(ch);
@@ -4027,6 +5557,9 @@
       if (isChord){
         placeMarker(svg, k.x + whiteW*0.5, 175, isRoot ? "root" : "chord");
       }
+      if (melodyPcs.has(p)){
+        placeMelodyMarker(svg, k.x + whiteW*0.5, 130, false);
+      }
     }
 
     const blackW = whiteW*0.62;
@@ -4056,6 +5589,9 @@
         if (isChord){
           placeMarker(svg, x0 + blackW*0.5, 95, isRoot ? "root" : "chord");
         }
+        if (melodyPcs.has(p)){
+          placeMelodyMarker(svg, x0 + blackW*0.5, 70, true);
+        }
       }
     }
   }
@@ -4065,6 +5601,7 @@
     renderKeyLine();
     renderSongRandomLabel();
     renderLeadSheet();
+    renderMelodySheet();
     renderPianoForActive();
   }
 
@@ -4277,12 +5814,29 @@
       if (sf.sfontId == null) return;
       const prog = soundFontProgramsForState();
       const drum = resolveDrumProgram(prog.drums);
-      sf.synth.midiProgramSelect(SF_CHANNELS.keys, sf.sfontId, 0, prog.keys);
-      sf.synth.midiProgramSelect(SF_CHANNELS.bass, sf.sfontId, 0, prog.bass);
+      for (let ch=0; ch<16; ch++){
+        if (ch === SF_CHANNELS.drums) continue;
+        const p = (ch === SF_CHANNELS.bass) ? prog.bass : prog.keys;
+        sf.synth.midiProgramSelect(ch, sf.sfontId, 0, p);
+      }
       sf.synth.midiProgramSelect(SF_CHANNELS.drums, sf.sfontId, drum.bank, drum.prog);
       if (typeof sf.synth.midiControlChange === "function"){
         sf.synth.midiControlChange(SF_CHANNELS.drums, 7, 127);
       }
+    }
+
+    function setMidiProgram(channel, program, bank){
+      if (!soundFontActive()) return;
+      if (sf.sfontId == null) return;
+      const ch = clamp(Math.round(Number(channel) || 0), 0, 15);
+      let prog = Number.isFinite(program) ? Math.round(program) : 0;
+      let b = Number.isFinite(bank) ? Math.round(bank) : 0;
+      if (ch === SF_CHANNELS.drums && !Number.isFinite(bank)){
+        const drum = resolveDrumProgram(prog);
+        b = drum.bank;
+        prog = drum.prog;
+      }
+      sf.synth.midiProgramSelect(ch, sf.sfontId, b, prog);
     }
 
     function sfScheduleNote(channel, midi, vel, t0, dur){
@@ -4307,9 +5861,9 @@
       if (!soundFontActive()) return;
       sf.timers.forEach(id=> clearTimeout(id));
       sf.timers.clear();
-      sf.synth.midiAllNotesOff(SF_CHANNELS.keys);
-      sf.synth.midiAllNotesOff(SF_CHANNELS.bass);
-      sf.synth.midiAllNotesOff(SF_CHANNELS.drums);
+      for (let ch=0; ch<16; ch++){
+        try{ sf.synth.midiAllNotesOff(ch); }catch{}
+      }
     }
 
     function env(gainNode, t0, a, d, s, r, peak=0.8){
@@ -4609,6 +6163,53 @@
       }
       release(t0 + dur);
     }
+    function playNote(midi, preset, t0, dur, vel=0.7){
+      if (!Number.isFinite(midi)) return;
+      if (soundFontActive()){
+        sfScheduleNote(SF_CHANNELS.keys, midi, vel, t0, dur);
+        return;
+      }
+      const c = ensure();
+      const {out} = createVoiceChain();
+      const cfg = KEY_PRESETS[preset] || KEY_PRESETS.ep;
+
+      const gain = c.createGain();
+      gain.gain.value = 0.0001;
+      gain.connect(out);
+
+      let input = gain;
+      if (cfg.filter){
+        const f = c.createBiquadFilter();
+        f.type = cfg.filter.type;
+        f.frequency.value = cfg.filter.freq;
+        f.Q.value = (cfg.filter.q==null) ? 0.8 : cfg.filter.q;
+        f.connect(gain);
+        input = f;
+      }
+
+      const release = env(gain, t0, cfg.a, cfg.d, cfg.s, cfg.r, (cfg.peak||0.34)*vel);
+      const tail = (cfg.tail==null) ? 0.25 : cfg.tail;
+
+      const o = osc(cfg.type);
+      o.frequency.setValueAtTime(midiToHz(midi), t0);
+      o.connect(input);
+      o.start(t0);
+      o.stop(t0 + dur + tail);
+      release(t0 + dur);
+    }
+    function playMidiNote(midi, channel, t0, dur, vel=0.7){
+      if (!Number.isFinite(midi)) return;
+      const raw = Number.isFinite(channel) ? channel : SF_CHANNELS.keys;
+      const ch = clamp(Math.round(raw), 0, 15);
+      if (soundFontActive()){
+        sfScheduleNote(ch, midi, vel, t0, dur);
+        return;
+      }
+      playNote(midi, state.keysPreset, t0, dur, vel);
+    }
+
+
+
     function playBass(rootPc, preset, t0, dur, vel=0.8){
       if (soundFontActive()){
         let m = 40 + pc(rootPc);
@@ -4721,8 +6322,8 @@
     function hardStop(){ soundFontAllNotesOff(); }
 
     return {
-      ensure, now, resume, playChord, playBass, playDrumHit, hardStop,
-      loadSoundFontUrl, loadSoundFontBuffer, updateSoundFontPrograms,
+      ensure, now, resume, playChord, playNote, playMidiNote, playBass, playDrumHit, hardStop,
+      loadSoundFontUrl, loadSoundFontBuffer, updateSoundFontPrograms, setMidiProgram,
       soundFontActive, soundFontAllNotesOff
     };
   })();
@@ -4766,7 +6367,14 @@
       atHalf = clamp(h,0,Math.max(0,(bar?.chords?.length||1)-1));
     }
 
-    function barSeconds(){ return 240 / tempo; } // 4/4 bar length
+    function barSeconds(){
+      if (state.biabActive && state.biabTimeSig){
+        const num = state.biabTimeSig.num || 4;
+        const den = state.biabTimeSig.den || 4;
+        return (60 / tempo) * num * (4 / den);
+      }
+      return 240 / tempo;
+    } // 4/4 bar length
     function halfSeconds(){ return barSeconds()/2; }
 
     function currentChord(){
@@ -4774,7 +6382,17 @@
       const bar = chart[barIdx];
       if (!bar) return null;
       const idx = clamp(atHalf,0,Math.max(0,(bar.chords?.length||1)-1));
-      return bar.chords?.[idx] || null;
+      let ch = bar.chords?.[idx] || null;
+      if (!ch){
+        for (let i=barIdx-1;i>=0;i--){
+          const prev = chart[i];
+          if (prev?.chords?.length){
+            ch = prev.chords[prev.chords.length - 1] || null;
+            break;
+          }
+        }
+      }
+      return ch;
     }
 
     function nextStep(){
@@ -4801,8 +6419,7 @@
 
       const barIdx = order[atStep] ?? atStep;
       const bar = chart[barIdx];
-      const ch = currentChord();
-      if (!bar || !ch) return;
+      if (!bar) return;
 
       // Update UI focus to stay perfectly in sync with audio “now”
       state.activeBar = barIdx;
@@ -4813,6 +6430,17 @@
 
       // Length
       const dur = (bar.split ? halfSeconds() : barSeconds());
+      if (state.biabActive){
+        scheduleBiabMidi(barIdx, atHalf, t0);
+        scheduleBiabMelody(barIdx, atHalf, t0, { playAudio: false, highlight: true });
+        nextStep();
+        return;
+      }
+
+      const ch = currentChord();
+      if (!ch) return;
+
+      scheduleBiabMelody(barIdx, atHalf, t0);
       const isSplit = !!bar.split;
       const isSecondHalf = isSplit && atHalf===1;
       const splitScale = isSplit ? 0.65 : 1;
@@ -5475,6 +7103,7 @@
     return {
       root: pc(root),
       symbol: ({
+        maj:"", min:"m",
         maj7:"maj7", maj9:"maj9", maj6:"6", "6/9":"6/9", add9:"add9", maj9sharp11:"maj9(#11)",
         min7:"m7", min9:"m9", min6:"m6", min11:"m11",
         minMaj7:"mMaj7", minMaj9:"mMaj9",
@@ -6493,7 +8122,7 @@
   }
 
   function loadAll(){
-    const saved = safeJSONParse(localStorage.getItem("fm_state"), null);
+    const saved = safeJSONParse(safeStorageGet("fm_state"), null);
     if (!saved) return false;
 
     // chart
@@ -6561,7 +8190,7 @@
   }
 
   function loadOrder(){
-    const o = safeJSONParse(localStorage.getItem("fm_order"), null);
+    const o = safeJSONParse(safeStorageGet("fm_order"), null);
     if (Array.isArray(o) && o.length) applyOrder(o);
   }
 
@@ -6711,9 +8340,9 @@
     E.progressionLogic.addEventListener("change", ()=>{ state.progressionLogic = E.progressionLogic.value; saveAll(); });
     E.grooveStyle.addEventListener("change", ()=>{ state.grooveStyle = E.grooveStyle.value; saveAll(); });
     E.compStyle.addEventListener("change", ()=>{ state.compStyle = E.compStyle.value; saveAll(); });
-    E.bassPreset.addEventListener("change", ()=>{ state.bassPreset = E.bassPreset.value; AudioKit.updateSoundFontPrograms(); saveAll(); });
-    E.keysPreset.addEventListener("change", ()=>{ state.keysPreset = E.keysPreset.value; AudioKit.updateSoundFontPrograms(); saveAll(); });
-    E.drumsPreset.addEventListener("change", ()=>{ state.drumsPreset = E.drumsPreset.value; AudioKit.updateSoundFontPrograms(); saveAll(); });
+    E.bassPreset.addEventListener("change", ()=>{ state.bassPreset = E.bassPreset.value; AudioKit.updateSoundFontPrograms(); applyBiabPrograms(); saveAll(); });
+    E.keysPreset.addEventListener("change", ()=>{ state.keysPreset = E.keysPreset.value; AudioKit.updateSoundFontPrograms(); applyBiabPrograms(); saveAll(); });
+    E.drumsPreset.addEventListener("change", ()=>{ state.drumsPreset = E.drumsPreset.value; AudioKit.updateSoundFontPrograms(); applyBiabPrograms(); saveAll(); });
     E.genrePreset.addEventListener("change", ()=>{
       if (!state.lockStyle || !state.lockTime || !state.lockSounds){
         pushHistory();
@@ -6797,6 +8426,11 @@
       E.songFile.addEventListener("change", async ()=>{
         const file = E.songFile.files && E.songFile.files[0];
         if (!file) return;
+        if (isBiabFileName(file.name)){
+          await loadBiabFromFile(file);
+          if (E.songFile) E.songFile.value = "";
+          return;
+        }
         try{
           const text = await file.text();
           let parsed = [];
@@ -6820,6 +8454,15 @@
       });
     }
 
+    if (E.biabFile){
+      E.biabFile.addEventListener("change", async ()=>{
+        const file = E.biabFile.files && E.biabFile.files[0];
+        if (!file) return;
+        await loadBiabFromFile(file);
+        if (E.biabFile) E.biabFile.value = "";
+      });
+    }
+
     if (E.sfEnabled){
       E.sfEnabled.addEventListener("change", ()=>{
         state.soundFontEnabled = !!E.sfEnabled.checked;
@@ -6829,6 +8472,7 @@
           loadSoundFontFromUrl(state.soundFontUrl);
         }
         AudioKit.updateSoundFontPrograms();
+        applyBiabPrograms();
         saveAll();
       });
     }
@@ -6984,7 +8628,8 @@
 
     loadOrder();
 
-    const loaded = loadAll();
+    let loaded = false;
+    try{ loaded = loadAll(); }catch{ loaded = false; }
     // defaults for “all menus collapsed”: details are collapsed by default in markup
     // set theme
     applyPageTheme(state.pageTheme);
@@ -6996,15 +8641,21 @@
     syncUIFromState();
     assignChordModesWithLimit(state.chartBars);
 
-    // if no saved chart, generate a default
-    if (!loaded || !Array.isArray(state.chartBars) || state.chartBars.length===0){
-      generateChart();
-    } else {
-      renderAll();
-    }
-
     bindUI();
     updateUndoRedoButtons();
+
+    try{
+      // if no saved chart, generate a default
+      if (!loaded || !Array.isArray(state.chartBars) || state.chartBars.length===0){
+        generateChart();
+      } else {
+        renderAll();
+      }
+    }catch (err){
+      console.error(err);
+      if (E.msg) E.msg.textContent = `Init error: ${err && err.message ? err.message : err}`;
+    }
+
     const playlistUrl = DEFAULT_PLAYLIST_URL;
     if (E.songUrl) E.songUrl.value = playlistUrl;
     loadPlaylistFromUrl(playlistUrl);
