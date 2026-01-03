@@ -4850,7 +4850,7 @@
     });
     const tolBase = opts.triplet ? ticksPerBeat / 6 : ticksPerBeat / 4;
     const tol = (opts.grid && Number.isFinite(opts.grid))
-      ? Math.max(tolBase, opts.grid * 0.65)
+      ? Math.max(tolBase, opts.grid * 0.45)
       : tolBase;
     if (best && bestDiff <= tol) return best;
     return null;
@@ -4969,6 +4969,7 @@
     };
 
     const addNote = (noteTicks, midi, startTicks, noteMeta)=>{
+    const addNote = (noteTicks, midi, startTicks)=>{
       const { key, accidental } = midiToVexKey(midi, preferFlats);
       const direction = (VF && VF.Stem && Number.isFinite(midi))
         ? (midi >= 71 ? VF.Stem.DOWN : VF.Stem.UP)
@@ -5102,13 +5103,13 @@
     const beatValue = (state.biabTimeSig && state.biabTimeSig.den) ? state.biabTimeSig.den : 4;
     const sheetWidth = Math.max(320, Math.floor(E.melodySheet.clientWidth || 900));
     const isCompact = sheetWidth < 520;
-    const minBarWidth = isCompact ? 120 : 180;
-    const maxBarsPerRow = isCompact ? 8 : 6;
+    const minBarWidth = isCompact ? 140 : 180;
+    const maxBarsPerRow = isCompact ? 7 : 6;
     let barsPerRow = Math.floor(sheetWidth / minBarWidth);
     if (!Number.isFinite(barsPerRow) || barsPerRow < 2) barsPerRow = 4;
     barsPerRow = clamp(barsPerRow, 2, maxBarsPerRow);
     const barWidth = Math.max(minBarWidth, Math.floor(sheetWidth / barsPerRow));
-    const staveHeight = isCompact ? 96 : 120;
+    const staveHeight = isCompact ? 100 : 120;
 
     E.melodySheet.innerHTML = "";
     const totalBars = bars.length;
@@ -5188,6 +5189,7 @@
         const groups = (VF.Beam && typeof VF.Beam.getDefaultBeamGroups === "function")
           ? VF.Beam.getDefaultBeamGroups(`${beatsPerBar}/${beatValue}`)
           : ((VF.Fraction) ? [new VF.Fraction(1, beatValue)] : undefined);
+        const groups = (VF.Fraction) ? [new VF.Fraction(1, beatValue)] : undefined;
         const beams = VF.Beam.generateBeams(beamables, {
           groups,
           beam_rests: false,
@@ -5201,14 +5203,6 @@
         }
         beams.forEach(b => b.setContext(ctx).draw());
       }
-      if (pendingTieOuts && rowTieIns[0]){
-        pendingTieOuts.forEach((noteObj, id)=>{
-          const target = rowTieIns[0].get(id);
-          if (!target) return;
-          const tie = new VF.StaveTie({ first_note: noteObj, last_note: target });
-          tie.setContext(ctx).draw();
-        });
-      }
       for (let i=0;i<rowBars-1;i++){
         const outs = rowTieOuts[i];
         const ins = rowTieIns[i+1];
@@ -5220,7 +5214,6 @@
           tie.setContext(ctx).draw();
         });
       }
-      pendingTieOuts = rowTieOuts[rowBars - 1] || null;
       rowWrap.appendChild(svgWrap);
       E.melodySheet.appendChild(rowWrap);
     }
