@@ -4969,6 +4969,7 @@
     };
 
     const addNote = (noteTicks, midi, startTicks, noteMeta)=>{
+    const addNote = (noteTicks, midi, startTicks)=>{
       const { key, accidental } = midiToVexKey(midi, preferFlats);
       const direction = (VF && VF.Stem && Number.isFinite(midi))
         ? (midi >= 71 ? VF.Stem.DOWN : VF.Stem.UP)
@@ -5187,6 +5188,7 @@
         const groups = (VF.Beam && typeof VF.Beam.getDefaultBeamGroups === "function")
           ? VF.Beam.getDefaultBeamGroups(`${beatsPerBar}/${beatValue}`)
           : ((VF.Fraction) ? [new VF.Fraction(1, beatValue)] : undefined);
+        const groups = (VF.Fraction) ? [new VF.Fraction(1, beatValue)] : undefined;
         const beams = VF.Beam.generateBeams(beamables, {
           groups,
           beam_rests: false,
