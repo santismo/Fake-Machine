@@ -4058,12 +4058,15 @@
 
   function buildMelodyBars(events, barTicks, barCount){
     const bars = Array.from({length: barCount}, () => []);
+    let noteId = 0;
     (events || []).forEach((note)=>{
       if (!note || !Number.isFinite(note.tick) || !Number.isFinite(note.dur) || !Number.isFinite(note.midi)) return;
       let tick = note.tick;
       let dur = note.dur;
       const channel = Number.isFinite(note.channel) ? note.channel : 0;
       const vel = Number.isFinite(note.vel) ? note.vel : 90;
+      const id = noteId++;
+      let firstSlice = true;
       while (dur > 0){
         const barIdx = Math.floor(tick / barTicks);
         if (barIdx < 0 || barIdx >= barCount) break;
@@ -4073,10 +4076,22 @@
         const remaining = Math.max(0, barTicks - relStart);
         const slice = Math.min(dur, remaining);
         if (slice > 0){
-          bars[barIdx].push({ start: relStart, dur: slice, midi: note.midi, vel, channel });
+          const tieIn = !firstSlice;
+          const tieOut = dur > slice;
+          bars[barIdx].push({
+            start: relStart,
+            dur: slice,
+            midi: note.midi,
+            vel,
+            channel,
+            id,
+            tieIn,
+            tieOut
+          });
         }
         tick += slice;
         dur -= slice;
+        firstSlice = false;
         if (slice <= 0) break;
       }
     });
@@ -4939,6 +4954,8 @@
     const tickables = [];
     const ties = [];
     const tuplets = [];
+    const tieIns = new Map();
+    const tieOuts = new Map();
     let cursor = 0;
 
     const pushRest = (ticks)=>{
@@ -4951,6 +4968,7 @@
       });
     };
 
+    const addNote = (noteTicks, midi, startTicks, noteMeta)=>{
     const addNote = (noteTicks, midi, startTicks)=>{
       const { key, accidental } = midiToVexKey(midi, preferFlats);
       const direction = (VF && VF.Stem && Number.isFinite(midi))
@@ -4976,7 +4994,10 @@
 
       const single = pickSingleDuration(noteTicks, ticksPerBeat, { triplet: useTripletGrid, grid });
       if (single){
-        tickables.push(makeNote(single, startTicks));
+        const n = makeNote(single, startTicks);
+        tickables.push(n);
+        if (noteMeta?.tieIn) tieIns.set(noteMeta.id, n);
+        if (noteMeta?.tieOut) tieOuts.set(noteMeta.id, n);
         return;
       }
 
@@ -4988,6 +5009,8 @@
         return n;
       });
       parts.forEach(p=>tickables.push(p));
+      if (noteMeta?.tieIn) tieIns.set(noteMeta.id, parts[0]);
+      if (noteMeta?.tieOut) tieOuts.set(noteMeta.id, parts[parts.length - 1]);
       if (parts.length > 1){
         for (let i=0;i<parts.length-1;i++){
           const tie = new Vex.Flow.StaveTie({ first_note: parts[i], last_note: parts[i+1] });
@@ -5016,7 +5039,7 @@
         pushRest(start - cursor);
       }
       dur = Math.min(dur, barTicks - start);
-      addNote(dur, note.midi, start);
+      addNote(dur, note.midi, start, note);
       cursor = start + dur;
     });
 
@@ -5048,7 +5071,7 @@
         }
       });
     }
-    return { tickables, ties, tuplets };
+    return { tickables, ties, tuplets, tieIns, tieOuts };
   }
 
   function renderMelodySheet(){
@@ -5079,13 +5102,14 @@
     const beatsPerBar = (state.biabTimeSig && state.biabTimeSig.num) ? state.biabTimeSig.num : 4;
     const beatValue = (state.biabTimeSig && state.biabTimeSig.den) ? state.biabTimeSig.den : 4;
     const sheetWidth = Math.max(320, Math.floor(E.melodySheet.clientWidth || 900));
-    const minBarWidth = 180;
-    const maxBarsPerRow = 6;
+    const isCompact = sheetWidth < 520;
+    const minBarWidth = isCompact ? 140 : 180;
+    const maxBarsPerRow = isCompact ? 7 : 6;
     let barsPerRow = Math.floor(sheetWidth / minBarWidth);
     if (!Number.isFinite(barsPerRow) || barsPerRow < 2) barsPerRow = 4;
     barsPerRow = clamp(barsPerRow, 2, maxBarsPerRow);
     const barWidth = Math.max(minBarWidth, Math.floor(sheetWidth / barsPerRow));
-    const staveHeight = 120;
+    const staveHeight = isCompact ? 100 : 120;
 
     E.melodySheet.innerHTML = "";
     const totalBars = bars.length;
@@ -5137,6 +5161,8 @@
       renderer.resize(rowWidth, staveHeight);
       const ctx = renderer.getContext();
 
+      const rowTieIns = [];
+      const rowTieOuts = [];
       for (let i=0;i<rowBars;i++){
         const barIndex = r * barsPerRow + i;
         const x = i * barWidth;
@@ -5152,11 +5178,16 @@
         const tickables = built.tickables.length
           ? built.tickables
           : [new VF.StaveNote({ keys:["b/4"], duration:"wr" })];
+        rowTieIns[i] = built.tieIns;
+        rowTieOuts[i] = built.tieOuts;
 
         const voice = new VF.Voice({ num_beats: beatsPerBar, beat_value: beatValue });
         voice.setMode(VF.Voice.Mode.SOFT);
         voice.addTickables(tickables);
         const beamables = tickables.filter(n => n && typeof n.isRest === "function" && !n.isRest());
+        const groups = (VF.Beam && typeof VF.Beam.getDefaultBeamGroups === "function")
+          ? VF.Beam.getDefaultBeamGroups(`${beatsPerBar}/${beatValue}`)
+          : ((VF.Fraction) ? [new VF.Fraction(1, beatValue)] : undefined);
         const groups = (VF.Fraction) ? [new VF.Fraction(1, beatValue)] : undefined;
         const beams = VF.Beam.generateBeams(beamables, {
           groups,
@@ -5170,6 +5201,17 @@
           built.tuplets.forEach(t => t.setContext(ctx).draw());
         }
         beams.forEach(b => b.setContext(ctx).draw());
+      }
+      for (let i=0;i<rowBars-1;i++){
+        const outs = rowTieOuts[i];
+        const ins = rowTieIns[i+1];
+        if (!outs || !ins) continue;
+        outs.forEach((noteObj, id)=>{
+          const target = ins.get(id);
+          if (!target) return;
+          const tie = new VF.StaveTie({ first_note: noteObj, last_note: target });
+          tie.setContext(ctx).draw();
+        });
       }
       rowWrap.appendChild(svgWrap);
       E.melodySheet.appendChild(rowWrap);
