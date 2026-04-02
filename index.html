@@ -500,6 +500,57 @@
       display:inline-flex;align-items:center;gap:8px;
       user-select:none;
     }
+    .headTools{
+      display:flex;
+      align-items:center;
+      justify-content:flex-end;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+    .transposeGroup{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+    }
+    .transposeBtn{
+      min-width:46px;
+      justify-content:center;
+      font-weight:800;
+      padding:8px 9px;
+    }
+    .headSlider{
+      min-height:38px;
+      padding:6px 8px;
+      border:1px solid rgba(255,255,255,.10);
+      border-radius:12px;
+      background: rgba(0,0,0,.18);
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      min-width:140px;
+    }
+    .headSlider label{
+      font-size:11px;
+      color:var(--pageMuted);
+      user-select:none;
+      white-space:nowrap;
+    }
+    .headSlider input[type="range"]{
+      width:76px;
+      margin:0;
+    }
+    .headSlider .val{
+      min-width:34px;
+      text-align:right;
+      font-size:11px;
+      font-weight:800;
+      color:var(--pageInk);
+      user-select:none;
+    }
+    @media (max-width: 640px){
+      .headSlider{ min-width:132px; }
+      .headSlider input[type="range"]{ width:68px; }
+    }
     .splitLine{height:1px;background: rgba(255,255,255,.10);margin:12px 0;}
     .modalSubTitle{font-size:12px;color: var(--pageMuted);margin:0 0 8px 2px;}
     .modalGrid{display:grid;grid-template-columns: 1fr 1fr; gap:10px;}
@@ -574,9 +625,25 @@
     <section class="card" id="cardHeader" data-section="header">
       <div class="cardHead">
         <div class="title">🤖</div>
-        <button class="gearBtn" id="btnGear" aria-label="Advanced settings" title="Advanced settings">
-          ⚙️ <span style="font-size:12px;color:var(--pageMuted);"> </span>
-        </button>
+        <div class="headTools">
+          <div class="transposeGroup" title="Transpose chart by semitone">
+            <button class="gearBtn transposeBtn" id="btnTransposeDown" type="button" aria-label="Transpose down one semitone" title="Transpose down one semitone">-1</button>
+            <button class="gearBtn transposeBtn" id="btnTransposeUp" type="button" aria-label="Transpose up one semitone" title="Transpose up one semitone">+1</button>
+          </div>
+          <div class="headSlider" title="Master volume">
+            <label for="masterVolTop">Vol</label>
+            <input id="masterVolTop" type="range" min="0" max="100" value="85" aria-label="Master volume">
+            <span class="val" id="masterVolTopVal">85%</span>
+          </div>
+          <div class="headSlider" title="Master tempo">
+            <label for="masterTempoTop">Tempo</label>
+            <input id="masterTempoTop" type="range" min="30" max="320" value="140" aria-label="Master tempo">
+            <span class="val" id="masterTempoTopVal">140</span>
+          </div>
+          <button class="gearBtn" id="btnGear" aria-label="Advanced settings" title="Advanced settings">
+            ⚙️ <span style="font-size:12px;color:var(--pageMuted);"> </span>
+          </button>
+        </div>
       </div>
       <div class="cardBody">
         <div class="row">
@@ -818,8 +885,8 @@
               <div class="control">
                 <label>Tempo</label>
                 <div class="inline">
-                  <input id="tempo" type="range" min="60" max="220" value="140">
-                  <input id="tempoNum" type="number" min="40" max="300" value="140">
+                  <input id="tempo" type="range" min="30" max="320" value="140">
+                  <input id="tempoNum" type="number" min="30" max="320" value="140">
                 </div>
               </div>
 
@@ -1959,6 +2026,7 @@
     bars: 4,
     halfEnabled: false,
     halfDensity: 22,
+    masterVolume: 85,
     tempo: 140,
     swing: 58,
     chaos: 35,
@@ -2026,6 +2094,7 @@
     bars: DEFAULTS.bars,
     halfEnabled: DEFAULTS.halfEnabled,
     halfDensity: DEFAULTS.halfDensity,
+    masterVolume: DEFAULTS.masterVolume,
     tempo: DEFAULTS.tempo,
     swing: DEFAULTS.swing,
     chaos: DEFAULTS.chaos,
@@ -2094,6 +2163,12 @@
     btnDefaults: document.getElementById("btnDefaults"),
     btnPianoToggle: document.getElementById("btnPianoToggle"),
     btnFretToggle: document.getElementById("btnFretToggle"),
+    btnTransposeDown: document.getElementById("btnTransposeDown"),
+    btnTransposeUp: document.getElementById("btnTransposeUp"),
+    masterVolTop: document.getElementById("masterVolTop"),
+    masterVolTopVal: document.getElementById("masterVolTopVal"),
+    masterTempoTop: document.getElementById("masterTempoTop"),
+    masterTempoTopVal: document.getElementById("masterTempoTopVal"),
 
     btnEdit: document.getElementById("btnEdit"),
     editHint: document.getElementById("editHint"),
@@ -5888,6 +5963,7 @@
     let master = null;
     let comp = null;
     let limiter = null;
+    let masterLevel = clamp((DEFAULTS.masterVolume ?? 85) / 100, 0, 1);
 
     const sf = {
       synth: null,
@@ -5907,7 +5983,7 @@
       ctx = new AC({ latencyHint: "interactive" });
 
       master = ctx.createGain();
-      master.gain.value = 0.85;
+      master.gain.value = masterLevel;
 
       comp = ctx.createDynamicsCompressor();
       comp.threshold.value = -18;
@@ -5931,6 +6007,13 @@
 
     function now(){ return ensure().currentTime; }
     function midiToHz(m){ return 440 * Math.pow(2, (m-69)/12); }
+    function setMasterVolume(v){
+      const raw = Number(v);
+      if (!Number.isFinite(raw)) return masterLevel;
+      masterLevel = clamp(raw, 0, 1);
+      if (master) master.gain.value = masterLevel;
+      return masterLevel;
+    }
 
     function soundFontActive(){
       return !!(state.soundFontEnabled && sf.ready && sf.synth);
@@ -6290,7 +6373,8 @@
   function chordVoicingMidi(ch, style="closed"){
     const root = ch.root;
     const tones = chordTonesPCs(ch).slice();
-    const base = 52 + (pc(root) - 0); // lower register to reduce brightness
+    // Anchor pitch-class 0 (C) to MIDI 48 (C3) so visual chord names match sounding pitch.
+    const base = 48 + pc(root);
     const mids = tones.map(p=>{
       let m = base + (pc(p - pc(root)));
       while (m < 46) m += 12;
@@ -6405,7 +6489,8 @@
 
     function playBass(rootPc, preset, t0, dur, vel=0.8){
       if (soundFontActive()){
-        let m = 40 + pc(rootPc);
+        // Anchor pitch-class 0 (C) to MIDI 36 (C2) for in-tune root mapping.
+        let m = 36 + pc(rootPc);
         while (m < 36) m += 12;
         while (m > 52) m -= 12;
         sfScheduleNote(SF_CHANNELS.bass, m, vel, t0, dur);
@@ -6432,7 +6517,7 @@
 
       const rel = env(gain, t0, cfg.a, cfg.d, cfg.s, cfg.r, cfg.peak*vel);
 
-      let m = 40 + pc(rootPc);
+      let m = 36 + pc(rootPc);
       while (m < 36) m += 12;
       while (m > 52) m -= 12;
 
@@ -6517,7 +6602,7 @@
     return {
       ensure, now, resume, playChord, playNote, playMidiNote, playBass, playDrumHit, hardStop,
       loadSoundFontUrl, loadSoundFontBuffer, updateSoundFontPrograms, setMidiProgram,
-      soundFontActive, soundFontAllNotesOff
+      soundFontActive, soundFontAllNotesOff, setMasterVolume
     };
   })();
 
@@ -7038,10 +7123,13 @@
       chartBars: structuredClone(state.chartBars),
       activeBar: state.activeBar,
       activeHalf: state.activeHalf,
+      keyRoot: state.keyRoot,
+      keyMode: state.keyMode,
       // settings we want undoable
       bars: state.bars,
       halfEnabled: state.halfEnabled,
       halfDensity: state.halfDensity,
+      masterVolume: state.masterVolume,
       tempo: state.tempo,
       swing: state.swing,
       chaos: state.chaos,
@@ -7083,9 +7171,12 @@
     state.chartBars = structuredClone(s.chartBars||[]);
     state.activeBar = s.activeBar||0;
     state.activeHalf = s.activeHalf||0;
+    state.keyRoot = Number.isFinite(s.keyRoot) ? pc(s.keyRoot) : state.keyRoot;
+    state.keyMode = s.keyMode || state.keyMode;
 
     Object.assign(state, {
       bars: s.bars, halfEnabled:s.halfEnabled, halfDensity:s.halfDensity,
+      masterVolume: s.masterVolume ?? state.masterVolume,
       tempo:s.tempo, swing:s.swing, chaos:s.chaos, complexity: s.complexity ?? state.complexity,
       rootMode:s.rootMode, progressionLogic:s.progressionLogic, genrePreset:s.genrePreset,
       grooveStyle:s.grooveStyle, compStyle:s.compStyle,
@@ -7456,6 +7547,58 @@
         AudioKit.playBass(pc(ch.root), state.bassPreset, AudioKit.now()+0.01, 0.25, 0.65);
       }
     }
+  }
+
+  function transposeMidiCollections(semi){
+    const seen = new Set();
+    const shift = (entry)=>{
+      if (!entry || typeof entry !== "object" || seen.has(entry)) return;
+      seen.add(entry);
+      if (!Number.isFinite(entry.midi)) return;
+      entry.midi = clamp(Math.round(entry.midi + semi), 0, 127);
+    };
+    const walk = (value)=>{
+      if (!Array.isArray(value)) return;
+      value.forEach((item)=>{
+        if (Array.isArray(item)) walk(item);
+        else shift(item);
+      });
+    };
+    walk(state.biabMelody);
+    walk(state.biabMelodyBars);
+    walk(state.biabMidiBars);
+    walk(state.biabDisplayBars);
+  }
+
+  function transposeChartBySemitone(semi){
+    const raw = Number(semi);
+    const step = Number.isFinite(raw) ? Math.trunc(raw) : 0;
+    if (!step) return;
+    if (!Array.isArray(state.chartBars) || !state.chartBars.length) return;
+
+    pushHistory();
+
+    const seenChords = new Set();
+    const shiftPc = (v)=>pc(v + step);
+
+    state.chartBars.forEach((bar)=>{
+      const chords = bar?.chords;
+      if (!Array.isArray(chords)) return;
+      chords.forEach((ch)=>{
+        if (!ch || typeof ch !== "object" || seenChords.has(ch)) return;
+        seenChords.add(ch);
+        if (Number.isFinite(ch.root)) ch.root = shiftPc(ch.root);
+        if (Number.isFinite(ch.slash)) ch.slash = shiftPc(ch.slash);
+        if (Number.isFinite(ch.scaleRoot)) ch.scaleRoot = shiftPc(ch.scaleRoot);
+      });
+    });
+
+    if (Number.isFinite(state.keyRoot)) state.keyRoot = shiftPc(state.keyRoot);
+    transposeMidiCollections(step);
+
+    player.setChart(state.chartBars, state.playbackOrder);
+    renderAll();
+    saveAll();
   }
 
   /* ---------- Edit modal ---------- */
@@ -7985,6 +8128,28 @@
     numEl.addEventListener("change", pullNum);
   }
 
+  function setTempoState(v){
+    const fallback = Number.isFinite(state.tempo) ? state.tempo : DEFAULTS.tempo;
+    const raw = Number(v);
+    const tempoVal = clamp(Number.isFinite(raw) ? raw : fallback, 30, 320);
+    state.tempo = tempoVal;
+    if (E.tempo) E.tempo.value = String(tempoVal);
+    if (E.tempoNum) E.tempoNum.value = String(tempoVal);
+    if (E.masterTempoTop) E.masterTempoTop.value = String(tempoVal);
+    if (E.masterTempoTopVal) E.masterTempoTopVal.textContent = String(tempoVal);
+    player.setTempo(state.tempo, state.swing);
+  }
+
+  function setMasterVolumeState(v){
+    const fallback = Number.isFinite(state.masterVolume) ? state.masterVolume : DEFAULTS.masterVolume;
+    const raw = Number(v);
+    const vol = clamp(Math.round(Number.isFinite(raw) ? raw : fallback), 0, 100);
+    state.masterVolume = vol;
+    if (E.masterVolTop) E.masterVolTop.value = String(vol);
+    if (E.masterVolTopVal) E.masterVolTopVal.textContent = `${vol}%`;
+    AudioKit.setMasterVolume(vol / 100);
+  }
+
   function syncComplexityUI(){
     const c = clamp(Number(state.complexity)||0, 0, 100);
     let msg = "Balanced: moderate density + scales.";
@@ -8106,12 +8271,12 @@
     E.halfChords.checked = !!state.halfEnabled;
     E.halfDensity.value = String(state.halfDensity);
     E.halfDensityNum.value = String(state.halfDensity);
-
-    E.tempo.value = String(state.tempo);
-    E.tempoNum.value = String(state.tempo);
+    setMasterVolumeState(state.masterVolume);
+    setTempoState(state.tempo);
 
     E.swing.value = String(state.swing);
     E.swingNum.value = String(state.swing);
+    player.setTempo(state.tempo, state.swing);
 
     E.chaos.value = String(state.chaos);
     E.chaosNum.value = String(state.chaos);
@@ -8271,10 +8436,13 @@
         chartBars: state.chartBars,
         activeBar: state.activeBar,
         activeHalf: state.activeHalf,
+        keyRoot: state.keyRoot,
+        keyMode: state.keyMode,
 
         bars: state.bars,
         halfEnabled: state.halfEnabled,
         halfDensity: state.halfDensity,
+        masterVolume: state.masterVolume,
         tempo: state.tempo,
         swing: state.swing,
         chaos: state.chaos,
@@ -8334,12 +8502,15 @@
     state.chartBars = saved.chartBars || [];
     state.activeBar = saved.activeBar || 0;
     state.activeHalf = saved.activeHalf || 0;
+    state.keyRoot = Number.isFinite(saved.keyRoot) ? pc(saved.keyRoot) : state.keyRoot;
+    state.keyMode = saved.keyMode || state.keyMode;
 
     // settings
     Object.assign(state, {
       bars: saved.bars ?? state.bars,
       halfEnabled: saved.halfEnabled ?? state.halfEnabled,
       halfDensity: saved.halfDensity ?? state.halfDensity,
+      masterVolume: clamp(saved.masterVolume ?? state.masterVolume, 0, 100),
       tempo: saved.tempo ?? state.tempo,
       swing: saved.swing ?? state.swing,
       chaos: saved.chaos ?? state.chaos,
@@ -8496,9 +8667,21 @@
     // ranges
     bindRangePair(E.bars, E.barsNum, (v)=>{ state.bars=v; saveAll(); });
     bindRangePair(E.halfDensity, E.halfDensityNum, (v)=>{ state.halfDensity=v; saveAll(); });
-    bindRangePair(E.tempo, E.tempoNum, (v)=>{ state.tempo=v; saveAll(); });
-    bindRangePair(E.swing, E.swingNum, (v)=>{ state.swing=v; saveAll(); });
+    bindRangePair(E.tempo, E.tempoNum, (v)=>{ setTempoState(v); saveAll(); });
+    bindRangePair(E.swing, E.swingNum, (v)=>{ state.swing=v; player.setTempo(state.tempo, state.swing); saveAll(); });
     bindRangePair(E.chaos, E.chaosNum, (v)=>{ state.chaos=v; saveAll(); });
+    if (E.masterTempoTop){
+      E.masterTempoTop.addEventListener("input", ()=>{
+        setTempoState(Number(E.masterTempoTop.value || state.tempo));
+        saveAll();
+      });
+    }
+    if (E.masterVolTop){
+      E.masterVolTop.addEventListener("input", ()=>{
+        setMasterVolumeState(Number(E.masterVolTop.value || state.masterVolume));
+        saveAll();
+      });
+    }
     if (E.complexity){
       E.complexity.addEventListener("input", ()=>{
         const v = Number(E.complexity.value || 0);
@@ -8746,6 +8929,12 @@
     E.btnRedo.addEventListener("click", ()=> doRedo());
 
     E.btnCopy.addEventListener("click", ()=> copyChart());
+    if (E.btnTransposeDown){
+      E.btnTransposeDown.addEventListener("click", ()=> transposeChartBySemitone(-1));
+    }
+    if (E.btnTransposeUp){
+      E.btnTransposeUp.addEventListener("click", ()=> transposeChartBySemitone(1));
+    }
 
     if (E.btnPianoToggle){
       E.btnPianoToggle.addEventListener("click", ()=>{
