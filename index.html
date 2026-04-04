@@ -1574,6 +1574,16 @@
     if (mode==="harmonicMinor") score += 0.6;
     if (mode==="mixoB13") score += 0.9;
 
+    if (ch?.family === "dom"){
+      const targetRoot = nextCh ? pc(nextCh.root) : null;
+      const isVtoI = nextCh ? (pc(ch.root + 5) === targetRoot) : false;
+      const centered = (targetRoot != null) ? (pc(scaleRoot) === targetRoot) : false;
+      const resolves = !!(isVtoI && centered);
+      if (!resolves && (mode==="harmonicMinor" || mode==="melodicMinor")){
+        score -= 2.2;
+      }
+    }
+
     const chordPCs = chordTonesPCs(ch);
     if (chordPCs.includes(pc(ch.root+6))){
       if (mode==="lydian" || mode==="lydianDom") score += 2.5;
@@ -1595,11 +1605,14 @@
           if (mode === "melodicMinor") score += 3.2;
           if (mode === "harmonicMinor") score += 1.4;
         } else if (nextFam === "dom"){
-          if (mode === "harmonicMinor") score += 2.6;
-          if (mode === "melodicMinor") score += 0.9;
+          if (mode === "mixoB13") score += 1.4;
+          if (mode === "mixo") score += 0.8;
+          if (mode === "lydianDom") score += 0.8;
         } else {
-          if (mode === "harmonicMinor") score += 2.4;
-          if (mode === "melodicMinor") score += 1.2;
+          if (mode === "mixo") score += 2.4;
+          if (mode === "lydianDom") score += 1.5;
+          if (mode === "harmonicMinor") score -= 2.4;
+          if (mode === "melodicMinor") score -= 1.4;
         }
       }
     }
@@ -3101,6 +3114,18 @@
     return { symbol: meta.symbol, family: meta.family, key: meta.key, display: meta.display };
   }
 
+  function exampleScaleHintForExplicitQuality(qualitySymbol){
+    const q = String(qualitySymbol || "").toLowerCase();
+    if (!q) return null;
+    if (q === "7" || q === "9" || q === "11" || q === "13" || q === "7sus" || q === "sus") return "mixo";
+    if (q === "maj7" || q === "maj9" || q === "6/9" || q === "add9") return "ionian";
+    if (q === "m7" || q === "m9" || q === "m11" || q === "m6") return "dorian";
+    if (q === "ø7") return "locrian";
+    if (q === "mmaj7") return "melodicMinor";
+    if (q === "dim7") return "harmonicMinor";
+    return null;
+  }
+
   function nashChordFromSpec(spec, keyRoot, mode){
     if (!spec || !Number.isFinite(spec.deg)) return null;
     const scale = SCALES[mode] || SCALES.ionian;
@@ -3112,7 +3137,25 @@
     const q = progressionQualityMeta(spec.q, mode, degreeIdx);
     const chord = makeChord(rootPc, q);
     chord.scaleRoot = pc(keyRoot);
+    if (typeof spec.q === "string" && spec.q){
+      const hint = exampleScaleHintForExplicitQuality(spec.q);
+      if (hint) chord.exampleModeHint = hint;
+    }
     return chord;
+  }
+
+  function applyExampleModeHints(chartBars){
+    if (!Array.isArray(chartBars)) return;
+    chartBars.forEach((bar)=>{
+      const chords = bar?.chords;
+      if (!Array.isArray(chords)) return;
+      chords.forEach((ch)=>{
+        if (!ch || typeof ch !== "object") return;
+        if (!ch.exampleModeHint || !SCALES[ch.exampleModeHint]) return;
+        ch.mode = ch.exampleModeHint;
+        ch.scaleRoot = pc(ch.root);
+      });
+    });
   }
 
   function loadTopExampleProgression(recordHistory=true){
@@ -3145,7 +3188,11 @@
     state.activeBar = 0;
     state.activeHalf = 0;
 
-    assignChordModesWithLimit(state.chartBars, 1, true);
+    // In example mode, let each chord pick its own best-fitting scale/mode
+    // (while still using selected mode/key as context), so the piano scale
+    // can change correctly across progressions like turnarounds and blues.
+    assignChordModesWithLimit(state.chartBars, 32, false);
+    applyExampleModeHints(state.chartBars);
     player.setChart(state.chartBars, state.playbackOrder);
     syncUIFromState();
     renderAll();
