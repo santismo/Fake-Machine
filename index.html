@@ -3249,11 +3249,23 @@
     state.activeBar = 0;
     state.activeHalf = 0;
 
-    // In example mode, let each chord pick its own best-fitting scale/mode
-    // (while still using selected mode/key as context), so the piano scale
-    // can change correctly across progressions like turnarounds and blues.
-    assignChordModesWithLimit(state.chartBars, 32, false);
-    applyExampleModeHints(state.chartBars);
+    const useUnifiedParentScale = (state.exampleReharmMode === "modal") || !preset.reharmProfile;
+    if (useUnifiedParentScale){
+      state.chartBars.forEach((bar)=>{
+        const chords = bar?.chords || [];
+        chords.forEach((ch)=>{
+          if (!ch) return;
+          ch.mode = mode;
+          ch.scaleRoot = pc(keyRoot);
+          delete ch.exampleModeHint;
+        });
+      });
+    } else {
+      // For profiled locked examples (blues/turnaround/etc.), allow
+      // per-chord scale behavior and apply explicit quality hints.
+      assignChordModesWithLimit(state.chartBars, 32, false);
+      applyExampleModeHints(state.chartBars);
+    }
     player.setChart(state.chartBars, state.playbackOrder);
     syncUIFromState();
     renderAll();
