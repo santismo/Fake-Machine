@@ -507,6 +507,38 @@
       gap:8px;
       flex-wrap:wrap;
     }
+    .headSelect{
+      min-height:38px;
+      padding:4px 8px;
+      border:1px solid rgba(255,255,255,.10);
+      border-radius:12px;
+      background: rgba(0,0,0,.18);
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      min-width:170px;
+    }
+    .headSelect label{
+      font-size:11px;
+      color:var(--pageMuted);
+      user-select:none;
+      white-space:nowrap;
+    }
+    .headSelect select{
+      min-height:28px;
+      border-radius:8px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.28);
+      color: var(--pageInk);
+      font-size:12px;
+      padding:4px 6px;
+      min-width:100px;
+      max-width:210px;
+    }
+    .headSelect select:disabled{
+      opacity:.55;
+      cursor:not-allowed;
+    }
     .transposeGroup{
       display:inline-flex;
       align-items:center;
@@ -550,6 +582,13 @@
     @media (max-width: 640px){
       .headSlider{ min-width:132px; }
       .headSlider input[type="range"]{ width:68px; }
+      .headSelect{
+        min-width:150px;
+      }
+      .headSelect select{
+        min-width:88px;
+        max-width:145px;
+      }
     }
     .splitLine{height:1px;background: rgba(255,255,255,.10);margin:12px 0;}
     .modalSubTitle{font-size:12px;color: var(--pageMuted);margin:0 0 8px 2px;}
@@ -626,6 +665,21 @@
       <div class="cardHead">
         <div class="title">🤖</div>
         <div class="headTools">
+          <div class="headSelect" title="Progression source">
+            <label for="progSourceTop">Source</label>
+            <select id="progSourceTop" aria-label="Progression source">
+              <option value="generate">Generate</option>
+              <option value="example">Examples</option>
+            </select>
+          </div>
+          <div class="headSelect" title="Nashville progression examples">
+            <label for="progExampleTop">Nash</label>
+            <select id="progExampleTop" aria-label="Nashville progression"></select>
+          </div>
+          <div class="headSelect" title="Mode used to resolve Nashville examples">
+            <label for="progModeTop">Mode</label>
+            <select id="progModeTop" aria-label="Example mode"></select>
+          </div>
           <div class="transposeGroup" title="Transpose chart by semitone">
             <button class="gearBtn transposeBtn" id="btnTransposeDown" type="button" aria-label="Transpose down one semitone" title="Transpose down one semitone">-1</button>
             <button class="gearBtn transposeBtn" id="btnTransposeUp" type="button" aria-label="Transpose up one semitone" title="Transpose up one semitone">+1</button>
@@ -2026,6 +2080,10 @@
     bars: 4,
     halfEnabled: false,
     halfDensity: 22,
+    progressionSource: "generate",
+    exampleProgression: "nash_251_hold1",
+    exampleMode: "ionian",
+    exampleParentRoot: 0,
     masterVolume: 85,
     tempo: 140,
     swing: 58,
@@ -2094,6 +2152,10 @@
     bars: DEFAULTS.bars,
     halfEnabled: DEFAULTS.halfEnabled,
     halfDensity: DEFAULTS.halfDensity,
+    progressionSource: DEFAULTS.progressionSource,
+    exampleProgression: DEFAULTS.exampleProgression,
+    exampleMode: DEFAULTS.exampleMode,
+    exampleParentRoot: DEFAULTS.exampleParentRoot,
     masterVolume: DEFAULTS.masterVolume,
     tempo: DEFAULTS.tempo,
     swing: DEFAULTS.swing,
@@ -2165,6 +2227,9 @@
     btnFretToggle: document.getElementById("btnFretToggle"),
     btnTransposeDown: document.getElementById("btnTransposeDown"),
     btnTransposeUp: document.getElementById("btnTransposeUp"),
+    progSourceTop: document.getElementById("progSourceTop"),
+    progExampleTop: document.getElementById("progExampleTop"),
+    progModeTop: document.getElementById("progModeTop"),
     masterVolTop: document.getElementById("masterVolTop"),
     masterVolTopVal: document.getElementById("masterVolTopVal"),
     masterTempoTop: document.getElementById("masterTempoTop"),
@@ -2915,6 +2980,176 @@
       opt.textContent = g.name;
       E.genrePreset.appendChild(opt);
     }
+  }
+
+  const EXAMPLE_MODE_OPTIONS = [
+    { id:"ionian", name:"Ionian (Major)" },
+    { id:"dorian", name:"Dorian" },
+    { id:"phryg", name:"Phrygian" },
+    { id:"lydian", name:"Lydian" },
+    { id:"mixo", name:"Mixolydian" },
+    { id:"aeolian", name:"Aeolian (Natural Minor)" },
+    { id:"locrian", name:"Locrian" },
+    { id:"melodicMinor", name:"Melodic Minor" },
+    { id:"harmonicMinor", name:"Harmonic Minor" },
+  ];
+
+  const NASHVILLE_EXAMPLES = [
+    { id:"nash_251_hold1", name:"ii-V-I (hold I)", nash:"2 5 1 1", bars:[{deg:2},{deg:5},{deg:1},{deg:1}] },
+    { id:"nash_6251", name:"vi-ii-V-I", nash:"6 2 5 1", bars:[{deg:6},{deg:2},{deg:5},{deg:1}] },
+    { id:"nash_1625", name:"I-vi-ii-V", nash:"1 6 2 5", bars:[{deg:1},{deg:6},{deg:2},{deg:5}] },
+    { id:"nash_36251", name:"iii-vi-ii-V-I", nash:"3 6 2 5 1", bars:[{deg:3},{deg:6},{deg:2},{deg:5},{deg:1}] },
+    { id:"nash_rhythm_a", name:"Rhythm Changes A", nash:"1 6 2 5 1 6 2 5", bars:[{deg:1},{deg:6},{deg:2},{deg:5},{deg:1},{deg:6},{deg:2},{deg:5}] },
+    { id:"nash_turnaround", name:"Jazz Turnaround", nash:"1maj7 6 2m7 5", bars:[{deg:1,q:"maj7"},{deg:6,q:"7"},{deg:2,q:"m7"},{deg:5,q:"7"}] },
+    { id:"nash_1564", name:"Pop Axis", nash:"1 5 6m 4", bars:[{deg:1},{deg:5},{deg:6,q:"m7"},{deg:4}] },
+    { id:"nash_1451", name:"I-IV-V-I", nash:"1 4 5 1", bars:[{deg:1},{deg:4},{deg:5},{deg:1}] },
+    { id:"nash_6415", name:"vi-IV-I-V", nash:"6m 4 1 5", bars:[{deg:6,q:"m7"},{deg:4},{deg:1},{deg:5}] },
+    { id:"nash_desc_fifths", name:"Descending Fifths", nash:"1 4 7 3 6 2 5 1", bars:[{deg:1},{deg:4},{deg:7},{deg:3},{deg:6},{deg:2},{deg:5},{deg:1}] },
+    { id:"nash_blues12", name:"12-Bar Blues (Basic)", nash:"1 1 1 1 4 4 1 1 5 4 1 5", bars:[{deg:1,q:"7"},{deg:1,q:"7"},{deg:1,q:"7"},{deg:1,q:"7"},{deg:4,q:"7"},{deg:4,q:"7"},{deg:1,q:"7"},{deg:1,q:"7"},{deg:5,q:"7"},{deg:4,q:"7"},{deg:1,q:"7"},{deg:5,q:"7"}] },
+    { id:"nash_minor_251", name:"Minor ii-V-i", nash:"2 5 1 1", bars:[{deg:2},{deg:5},{deg:1},{deg:1}] },
+    { id:"nash_minor_walk", name:"Minor Walkdown", nash:"1m b7 b6 b7", bars:[{deg:1,q:"m7"},{deg:7,alt:-1},{deg:6,alt:-1},{deg:7,alt:-1}] },
+    { id:"nash_andalusian", name:"Andalusian Cadence", nash:"1m b7 b6 5", bars:[{deg:1,q:"m7"},{deg:7,alt:-1},{deg:6,alt:-1},{deg:5,q:"7"}] },
+    { id:"nash_dorian_vamp", name:"Dorian Vamp", nash:"1m7 2 1m7 2", bars:[{deg:1,q:"m7"},{deg:2},{deg:1,q:"m7"},{deg:2}] },
+    { id:"nash_backdoor", name:"Backdoor", nash:"1 b7 4 1", bars:[{deg:1},{deg:7,alt:-1,q:"7"},{deg:4},{deg:1}] },
+    { id:"nash_gospel", name:"Gospel Motion", nash:"1 4 1 6m 2m 5 1", bars:[{deg:1},{deg:4},{deg:1},{deg:6,q:"m7"},{deg:2,q:"m7"},{deg:5,q:"7"},{deg:1}] },
+    { id:"nash_deceptive", name:"Deceptive ii-V-vi-IV", nash:"2m7 5 6m 4", bars:[{deg:2,q:"m7"},{deg:5,q:"7"},{deg:6,q:"m7"},{deg:4}] },
+    { id:"nash_modal_ladder", name:"Modal Ladder", nash:"1 2 3 4 5 4 2 1", bars:[{deg:1},{deg:2},{deg:3},{deg:4},{deg:5},{deg:4},{deg:2},{deg:1}] },
+    { id:"nash_plagal", name:"Plagal Loop", nash:"1 4 1 4 1", bars:[{deg:1},{deg:4},{deg:1},{deg:4},{deg:1}] },
+  ];
+
+  const EXAMPLE_MODE_PARENT_OFFSETS = {
+    ionian: 0,
+    dorian: 2,
+    phryg: 4,
+    lydian: 5,
+    mixo: 7,
+    mixolydian: 7,
+    aeolian: 9,
+    locrian: 11,
+  };
+
+  function initTopProgressionDropdowns(){
+    if (E.progModeTop){
+      E.progModeTop.innerHTML = "";
+      EXAMPLE_MODE_OPTIONS.forEach((m)=>{
+        const opt = document.createElement("option");
+        opt.value = m.id;
+        opt.textContent = m.name;
+        E.progModeTop.appendChild(opt);
+      });
+    }
+    if (E.progExampleTop){
+      E.progExampleTop.innerHTML = "";
+      NASHVILLE_EXAMPLES.forEach((p)=>{
+        const opt = document.createElement("option");
+        opt.value = p.id;
+        opt.textContent = `${p.name} · ${p.nash}`;
+        E.progExampleTop.appendChild(opt);
+      });
+    }
+  }
+
+  function syncTopProgressionControls(){
+    const source = (state.progressionSource === "example") ? "example" : "generate";
+    const mode = SCALES[state.exampleMode] ? state.exampleMode : DEFAULTS.exampleMode;
+    const hasProg = NASHVILLE_EXAMPLES.some(p=>p.id===state.exampleProgression);
+    const prog = hasProg ? state.exampleProgression : DEFAULTS.exampleProgression;
+    const parent = Number.isFinite(state.exampleParentRoot) ? pc(state.exampleParentRoot) : pc(state.keyRoot || 0);
+    state.progressionSource = source;
+    state.exampleMode = mode;
+    state.exampleProgression = prog;
+    state.exampleParentRoot = parent;
+
+    if (E.progSourceTop) E.progSourceTop.value = source;
+    if (E.progModeTop){
+      E.progModeTop.value = mode;
+      E.progModeTop.disabled = source !== "example";
+    }
+    if (E.progExampleTop){
+      E.progExampleTop.value = prog;
+      E.progExampleTop.disabled = source !== "example";
+    }
+  }
+
+  function diatonicSeventhSymbolForDegree(mode, degreeIdx){
+    const scale = SCALES[mode] || SCALES.ionian;
+    if (!Array.isArray(scale) || scale.length < 7) return "7";
+    const i = clamp(Math.trunc(degreeIdx), 0, 6);
+    const root = scale[i];
+    const third = scale[(i+2)%7] + ((i+2)>=7 ? 12 : 0);
+    const fifth = scale[(i+4)%7] + ((i+4)>=7 ? 12 : 0);
+    const seventh = scale[(i+6)%7] + ((i+6)>=7 ? 12 : 0);
+    const i3 = third - root;
+    const i5 = fifth - root;
+    const i7 = seventh - root;
+
+    if (i3===4 && i5===7) return (i7===11) ? "maj7" : "7";
+    if (i3===3 && i5===7) return (i7===11) ? "mMaj7" : "m7";
+    if (i3===3 && i5===6) return (i7===9) ? "dim7" : "ø7";
+    if (i3===4 && i5===8) return (i7===10) ? "7" : "maj7";
+    return "7";
+  }
+
+  function modalTonicFromParent(parentRoot, mode){
+    const offset = Number.isFinite(EXAMPLE_MODE_PARENT_OFFSETS[mode]) ? EXAMPLE_MODE_PARENT_OFFSETS[mode] : 0;
+    return pc(parentRoot + offset);
+  }
+
+  function progressionQualityMeta(qualitySymbol, mode, degreeIdx){
+    const sym = qualitySymbol || diatonicSeventhSymbolForDegree(mode, degreeIdx);
+    const meta = qualityMetaFromSymbol(sym);
+    return { symbol: meta.symbol, family: meta.family, key: meta.key, display: meta.display };
+  }
+
+  function nashChordFromSpec(spec, keyRoot, mode){
+    if (!spec || !Number.isFinite(spec.deg)) return null;
+    const scale = SCALES[mode] || SCALES.ionian;
+    if (!Array.isArray(scale) || scale.length < 7) return null;
+
+    const degreeIdx = clamp(Math.round(spec.deg) - 1, 0, 6);
+    const accidental = Number.isFinite(spec.alt) ? Math.round(spec.alt) : 0;
+    const rootPc = pc(keyRoot + scale[degreeIdx] + accidental);
+    const q = progressionQualityMeta(spec.q, mode, degreeIdx);
+    const chord = makeChord(rootPc, q);
+    chord.scaleRoot = pc(keyRoot);
+    return chord;
+  }
+
+  function loadTopExampleProgression(recordHistory=true){
+    if (state.progressionSource !== "example") return;
+    const mode = SCALES[state.exampleMode] ? state.exampleMode : DEFAULTS.exampleMode;
+    const preset = NASHVILLE_EXAMPLES.find(p=>p.id===state.exampleProgression) || NASHVILLE_EXAMPLES[0];
+    if (!preset) return;
+    if (recordHistory) pushHistory();
+
+    const parentRoot = Number.isFinite(state.exampleParentRoot) ? pc(state.exampleParentRoot) : pc(state.keyRoot || 0);
+    const keyRoot = modalTonicFromParent(parentRoot, mode);
+    const bars = preset.bars.map((entry)=>{
+      const specs = Array.isArray(entry) ? entry : [entry];
+      const chords = specs.map(spec=>nashChordFromSpec(spec, keyRoot, mode)).filter(Boolean);
+      if (!chords.length){
+        return { split:false, chords:[makeChord(keyRoot, progressionQualityMeta("maj7", mode, 0))] };
+      }
+      return { split: chords.length > 1, chords };
+    });
+
+    clearBiab();
+    state.exampleParentRoot = parentRoot;
+    state.keyRoot = keyRoot;
+    state.keyMode = mode;
+    state.chartBars = bars;
+    state.bars = bars.length;
+    state.halfEnabled = bars.some(b => b.split);
+    state.playbackOrder = bars.map((_, i)=>i);
+    state.currentSongTitle = `${preset.name} (${mode})`;
+    state.activeBar = 0;
+    state.activeHalf = 0;
+
+    assignChordModesWithLimit(state.chartBars, 1, true);
+    player.setChart(state.chartBars, state.playbackOrder);
+    syncUIFromState();
+    renderAll();
+    saveAll();
   }
 
   /* ---------- Themes ---------- */
@@ -7129,6 +7364,10 @@
       bars: state.bars,
       halfEnabled: state.halfEnabled,
       halfDensity: state.halfDensity,
+      progressionSource: state.progressionSource,
+      exampleProgression: state.exampleProgression,
+      exampleMode: state.exampleMode,
+      exampleParentRoot: state.exampleParentRoot,
       masterVolume: state.masterVolume,
       tempo: state.tempo,
       swing: state.swing,
@@ -7176,6 +7415,10 @@
 
     Object.assign(state, {
       bars: s.bars, halfEnabled:s.halfEnabled, halfDensity:s.halfDensity,
+      progressionSource: s.progressionSource ?? state.progressionSource,
+      exampleProgression: s.exampleProgression ?? state.exampleProgression,
+      exampleMode: s.exampleMode ?? state.exampleMode,
+      exampleParentRoot: Number.isFinite(s.exampleParentRoot) ? pc(s.exampleParentRoot) : state.exampleParentRoot,
       masterVolume: s.masterVolume ?? state.masterVolume,
       tempo:s.tempo, swing:s.swing, chaos:s.chaos, complexity: s.complexity ?? state.complexity,
       rootMode:s.rootMode, progressionLogic:s.progressionLogic, genrePreset:s.genrePreset,
@@ -7594,6 +7837,9 @@
     });
 
     if (Number.isFinite(state.keyRoot)) state.keyRoot = shiftPc(state.keyRoot);
+    if (state.progressionSource === "example" && Number.isFinite(state.exampleParentRoot)){
+      state.exampleParentRoot = shiftPc(state.exampleParentRoot);
+    }
     transposeMidiCollections(step);
 
     player.setChart(state.chartBars, state.playbackOrder);
@@ -8265,6 +8511,8 @@
   }
 
   function syncUIFromState(){
+    syncTopProgressionControls();
+
     E.bars.value = String(state.bars);
     E.barsNum.value = String(state.bars);
 
@@ -8442,6 +8690,10 @@
         bars: state.bars,
         halfEnabled: state.halfEnabled,
         halfDensity: state.halfDensity,
+        progressionSource: state.progressionSource,
+        exampleProgression: state.exampleProgression,
+        exampleMode: state.exampleMode,
+        exampleParentRoot: state.exampleParentRoot,
         masterVolume: state.masterVolume,
         tempo: state.tempo,
         swing: state.swing,
@@ -8510,6 +8762,10 @@
       bars: saved.bars ?? state.bars,
       halfEnabled: saved.halfEnabled ?? state.halfEnabled,
       halfDensity: saved.halfDensity ?? state.halfDensity,
+      progressionSource: saved.progressionSource ?? state.progressionSource,
+      exampleProgression: saved.exampleProgression ?? state.exampleProgression,
+      exampleMode: saved.exampleMode ?? state.exampleMode,
+      exampleParentRoot: Number.isFinite(saved.exampleParentRoot) ? pc(saved.exampleParentRoot) : state.exampleParentRoot,
       masterVolume: clamp(saved.masterVolume ?? state.masterVolume, 0, 100),
       tempo: saved.tempo ?? state.tempo,
       swing: saved.swing ?? state.swing,
@@ -8680,6 +8936,40 @@
       E.masterVolTop.addEventListener("input", ()=>{
         setMasterVolumeState(Number(E.masterVolTop.value || state.masterVolume));
         saveAll();
+      });
+    }
+    if (E.progSourceTop){
+      E.progSourceTop.addEventListener("change", ()=>{
+        state.progressionSource = (E.progSourceTop.value === "example") ? "example" : "generate";
+        if (state.progressionSource === "example"){
+          state.exampleParentRoot = Number.isFinite(state.keyRoot) ? pc(state.keyRoot) : 0;
+        }
+        syncTopProgressionControls();
+        if (state.progressionSource === "example"){
+          loadTopExampleProgression(true);
+        } else {
+          saveAll();
+        }
+      });
+    }
+    if (E.progExampleTop){
+      E.progExampleTop.addEventListener("change", ()=>{
+        state.exampleProgression = E.progExampleTop.value || state.exampleProgression;
+        if (state.progressionSource === "example"){
+          loadTopExampleProgression(true);
+        } else {
+          saveAll();
+        }
+      });
+    }
+    if (E.progModeTop){
+      E.progModeTop.addEventListener("change", ()=>{
+        state.exampleMode = E.progModeTop.value || state.exampleMode;
+        if (state.progressionSource === "example"){
+          loadTopExampleProgression(true);
+        } else {
+          saveAll();
+        }
       });
     }
     if (E.complexity){
@@ -9037,6 +9327,7 @@
     initPianoThemeDropdown();
     initFretThemeDropdown();
     initEditDropdowns();
+    initTopProgressionDropdowns();
 
     loadOrder();
 
