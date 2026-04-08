@@ -3144,7 +3144,7 @@
   function syncGameStepNavVisibility(){
     const show = isGameMode();
     const barCount = Array.isArray(state.chartBars) ? state.chartBars.length : 0;
-    const canStep = show && gameRuntime.active && barCount > 0;
+    const canStep = show && barCount > 0;
     const atStart = gameRuntime.index <= 0;
 
     if (E.gamePrevStep){
@@ -3559,12 +3559,15 @@
   }
 
   function stepGameBy(delta){
-    if (!isGameMode() || !gameRuntime.active) return false;
-    const barCount = Array.isArray(state.chartBars) ? state.chartBars.length : 0;
-    if (!barCount) return false;
-
+    if (!isGameMode()) return false;
     const step = Math.trunc(Number(delta) || 0);
     if (!step) return false;
+    if (!gameRuntime.active){
+      const started = startGameRound(false);
+      if (!started) return false;
+    }
+    const barCount = Array.isArray(state.chartBars) ? state.chartBars.length : 0;
+    if (!barCount) return false;
 
     const maxIdx = barCount - 1;
     const targetIdx = clamp(gameRuntime.index + step, 0, maxIdx);
@@ -4725,6 +4728,7 @@
       }
     });
     midiSustainedNotes.clear();
+    applyLiveMidiKeyOutline();
   }
 
   function midiSetSustain(enabled){
@@ -4779,6 +4783,7 @@
     midiOutputCounts.clear();
     midiSustainedNotes.clear();
     midiSustainOn = false;
+    applyLiveMidiKeyOutline();
   }
 
   function detachMidiInput(){
@@ -4851,6 +4856,7 @@
         midiSustainedNotes.delete(outNote);
       }
       AudioKit.noteOn(outNote, state.keysPreset, clamp(vel / 127, 0.08, 1));
+      applyLiveMidiKeyOutline();
       gameCheckProgressFromMidi();
       return;
     }
@@ -4869,6 +4875,7 @@
       } else {
         midiOutputCounts.set(outNote, count);
       }
+      applyLiveMidiKeyOutline();
       gameCheckProgressFromMidi();
       return;
     }
@@ -5571,6 +5578,30 @@
     return pcs;
   }
 
+  let pianoLiveKeyRefs = [];
+
+  function midiHeldPitchClassSetForDisplay(){
+    const held = new Set();
+    midiOutputCounts.forEach((count, midi)=>{
+      if (count > 0) held.add(pc(Number(midi)));
+    });
+    midiSustainedNotes.forEach((midi)=>{
+      held.add(pc(Number(midi)));
+    });
+    return held;
+  }
+
+  function applyLiveMidiKeyOutline(){
+    if (!Array.isArray(pianoLiveKeyRefs) || !pianoLiveKeyRefs.length) return;
+    const activePcs = isGameMode() ? midiHeldPitchClassSetForDisplay() : new Set();
+    pianoLiveKeyRefs.forEach((entry)=>{
+      if (!entry || !entry.el) return;
+      const on = activePcs.has(entry.pc);
+      entry.el.setAttribute("stroke", on ? "rgba(255,75,75,.98)" : entry.baseStroke);
+      entry.el.setAttribute("stroke-width", on ? "3.6" : entry.baseStrokeWidth);
+    });
+  }
+
 
   function renderFretboardForActive(){
     const ch = activeChord();
@@ -5781,12 +5812,14 @@
       E.btnPianoToggle.setAttribute("aria-pressed", showFret ? "false" : "true");
     }
     if (showFret){
+      pianoLiveKeyRefs = [];
       renderFretboardForActive();
       return;
     }
 
     const ch = activeChord();
     if (!ch){
+      pianoLiveKeyRefs = [];
       E.pianoSvg.innerHTML = "";
       E.pianoTop.textContent = "—";
       E.pianoHint.textContent = "—";
@@ -5817,6 +5850,7 @@
 
     const svg = E.pianoSvg;
     svg.innerHTML = "";
+    const nextKeyRefs = [];
 
     const W = 1000, H = 240;
     const baseOct = clamp(Number(state.kbOct)||2, 1, 4);
@@ -5848,10 +5882,13 @@
       rect.setAttribute("height", String(whiteH));
 
       const inScale = scaleSet.has(p);
+      const baseStroke = inScale ? `rgba(0,0,0,var(--scaleStrokeAlpha))` : "var(--keyBorderStrong)";
+      const baseStrokeWidth = inScale ? "var(--scaleStrokeWidth)" : "1.6";
       rect.setAttribute("fill", inScale ? "var(--accent)" : "var(--keyWhite)");
-      rect.setAttribute("stroke", inScale ? `rgba(0,0,0,var(--scaleStrokeAlpha))` : "var(--keyBorderStrong)");
-      rect.setAttribute("stroke-width", inScale ? "var(--scaleStrokeWidth)" : "1.6");
+      rect.setAttribute("stroke", baseStroke);
+      rect.setAttribute("stroke-width", baseStrokeWidth);
       svg.appendChild(rect);
+      nextKeyRefs.push({ el: rect, pc: p, baseStroke, baseStrokeWidth });
 
       const isChord = chordSet.has(p);
       const isRoot = p === pc(ch.root);
@@ -5880,10 +5917,13 @@
         rect.setAttribute("height", String(blackH));
 
         const inScale = scaleSet.has(p);
+        const baseStroke = inScale ? `rgba(0,0,0,var(--scaleStrokeAlpha))` : "var(--keyBlackBorder)";
+        const baseStrokeWidth = inScale ? "var(--scaleStrokeWidth)" : "1.6";
         rect.setAttribute("fill", inScale ? "var(--accent)" : "var(--keyBlack)");
-        rect.setAttribute("stroke", inScale ? `rgba(0,0,0,var(--scaleStrokeAlpha))` : "var(--keyBlackBorder)");
-        rect.setAttribute("stroke-width", inScale ? "var(--scaleStrokeWidth)" : "1.6");
+        rect.setAttribute("stroke", baseStroke);
+        rect.setAttribute("stroke-width", baseStrokeWidth);
         svg.appendChild(rect);
+        nextKeyRefs.push({ el: rect, pc: p, baseStroke, baseStrokeWidth });
 
         const isChord = chordSet.has(p);
         const isRoot = p === pc(ch.root);
@@ -5895,6 +5935,9 @@
         }
       }
     }
+
+    pianoLiveKeyRefs = nextKeyRefs;
+    applyLiveMidiKeyOutline();
   }
 
   function renderAll(){
@@ -8863,7 +8906,7 @@
           break;
         case "ArrowLeft":
           ev.preventDefault();
-          if (isGameMode() && gameRuntime.active){
+          if (isGameMode()){
             stepGameBy(-1);
             break;
           }
@@ -8871,7 +8914,7 @@
           break;
         case "ArrowRight":
           ev.preventDefault();
-          if (isGameMode() && gameRuntime.active){
+          if (isGameMode()){
             stepGameBy(1);
             break;
           }
@@ -9407,8 +9450,7 @@
     loadPlaylistFromUrl(E.songUrl ? E.songUrl.value : DEFAULT_PLAYLIST_URL);
     initMidiSystem();
     if (isGameMode()){
-      if (state.midiInEnabled) startGameRound(false);
-      else showGamePrompt();
+      startGameRound(false);
     }
     if (state.soundFontUrl) loadSoundFontFromUrl(state.soundFontUrl);
 
