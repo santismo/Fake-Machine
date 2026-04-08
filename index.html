@@ -263,6 +263,50 @@
       background: rgba(122,162,255,.12);
     }
 
+    .gameStepBtn{
+      position: fixed;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 52px;
+      height: 64px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.20);
+      background: linear-gradient(180deg, rgba(122,162,255,.24), rgba(0,0,0,.32));
+      color: var(--pageInk);
+      box-shadow: 0 14px 28px rgba(0,0,0,.36);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      font-weight: 900;
+      line-height: 1;
+      cursor: pointer;
+      z-index: 9600;
+      user-select: none;
+      touch-action: manipulation;
+    }
+    .gameStepBtn:active{
+      transform: translateY(-50%) scale(0.98);
+    }
+    .gameStepBtn:disabled{
+      opacity: .34;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+    #gamePrevStep{
+      left: max(8px, env(safe-area-inset-left));
+    }
+    #gameNextStep{
+      right: max(8px, env(safe-area-inset-right));
+    }
+    @media (max-width: 760px){
+      .gameStepBtn{
+        width: 46px;
+        height: 58px;
+        font-size: 24px;
+      }
+    }
+
     /* Title bar button alignment */
     #cardHeader .btnRow{justify-content:center;}
     #cardHeader .btnRow .btn{flex:0 1 auto;min-width:clamp(56px, 16vw, 92px); padding:8px 12px;}
@@ -1223,6 +1267,9 @@
     </section>
 
   </div><!-- /app -->
+
+  <button class="gameStepBtn" id="gamePrevStep" type="button" aria-label="Previous game chord" title="Previous chord">‹</button>
+  <button class="gameStepBtn" id="gameNextStep" type="button" aria-label="Next game chord" title="Next chord">›</button>
 
   <!-- Advanced Settings Modal -->
   <div class="modalBack" id="advBack" role="dialog" aria-modal="true" aria-label="Advanced settings">
@@ -2205,6 +2252,8 @@
     rowMidiInput: document.getElementById("rowMidiInput"),
     btnMidiToggle: document.getElementById("btnMidiToggle"),
     midiInputSelect: document.getElementById("midiInputSelect"),
+    gamePrevStep: document.getElementById("gamePrevStep"),
+    gameNextStep: document.getElementById("gameNextStep"),
     btnPianoToggle: document.getElementById("btnPianoToggle"),
     btnFretToggle: document.getElementById("btnFretToggle"),
     btnTransposeDown: document.getElementById("btnTransposeDown"),
@@ -3060,12 +3109,31 @@
       E.gameDiffTop.disabled = source !== "game";
     }
     syncHeaderGenerateVisibility();
+    syncGameStepNavVisibility();
   }
 
   function syncHeaderGenerateVisibility(){
     if (!E.rowGenerateActions) return;
     const canGenerate = state.progressionSource === "generate";
     E.rowGenerateActions.style.display = canGenerate ? "flex" : "none";
+  }
+
+  function syncGameStepNavVisibility(){
+    const show = isGameMode();
+    const barCount = Array.isArray(state.chartBars) ? state.chartBars.length : 0;
+    const canStep = show && gameRuntime.active && barCount > 0;
+    const maxIdx = Math.max(0, barCount - 1);
+    const atStart = gameRuntime.index <= 0;
+    const atEnd = gameRuntime.index >= maxIdx;
+
+    if (E.gamePrevStep){
+      E.gamePrevStep.style.display = show ? "flex" : "none";
+      E.gamePrevStep.disabled = !canStep || atStart;
+    }
+    if (E.gameNextStep){
+      E.gameNextStep.style.display = show ? "flex" : "none";
+      E.gameNextStep.disabled = !canStep || atEnd;
+    }
   }
 
   function diatonicSeventhSymbolForDegree(mode, degreeIdx){
@@ -3278,6 +3346,7 @@
     gameRuntime.active = false;
     gameRuntime.index = 0;
     gameRuntime.waitRelease = false;
+    syncGameStepNavVisibility();
   }
 
   function gameTargetChord(){
@@ -3320,6 +3389,7 @@
     highlightActiveBar();
     renderHeaderPills();
     renderPianoForActive();
+    syncGameStepNavVisibility();
   }
 
   function randomGameQualitySymbol(mode, degreeIdx){
@@ -3433,6 +3503,30 @@
     if (player.isOn()) player.jumpTo(gameRuntime.index, 0);
     showGamePrompt("Correct.");
     saveAll();
+  }
+
+  function stepGameBy(delta){
+    if (!isGameMode() || !gameRuntime.active) return false;
+    const barCount = Array.isArray(state.chartBars) ? state.chartBars.length : 0;
+    if (!barCount) return false;
+
+    const step = Math.trunc(Number(delta) || 0);
+    if (!step) return false;
+
+    const maxIdx = barCount - 1;
+    const targetIdx = clamp(gameRuntime.index + step, 0, maxIdx);
+    if (targetIdx === gameRuntime.index){
+      syncGameStepNavVisibility();
+      return false;
+    }
+
+    gameRuntime.index = targetIdx;
+    gameRuntime.waitRelease = [...midiOutputCounts.values()].some(v=>v > 0);
+    setGameActiveStep(targetIdx);
+    if (player.isOn()) player.jumpTo(targetIdx, 0);
+    showGamePrompt("Manual step.");
+    saveAll();
+    return true;
   }
 
   /* ---------- Themes ---------- */
@@ -4630,8 +4724,10 @@
     const next = (state.activeBar<state.chartBars.length-1) ? (state.chartBars[state.activeBar+1]?.chords?.[0] || null) : null;
 
     const {pcs: scalePCs, mode} = scalePCsForChordLocal(ch, prev, next);
-    const scaleSet = new Set(scalePCs);
-    const chordSet = new Set(chordTonesPCs(ch));
+    const chordPCs = chordTonesPCs(ch).map(pc);
+    const displayScalePCs = [...new Set([...(Array.isArray(scalePCs) ? scalePCs : []).map(pc), ...chordPCs])];
+    const scaleSet = new Set(displayScalePCs);
+    const chordSet = new Set(chordPCs);
     const melodyPcs = getActiveMelodyPcs();
     const scaleRoot = (ch && typeof ch.scaleRoot==="number") ? ch.scaleRoot : ch.root;
 
@@ -4833,7 +4929,10 @@
     const next = (state.activeBar<state.chartBars.length-1) ? (state.chartBars[state.activeBar+1]?.chords?.[0] || null) : null;
 
     const {pcs: scalePCs, mode} = scalePCsForChordLocal(ch, prev, next);
-    const chordPCs = chordTonesPCs(ch);
+    const chordPCs = chordTonesPCs(ch).map(pc);
+    const displayScalePCs = [...new Set([...(Array.isArray(scalePCs) ? scalePCs : []).map(pc), ...chordPCs])];
+    const scaleSet = new Set(displayScalePCs);
+    const chordSet = new Set(chordPCs);
     const melodyPcs = getActiveMelodyPcs();
 
     const scaleRoot = (ch && typeof ch.scaleRoot==="number") ? ch.scaleRoot : ch.root;
@@ -4873,13 +4972,13 @@
       rect.setAttribute("width", String(whiteW));
       rect.setAttribute("height", String(whiteH));
 
-      const inScale = scalePCs.includes(p);
+      const inScale = scaleSet.has(p);
       rect.setAttribute("fill", inScale ? "var(--accent)" : "var(--keyWhite)");
       rect.setAttribute("stroke", inScale ? `rgba(0,0,0,var(--scaleStrokeAlpha))` : "var(--keyBorderStrong)");
       rect.setAttribute("stroke-width", inScale ? "var(--scaleStrokeWidth)" : "1.6");
       svg.appendChild(rect);
 
-      const isChord = chordPCs.includes(p);
+      const isChord = chordSet.has(p);
       const isRoot = p === pc(ch.root);
       if (isChord){
         placeMarker(svg, k.x + whiteW*0.5, 175, isRoot ? "root" : "chord");
@@ -4905,13 +5004,13 @@
         rect.setAttribute("width", String(blackW));
         rect.setAttribute("height", String(blackH));
 
-        const inScale = scalePCs.includes(p);
+        const inScale = scaleSet.has(p);
         rect.setAttribute("fill", inScale ? "var(--accent)" : "var(--keyBlack)");
         rect.setAttribute("stroke", inScale ? `rgba(0,0,0,var(--scaleStrokeAlpha))` : "var(--keyBlackBorder)");
         rect.setAttribute("stroke-width", inScale ? "var(--scaleStrokeWidth)" : "1.6");
         svg.appendChild(rect);
 
-        const isChord = chordPCs.includes(p);
+        const isChord = chordSet.has(p);
         const isRoot = p === pc(ch.root);
         if (isChord){
           placeMarker(svg, x0 + blackW*0.5, 95, isRoot ? "root" : "chord");
@@ -4925,6 +5024,7 @@
 
   function renderAll(){
     renderHeaderPills();
+    syncGameStepNavVisibility();
     renderKeyLine();
     renderSongRandomLabel();
     renderLeadSheet();
@@ -7870,10 +7970,18 @@
           break;
         case "ArrowLeft":
           ev.preventDefault();
+          if (isGameMode() && gameRuntime.active){
+            stepGameBy(-1);
+            break;
+          }
           if (E.btnUndo) E.btnUndo.click();
           break;
         case "ArrowRight":
           ev.preventDefault();
+          if (isGameMode() && gameRuntime.active){
+            stepGameBy(1);
+            break;
+          }
           if (E.btnRedo) E.btnRedo.click();
           break;
         case "KeyR":
@@ -8212,6 +8320,12 @@
 
     E.btnUndo.addEventListener("click", ()=> doUndo());
     E.btnRedo.addEventListener("click", ()=> doRedo());
+    if (E.gamePrevStep){
+      E.gamePrevStep.addEventListener("click", ()=> stepGameBy(-1));
+    }
+    if (E.gameNextStep){
+      E.gameNextStep.addEventListener("click", ()=> stepGameBy(1));
+    }
 
     E.btnCopy.addEventListener("click", ()=> copyChart());
     if (E.btnTransposeDown){
