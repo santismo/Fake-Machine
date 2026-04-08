@@ -4851,12 +4851,12 @@
 
       const count = (midiOutputCounts.get(outNote) || 0) + 1;
       midiOutputCounts.set(outNote, count);
+      applyLiveMidiPcOutline(outNote);
       if (midiSustainedNotes.has(outNote)){
         AudioKit.noteOff(outNote);
         midiSustainedNotes.delete(outNote);
       }
       AudioKit.noteOn(outNote, state.keysPreset, clamp(vel / 127, 0.08, 1));
-      applyLiveMidiKeyOutline();
       gameCheckProgressFromMidi();
       return;
     }
@@ -4871,11 +4871,12 @@
       if (count <= 0){
         midiOutputCounts.delete(outNote);
         if (midiSustainOn) midiSustainedNotes.add(outNote);
-        else AudioKit.noteOff(outNote);
+        applyLiveMidiPcOutline(outNote);
+        if (!midiSustainOn) AudioKit.noteOff(outNote);
       } else {
         midiOutputCounts.set(outNote, count);
+        applyLiveMidiPcOutline(outNote);
       }
-      applyLiveMidiKeyOutline();
       gameCheckProgressFromMidi();
       return;
     }
@@ -5579,6 +5580,9 @@
   }
 
   let pianoLiveKeyRefs = [];
+  let pianoLiveKeysByPc = Array.from({ length: 12 }, ()=>[]);
+  const LIVE_MIDI_STROKE = "rgba(255,75,75,.98)";
+  const LIVE_MIDI_STROKE_WIDTH = "5.2";
 
   function midiHeldPitchClassSetForDisplay(){
     const held = new Set();
@@ -5591,15 +5595,32 @@
     return held;
   }
 
+  function isLiveMidiPcActive(pitchClass){
+    const p = pc(pitchClass);
+    for (const [midi, count] of midiOutputCounts.entries()){
+      if ((count || 0) > 0 && pc(Number(midi)) === p) return true;
+    }
+    for (const midi of midiSustainedNotes.values()){
+      if (pc(Number(midi)) === p) return true;
+    }
+    return false;
+  }
+
+  function applyLiveMidiPcOutline(pitchClass){
+    const p = pc(pitchClass);
+    if (!Array.isArray(pianoLiveKeysByPc) || !pianoLiveKeysByPc[p] || !pianoLiveKeysByPc[p].length) return;
+    const on = isGameMode() && isLiveMidiPcActive(p);
+    const refs = pianoLiveKeysByPc[p];
+    refs.forEach((entry)=>{
+      if (!entry || !entry.el) return;
+      entry.el.setAttribute("stroke", on ? LIVE_MIDI_STROKE : entry.baseStroke);
+      entry.el.setAttribute("stroke-width", on ? LIVE_MIDI_STROKE_WIDTH : entry.baseStrokeWidth);
+    });
+  }
+
   function applyLiveMidiKeyOutline(){
     if (!Array.isArray(pianoLiveKeyRefs) || !pianoLiveKeyRefs.length) return;
-    const activePcs = isGameMode() ? midiHeldPitchClassSetForDisplay() : new Set();
-    pianoLiveKeyRefs.forEach((entry)=>{
-      if (!entry || !entry.el) return;
-      const on = activePcs.has(entry.pc);
-      entry.el.setAttribute("stroke", on ? "rgba(255,75,75,.98)" : entry.baseStroke);
-      entry.el.setAttribute("stroke-width", on ? "3.6" : entry.baseStrokeWidth);
-    });
+    for (let p=0; p<12; p++) applyLiveMidiPcOutline(p);
   }
 
 
@@ -5813,6 +5834,7 @@
     }
     if (showFret){
       pianoLiveKeyRefs = [];
+      pianoLiveKeysByPc = Array.from({ length: 12 }, ()=>[]);
       renderFretboardForActive();
       return;
     }
@@ -5820,6 +5842,7 @@
     const ch = activeChord();
     if (!ch){
       pianoLiveKeyRefs = [];
+      pianoLiveKeysByPc = Array.from({ length: 12 }, ()=>[]);
       E.pianoSvg.innerHTML = "";
       E.pianoTop.textContent = "—";
       E.pianoHint.textContent = "—";
@@ -5851,6 +5874,7 @@
     const svg = E.pianoSvg;
     svg.innerHTML = "";
     const nextKeyRefs = [];
+    const nextKeysByPc = Array.from({ length: 12 }, ()=>[]);
 
     const W = 1000, H = 240;
     const baseOct = clamp(Number(state.kbOct)||2, 1, 4);
@@ -5888,7 +5912,9 @@
       rect.setAttribute("stroke", baseStroke);
       rect.setAttribute("stroke-width", baseStrokeWidth);
       svg.appendChild(rect);
-      nextKeyRefs.push({ el: rect, pc: p, baseStroke, baseStrokeWidth });
+      const ref = { el: rect, pc: p, baseStroke, baseStrokeWidth };
+      nextKeyRefs.push(ref);
+      nextKeysByPc[p].push(ref);
 
       const isChord = chordSet.has(p);
       const isRoot = p === pc(ch.root);
@@ -5923,7 +5949,9 @@
         rect.setAttribute("stroke", baseStroke);
         rect.setAttribute("stroke-width", baseStrokeWidth);
         svg.appendChild(rect);
-        nextKeyRefs.push({ el: rect, pc: p, baseStroke, baseStrokeWidth });
+        const ref = { el: rect, pc: p, baseStroke, baseStrokeWidth };
+        nextKeyRefs.push(ref);
+        nextKeysByPc[p].push(ref);
 
         const isChord = chordSet.has(p);
         const isRoot = p === pc(ch.root);
@@ -5937,6 +5965,7 @@
     }
 
     pianoLiveKeyRefs = nextKeyRefs;
+    pianoLiveKeysByPc = nextKeysByPc;
     applyLiveMidiKeyOutline();
   }
 
