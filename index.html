@@ -879,7 +879,7 @@
           </div>
         </details>
 
-                <details class="group" id="grpSongs">
+        <details class="group" id="grpSongs">
           <summary>
             <div class="sumLeft">
               <div>
@@ -892,7 +892,7 @@
           <div class="groupBody">
             <div class="controls">
               <div class="control" style="grid-column: 1 / -1;">
-                <div class="msg" id="songStatus" style="margin:0;">Song import is disabled in this version.</div>
+                <div class="msg" id="songStatus" style="margin:0;">Loading playlist...</div>
               </div>
               <div class="control">
                 <label>Search</label>
@@ -912,6 +912,11 @@
                   <button class="btn tiny" id="btnSongRandom" type="button">Load random song</button>
                   <div class="songRandomLabel" id="songRandomLabel">No song loaded</div>
                 </div>
+              </div>
+              <div class="control" style="grid-column: 1 / -1;">
+                <label>BIAB upload (.mgu/.sgu/.mg1/.sg1...)</label>
+                <input class="fileInput" type="file" id="biabFile" accept=".mgu,.sgu,.mg1,.sg1,.mg2,.sg2,.mg3,.sg3,.mg4,.sg4,.mg5,.sg5,application/octet-stream">
+                <div class="msg" id="biabStatus"> </div>
               </div>
               <div class="control" style="grid-column: 1 / -1;">
                 <div class="songList" id="songList"></div>
@@ -1374,7 +1379,15 @@
         <div class="modalSubTitle">Songs (advanced)</div>
         <div class="modalGrid">
           <div class="miniCtl" style="grid-column: 1 / -1;">
-            <div class="msg">Song import controls are removed in this version.</div>
+            <label>Playlist URL</label>
+            <div class="inline">
+              <input class="textInput" type="text" id="songUrl" placeholder="https://...">
+              <button class="btn tiny" id="btnSongFetch" type="button">Fetch</button>
+            </div>
+          </div>
+          <div class="miniCtl" style="grid-column: 1 / -1;">
+            <label>Manual upload (.txt/.ireal/.mgu)</label>
+            <input class="fileInput" type="file" id="songFile" accept=".txt,.ireal,.irealbook,.csv,.mgu,.sgu,.mg1,.sg1,.mg2,.sg2,.mg3,.sg3,.mg4,.sg4,.mg5,.sg5,application/octet-stream">
           </div>
         </div>
 
@@ -2304,6 +2317,11 @@
     btnSfLoad: document.getElementById("btnSfLoad"),
     sfFile: document.getElementById("sfFile"),
     sfStatus: document.getElementById("sfStatus"),
+    songUrl: document.getElementById("songUrl"),
+    btnSongFetch: document.getElementById("btnSongFetch"),
+    songFile: document.getElementById("songFile"),
+    biabFile: document.getElementById("biabFile"),
+    biabStatus: document.getElementById("biabStatus"),
     songSearch: document.getElementById("songSearch"),
     songSort: document.getElementById("songSort"),
     btnSongRandom: document.getElementById("btnSongRandom"),
@@ -3374,20 +3392,22 @@
 
   function showGamePrompt(prefix=""){
     if (!isGameMode()) return;
-    if (!state.midiInEnabled){
-      if (E.msg) E.msg.textContent = "Game mode: turn MIDI In on to play.";
+    const ch = gameTargetChord();
+    if (!ch){
+      if (E.msg) E.msg.textContent = state.midiInEnabled
+        ? "Game mode: no active round."
+        : "Game mode: no active round. Use arrows to step once a round starts.";
       return;
     }
-    const ch = gameTargetChord();
-    if (!ch) return;
     const notes = gameTargetNotesText(ch);
     const step = `${gameRuntime.index + 1}/8`;
     const keyLabel = `${noteName(gameRuntime.keyRoot)} ${gameRuntime.keyMode}`;
     const diffLabel = normalizeGameDifficulty(state.gameDifficulty);
     const releaseHint = gameRuntime.waitRelease ? "Release keys, then " : "";
+    const midiHint = state.midiInEnabled ? "" : "MIDI In off · manual arrows on. ";
     const lead = prefix ? `${prefix} ` : "";
     if (E.msg){
-      E.msg.textContent = `${lead}Game ${step} · ${diffLabel} · Key ${keyLabel} · ${releaseHint}Play ${chordName(ch)}: ${notes}`;
+      E.msg.textContent = `${lead}${midiHint}Game ${step} · ${diffLabel} · Key ${keyLabel} · ${releaseHint}Play ${chordName(ch)}: ${notes}`;
     }
   }
 
@@ -3401,19 +3421,22 @@
     syncGameStepNavVisibility();
   }
 
-  function previewChordNow(ch, split=false){
+  function previewChordNow(ch, split=false, withBass=true){
     if (!ch) return;
     AudioKit.resume();
     const t0 = AudioKit.now() + 0.01;
     const chordDur = split ? 0.38 : 0.52;
     AudioKit.playChord(ch, state.keysPreset, t0, chordDur, 0.78);
-    AudioKit.playBass(pc(ch.root), state.bassPreset, t0, Math.min(0.30, chordDur * 0.7), 0.66);
+    if (withBass){
+      AudioKit.playBass(pc(ch.root), state.bassPreset, t0, Math.min(0.30, chordDur * 0.7), 0.66);
+    }
   }
 
   function previewGameTargetChord(){
+    if (player && typeof player.isOn === "function" && player.isOn()) return;
     const ch = gameTargetChord();
     const bar = state.chartBars?.[gameRuntime.index];
-    previewChordNow(ch, !!bar?.split);
+    previewChordNow(ch, !!bar?.split, false);
   }
 
   function normalizeGameMediumSeventh(sym){
@@ -3481,12 +3504,6 @@
 
   function startGameRound(recordHistory=true){
     if (!isGameMode()) return false;
-    if (!state.midiInEnabled){
-      resetGameRuntime();
-      showGamePrompt();
-      saveAll();
-      return false;
-    }
     if (recordHistory) pushHistory();
     const keyRoot = rint(0, 11);
     const modePool = gameModePoolForDifficulty(state.gameDifficulty);
@@ -3553,11 +3570,6 @@
     const targetIdx = clamp(gameRuntime.index + step, 0, maxIdx);
     if (targetIdx === gameRuntime.index){
       if (step > 0 && gameRuntime.index >= maxIdx){
-        if (!state.midiInEnabled){
-          showGamePrompt();
-          syncGameStepNavVisibility();
-          return false;
-        }
         const started = startGameRound(false);
         if (started){
           if (player.isOn()) player.jumpTo(0, 0);
@@ -3737,8 +3749,751 @@
     return map[sym] || {symbol:"dom7", family:"dom", key:"dom7", display:"7"};
   }
 
+  const DEFAULT_PLAYLIST_URL = "https://raw.githubusercontent.com/santismo/fakebot/main/real%20playlist.txt";
+  const IREAL_MUSIC_PREFIX = "1r34LbKcu7";
+
+  function normalizePlaylistUrl(url){
+    let u = String(url || "").trim();
+    if (!u) return "";
+    const m = u.match(/^https?:\/\/github\.com\/([^/]+)\/([^/]+)\/blob\/([^#?]+)/i);
+    if (m){
+      u = `https://raw.githubusercontent.com/${m[1]}/${m[2]}/${m[3]}`;
+    }
+    return u;
+  }
+
+  function parseSongKey(key){
+    if (!key) return null;
+    const clean = String(key).replace(/\s+/g, "");
+    const minor = clean.includes("-");
+    const rootName = clean.replace(/[^A-G#b]/g, "");
+    if (!rootName) return null;
+    const pcVal = NOTE_TO_PC[rootName] ?? 0;
+    return { rootPc: pcVal, mode: minor ? "aeolian" : "ionian" };
+  }
+
+  function mapIrealQuality(raw){
+    if (raw == null) return "maj7";
+    const low = String(raw).toLowerCase();
+    if (!low) return "maj7";
+    const has = (re)=> re.test(low);
+
+    if (has(/m7b5|ø|h/)) return "ø7";
+    if (has(/dim|o/)) return "dim7";
+
+    const isMinorMajor = has(/-\^|m\^|mmaj|minmaj/);
+    const isSus = has(/sus/);
+    const isAdd = has(/add/);
+    const isMajor = has(/\^|maj/);
+    const isMinor = has(/(^|[^a-z])m(?!a)|-|min/);
+
+    const hasB9 = has(/b9/);
+    const hasS9 = has(/#9/);
+    const hasB13 = has(/b13/);
+    const has13 = has(/13/);
+    const has11 = has(/11/);
+    const has9 = has(/9/);
+    const has6 = has(/6/);
+    const has7 = has(/7/);
+    const has69 = has(/69/);
+
+    if (isMinorMajor) return "mMaj7";
+    if (isSus) return (has7 || has9 || has11 || has13) ? "7sus" : "sus";
+    if (isAdd && has9) return "add9";
+    if (has69) return "6/9";
+
+    if (isMajor){
+      if (has9) return "maj9";
+      if (has6 && !has7) return "6";
+      return "maj7";
+    }
+    if (isMinor){
+      if (has11) return "m11";
+      if (has9) return "m9";
+      if (has6 && !has7) return "m6";
+      return "m7";
+    }
+
+    if (hasB9) return "7(b9)";
+    if (hasS9) return "7(#9)";
+    if (hasB13) return "7(b13)";
+    if (has13) return "13";
+    if (has11) return "11";
+    if (has9) return "9";
+    if (has6 && !has7) return "6";
+    if (has7) return "7";
+    return "7";
+  }
+
+  function parseIrealChordSymbol(sym){
+    const clean = String(sym || "").trim();
+    if (!clean) return null;
+    const match = clean.match(/^([A-G])([#b]?)([^/]*)(?:\/([A-G])([#b]?))?$/i);
+    if (!match) return null;
+    const rootName = match[1].toUpperCase() + (match[2] || "");
+    const rootPc = NOTE_TO_PC[rootName];
+    if (rootPc == null) return null;
+    const qualRaw = match[3] || "";
+    const slashName = match[4] ? (match[4].toUpperCase() + (match[5] || "")) : null;
+    const symMapped = mapIrealQuality(qualRaw);
+    const meta = qualityMetaFromSymbol(symMapped);
+    const chord = makeChord(rootPc, meta);
+    if (slashName && NOTE_TO_PC[slashName] != null) chord.slash = NOTE_TO_PC[slashName];
+    return chord;
+  }
+
+  function obfusc50(s){
+    const chars = s.split("");
+    for (let i=0;i<5;i++){
+      chars[49 - i] = s[i];
+      chars[i] = s[49 - i];
+    }
+    for (let i=10;i<24;i++){
+      chars[49 - i] = s[i];
+      chars[i] = s[49 - i];
+    }
+    return chars.join("");
+  }
+
+  function unscrambleIreal(input){
+    let s = String(input || "");
+    let out = "";
+    while (s.length > 50){
+      const p = s.substring(0, 50);
+      s = s.substring(50);
+      if (s.length < 2) out += p;
+      else out += obfusc50(p);
+    }
+    return out + s;
+  }
+
+  function parseIrealMeasures(raw){
+    let measures = [];
+    let originIndices = [];
+    let repeatSections = [];
+    let baseIndex = 0;
+    let startRepeatLocation = null;
+    let lastChord = null;
+    let endRepeatLocation = null;
+    let thirdEndingImminent = false;
+    let fineLocation = null;
+    let dcAlFineImminent = false;
+    let dcAlCodaImminent = false;
+    let dsAlCodaImminent = false;
+    let codaLocation = null;
+    let segnoLocation = null;
+
+    function createNewMeasure(){
+      if (measures.length === 0 || measures[measures.length - 1].length !== 0){
+        measures.push([]);
+        originIndices.push(baseIndex);
+        baseIndex += 1;
+      }
+    }
+    function getMeasure(idx){
+      const m = measures[idx];
+      return Array.isArray(m) ? m : null;
+    }
+    function pushNull(){
+      if (measures.length === 0) createNewMeasure();
+      measures[measures.length - 1].push(null);
+    }
+    function repeatLastMeasure(){
+      const prev = getMeasure(measures.length - 2);
+      if (!prev) return;
+      measures[measures.length - 1] = prev;
+    }
+    function repeatLastMeasureAndAddNew(){
+      const prev = getMeasure(measures.length - 1);
+      if (!prev){
+        createNewMeasure();
+        return;
+      }
+      createNewMeasure();
+      measures[measures.length - 1] = prev;
+    }
+    function repeatLastTwoMeasures(){
+      const prev1 = getMeasure(measures.length - 2);
+      const prev2 = getMeasure(measures.length - 3);
+      if (!prev1 || !prev2) return;
+      measures[measures.length - 1] = prev2;
+      createNewMeasure();
+      measures[measures.length - 1] = prev1;
+    }
+    function setStartRepeatLocation(){
+      createNewMeasure();
+      startRepeatLocation = measures.length - 1;
+      endRepeatLocation = null;
+    }
+    function setEndRepeatLocation(match){
+      const ending = parseInt(match[1], 10);
+      if (ending === 1) endRepeatLocation = measures.length - 1;
+    }
+    function setSegnoLocation(){ segnoLocation = measures.length - 1; }
+    function setCodaLocation(){ codaLocation = measures.length; }
+    function appendRepeatSlice(start, end){
+      if (!Number.isFinite(start) || !Number.isFinite(end)) return;
+      const s = Math.max(0, Math.min(start, measures.length));
+      const e = Math.max(s, Math.min(end, measures.length));
+      if (e <= s) return;
+      const startIdx = originIndices[s];
+      const endIdx = originIndices[e - 1];
+      if (startIdx != null && endIdx != null) repeatSections.push({ start: startIdx, end: endIdx });
+      for (let i=s; i<e; i++){
+        measures.push(measures[i]);
+        originIndices.push(originIndices[i]);
+      }
+    }
+    function repeatEverythingToEndRepeatLocation(){
+      if (startRepeatLocation == null){
+        createNewMeasure();
+        return;
+      }
+      if (endRepeatLocation == null) endRepeatLocation = measures.length;
+      appendRepeatSlice(startRepeatLocation, endRepeatLocation);
+      createNewMeasure();
+    }
+    function repeatRemainingEndings(){
+      if (thirdEndingImminent){
+        repeatEverythingToEndRepeatLocation();
+        thirdEndingImminent = false;
+      }
+      if (dcAlFineImminent && fineLocation != null){
+        appendRepeatSlice(0, fineLocation);
+        dcAlFineImminent = false;
+      }
+      if (dcAlCodaImminent && codaLocation != null){
+        appendRepeatSlice(0, codaLocation);
+        dcAlCodaImminent = false;
+      }
+      if (dsAlCodaImminent && segnoLocation != null && codaLocation != null){
+        appendRepeatSlice(segnoLocation, codaLocation);
+        dsAlCodaImminent = false;
+      }
+      if (!(thirdEndingImminent || dcAlFineImminent || dcAlCodaImminent || dsAlCodaImminent)){
+        createNewMeasure();
+      }
+    }
+    function checkForRepeats(match){
+      const tag = (match[1] || "").toLowerCase();
+      if (tag === "d.c. al 3rd ending") thirdEndingImminent = true;
+      if (tag === "d.c. al fine") dcAlFineImminent = true;
+      if (tag === "d.c. al coda") dcAlCodaImminent = true;
+      if (tag === "d.s. al coda") dsAlCodaImminent = true;
+      if (tag === "fine") fineLocation = measures.length;
+    }
+    function pushChordInMeasures(match){
+      if (measures.length === 0) createNewMeasure();
+      let chord = match[0];
+      if (chord.startsWith("W") && lastChord){
+        chord = chord.replace("W", lastChord);
+      } else {
+        lastChord = chord.split("/")[0];
+      }
+      measures[measures.length - 1].push(chord);
+    }
+    function removeEmptyMeasures(list, origins){
+      const out = [];
+      const outOrigins = [];
+      for (let i=0;i<list.length;i++){
+        if (!Array.isArray(list[i]) || list[i].length === 0) continue;
+        out.push(list[i]);
+        if (origins) outOrigins.push(origins[i]);
+      }
+      return { measures: out, originIndices: outOrigins };
+    }
+
+    const rules = [
+      { token: "XyQ" },
+      { token: /\*\w/ },
+      { token: /<(.*?)>/, operation: checkForRepeats },
+      { token: "x", operation: repeatLastMeasure },
+      { token: "Kcl", operation: repeatLastMeasureAndAddNew },
+      { token: /r|XyQ/, operation: repeatLastTwoMeasures },
+      { token: /Y+/ },
+      { token: "n", operation: pushNull },
+      { token: "p" },
+      { token: "U" },
+      { token: "S", operation: setSegnoLocation },
+      { token: "Q", operation: setCodaLocation },
+      { token: "{", operation: setStartRepeatLocation },
+      { token: "}", operation: repeatEverythingToEndRepeatLocation },
+      { token: "LZ|", operation: createNewMeasure },
+      { token: "|", operation: createNewMeasure },
+      { token: "LZ", operation: createNewMeasure },
+      { token: "[", operation: createNewMeasure },
+      { token: "]", operation: repeatRemainingEndings },
+      { token: /N(\d)/, operation: setEndRepeatLocation },
+      { token: "Z", operation: repeatRemainingEndings },
+      { token: /[A-GW]{1}[\+\-\^\dhob#suadlt]*(\/[A-G][#b]?)?/, operation: pushChordInMeasures }
+    ];
+
+    function parse(inputString){
+      if (!inputString) return;
+      for (let i=0;i<rules.length;i++){
+        const rule = rules[i];
+        if (typeof rule.token === "string"){
+          if (inputString.startsWith(rule.token)){
+            if (rule.operation) rule.operation();
+            parse(inputString.substring(rule.token.length).trim());
+            return;
+          }
+        } else if (rule.token instanceof RegExp){
+          const match = inputString.match(rule.token);
+          if (match && match.index === 0){
+            if (rule.operation) rule.operation(match);
+            parse(inputString.substring(match[0].length).trim());
+            return;
+          }
+        }
+        if (i === rules.length - 1 && inputString.length > 1){
+          parse(inputString.substring(1));
+          return;
+        }
+      }
+    }
+
+    let cleaned = String(raw || "");
+    const prefixIndex = cleaned.indexOf(IREAL_MUSIC_PREFIX);
+    if (prefixIndex >= 0){
+      cleaned = cleaned.slice(prefixIndex + IREAL_MUSIC_PREFIX.length);
+    }
+    cleaned = unscrambleIreal(cleaned).trim();
+    if (cleaned) parse(cleaned);
+    const cleanedMeasures = removeEmptyMeasures(measures, originIndices);
+    return { measures: cleanedMeasures.measures, originIndices: cleanedMeasures.originIndices, repeatSections };
+  }
+
+  function mergeSlashChords(bars){
+    if (!Array.isArray(bars) || !bars.length) return;
+    bars.forEach((bar)=>{
+      const chords = bar?.chords || [];
+      if (chords.length !== 2) return;
+      const a = chords[0];
+      const b = chords[1];
+      if (!a || !b || a.slash!=null) return;
+      if (b.family !== "dom") return;
+      if (pc(b.root - a.root) !== 11) return;
+      a.slash = b.root;
+      bar.chords = [a];
+      bar.split = false;
+    });
+    for (let i=0;i<bars.length-1;i++){
+      const cur = bars[i];
+      const next = bars[i+1];
+      if (!cur?.chords?.length || !next?.chords?.length) continue;
+      if (cur.chords.length !== 1 || next.chords.length !== 1) continue;
+      const a = cur.chords[0];
+      const b = next.chords[0];
+      if (!a || !b || a.slash!=null) continue;
+      if (b.family !== "dom") continue;
+      if (pc(b.root - a.root) !== 11) continue;
+      a.slash = b.root;
+      cur.chords = [a];
+      cur.split = false;
+      bars.splice(i+1, 1);
+      i -= 1;
+    }
+  }
+
+  function parseIrealBars(chart){
+    const parsed = parseIrealMeasures(chart);
+    const measures = parsed?.measures || [];
+    const originIndices = parsed?.originIndices || [];
+    const repeatSections = parsed?.repeatSections || [];
+
+    const baseMap = new Map();
+    for (let i=0;i<measures.length;i++){
+      const origin = (originIndices[i] != null) ? originIndices[i] : i;
+      if (!baseMap.has(origin)) baseMap.set(origin, measures[i]);
+    }
+
+    const repeatStarts = new Set();
+    const repeatEnds = new Set();
+    repeatSections.forEach(r=>{
+      if (r && typeof r.start === "number") repeatStarts.add(r.start);
+      if (r && typeof r.end === "number") repeatEnds.add(r.end);
+    });
+
+    const bars = [];
+    for (const [origin, measure] of baseMap.entries()){
+      if (!Array.isArray(measure) || !measure.length) continue;
+      const chordObjs = [];
+      for (const sym of measure){
+        if (!sym) continue;
+        const chord = parseIrealChordSymbol(sym);
+        if (chord) chordObjs.push(chord);
+        if (chordObjs.length >= 2) break;
+      }
+      if (!chordObjs.length) continue;
+      bars.push({
+        split: chordObjs.length > 1,
+        chords: chordObjs,
+        repeatStart: repeatStarts.has(origin),
+        repeatEnd: repeatEnds.has(origin),
+        origIndex: origin
+      });
+    }
+
+    mergeSlashChords(bars);
+
+    const indexMap = new Map();
+    bars.forEach((bar, idx)=> indexMap.set(bar.origIndex, idx));
+    const playbackOrder = originIndices.map(orig => indexMap.get(orig)).filter(v => v != null);
+    bars.forEach((bar)=>{ delete bar.origIndex; });
+    return { bars, playbackOrder };
+  }
+
+  function parseIrealPlaylist(text){
+    const urls = String(text).match(/irealb:\/\/[^\s\]]+/g) || [];
+    const songs = [];
+    const seen = new Set();
+
+    urls.forEach((url)=>{
+      let payload = "";
+      try{ payload = decodeURIComponent(url.slice("irealb://".length)); }catch{ payload = url.slice("irealb://".length); }
+      const chunks = payload.split("===").filter(s=>s.trim().length);
+      chunks.forEach((chunk)=>{
+        const parts = chunk.split(/=+/).filter(Boolean);
+        if (parts.length < 7) return;
+
+        let title, composer, style, key, transpose, music, compStyle, bpm, repeats;
+        if (parts.length === 7){
+          [title, composer, style, key, music, bpm, repeats] = parts;
+        } else if (parts.length === 8 && parts[4].startsWith(IREAL_MUSIC_PREFIX)){
+          [title, composer, style, key, music, compStyle, bpm, repeats] = parts;
+        } else if (parts.length === 8 && parts[5].startsWith(IREAL_MUSIC_PREFIX)){
+          [title, composer, style, key, transpose, music, compStyle, bpm] = parts;
+        } else if (parts.length >= 9){
+          [title, composer, style, key, transpose, music, compStyle, bpm, repeats] = parts;
+        } else {
+          [title, composer, style, key, music] = parts;
+        }
+
+        title = (title || "").trim();
+        composer = (composer || "").trim();
+        style = (style || "").trim();
+        key = (key || "").trim();
+        if (!title || !music) return;
+        if (music.includes("=0=0")) music = music.split("=0=0")[0];
+
+        let parsedBars;
+        try{ parsedBars = parseIrealBars(music); } catch { return; }
+        const bars = parsedBars?.bars || [];
+        if (!bars.length) return;
+        const dedupeKey = `${title}||${composer}||${key}`.toLowerCase();
+        if (seen.has(dedupeKey)) return;
+        seen.add(dedupeKey);
+        songs.push({ title, composer, style, key, bars, playbackOrder: parsedBars.playbackOrder || [] });
+      });
+    });
+
+    return songs;
+  }
+
+  const BIAB_EXTS = new Set(["mgu","sgu","mg1","sg1","mg2","sg2","mg3","sg3","mg4","sg4","mg5","sg5"]);
+  function isBiabFileName(name){
+    const ext = String(name || "").split(".").pop().toLowerCase();
+    return BIAB_EXTS.has(ext);
+  }
+
+  function setBiabStatus(text){
+    if (E.biabStatus) E.biabStatus.textContent = text;
+  }
+
+  const BIAB_STYLES = [
+    [4,4], [12,8], [4,4], [4,4], [4,4], [4,4], [4,4], [3,4],
+    [4,4], [4,4], [4,4], [4,4], [4,4], [4,4], [4,4], [4,4],
+    [3,4], [4,4], [4,4], [4,4], [4,4], [12,8], [12,8], [4,4]
+  ];
+  const BIAB_ROOT_PCS = [0,0,1,2,3,4,5,6,7,8,9,10,11,1,3,6,8,10];
+  const BIAB_CHORD_NAMES = {
+    1: "", 2: "Maj", 3: "5b", 4: "+", 5: "6", 6: "Maj7", 7: "Maj9", 8: "Maj9#11", 9: "Maj13#11", 10: "Maj13", 11: "Maj9(no 3)", 12: "+", 13: "Maj7#5", 14: "69", 15: "2",
+    16: "m", 17: "m+", 18: "mMaj7", 19: "m7", 20: "m9", 21: "m11", 22: "m13", 23: "m6", 24: "m#5", 25: "m7#5", 26: "m69", 27: "Lyd", 28: "Maj7Lyd", 29: "Maj7b5", 32: "m7b5", 33: "dim", 34: "m9b5",
+    40: "5", 56: "7+", 57: "9+", 58: "13+", 59: "(blues)", 60: "7(Blues)",
+    64: "7", 65: "13", 66: "7b13", 67: "7#11", 68: "13#11", 69: "7#11b13", 70: "9", 72: "9b13", 73: "9#11", 74: "13#11", 75: "9#11b13",
+    76: "7b9", 77: "13b9", 78: "7b9b13", 79: "7b9#11", 80: "13b9#11", 81: "7b9#11b13",
+    82: "7#9", 83: "13#9", 84: "7#9b13", 85: "9#11", 86: "13#9#11", 87: "7#9#11b13",
+    88: "7b5", 89: "13b5", 90: "7b5b13", 91: "9b5", 92: "9b5b13", 93: "7b5b9", 94: "13b5b9", 95: "7b5b9b13",
+    96: "7b5#9", 97: "13b5#9", 98: "7b5#9b13", 99: "7#5", 100: "13#5", 101: "7#5#11", 102: "13#5#11", 103: "9#5", 104: "9#5#11",
+    105: "7#5b9", 106: "13#5b9", 107: "7#5b9#11", 108: "13#5b9#11", 109: "7#5#9", 110: "13#5#9#11", 111: "7#5#9#11", 112: "13#5#9#11", 113: "7alt",
+    128: "7sus", 129: "13sus", 130: "7susb13", 131: "7sus#11", 132: "13sus#11", 133: "7sus#11b13", 134: "9sus", 135: "9susb13", 136: "9sus#11", 137: "13sus#11", 138: "13sus#11", 139: "9sus#11b13",
+    140: "7susb9", 141: "13susb9", 142: "7susb9b13", 143: "7susb9#11", 144: "13susb9#11", 145: "7susb9#11b13", 146: "7sus#9", 147: "13sus#9", 148: "7sus#9b13", 149: "9sus#11", 150: "13sus#9#11", 151: "7sus#9#11b13",
+    152: "7susb5", 153: "13susb5", 154: "7susb5b13", 155: "9susb5", 156: "9susb5b13", 157: "7susb5b9", 158: "13susb5b9", 159: "7susb5b9b13", 160: "7susb5#9", 161: "13susb5#9", 162: "7susb5#9b13",
+    163: "7sus#5", 164: "13sus#5", 165: "7sus#5#11", 166: "13sus#5#11", 167: "9sus#5", 168: "9sus#5#11", 169: "7sus#5b9", 170: "13sus#5b9", 171: "7sus#5b9#11", 172: "13sus#5b9#11", 173: "7sus#5#9", 174: "13sus#5#9#11", 175: "7sus#5#9#11", 176: "13sus#5#9#11",
+    177: "4", 184: "sus", 185: "dim7", 186: "sus2", 187: "maddb13", 188: "add#13", 189: "add#11#13", 190: "add#13", 191: "6add9", 192: "sus4", 193: "11", 194: "Maj11", 195: "Tristan", 196: "m7add11", 197: "Maj7add13", 198: "madd9", 199: "m9Maj7",
+    200: "5", 201: "m11b5", 202: "dim7add#7", 203: "aug9", 204: "omit5", 205: "aug7", 206: "aug9", 207: "aug13",
+    210: "Maj7#11", 211: "Maj9#5", 212: "Maj7#9", 213: "add2", 214: "add9", 215: "susb9", 216: "Maj7sus", 217: "Maj9sus",
+    220: "m7b9", 221: "m7b13", 222: "Phryg", 223: "madd2",
+    230: "7b9#9", 240: "sus#4", 241: "Maj7b13"
+  };
+
+  function biabChordNameToSymbol(name){
+    const raw = String(name || "").trim();
+    if (!raw) return "maj";
+    const lower = raw.toLowerCase();
+    const has = (s)=> lower.includes(s);
+    const starts = (s)=> lower.startsWith(s);
+
+    if (has("sus")) return (has("7") || has("9") || has("11") || has("13") || has("b9") || has("#9")) ? "7sus" : "sus";
+    if (starts("m") && !starts("maj")){
+      if (has("maj7") || has("maj9")) return has("9") ? "mMaj9" : "mMaj7";
+      if (has("b5")) return "ø7";
+      if (has("11")) return "m11";
+      if (has("9")) return "m9";
+      if (has("6") && !has("7")) return "m6";
+      if (has("7")) return "m7";
+      return "m";
+    }
+    if (has("dim") || has("tristan")) return "dim7";
+    if (has("lyd")) return "maj9sharp11";
+    if (has("phryg")) return "m7";
+    if (starts("maj") || has("maj")){
+      if (has("#11")) return "maj9sharp11";
+      if (has("69") || (has("6") && has("9"))) return "6/9";
+      if (has("11") || has("9") || has("13")) return "maj9";
+      if (has("7")) return "maj7";
+      if (has("6")) return "6";
+      if (has("add") || has("2")) return "add9";
+      return "maj";
+    }
+    if (has("add")){
+      if (has("6") && has("9")) return "6/9";
+      if (has("9") || has("2")) return "add9";
+    }
+    if (raw === "4") return "sus";
+    if (raw === "5" || raw === "5b" || raw === "5#" || has("omit5")) return "maj";
+    if (has("alt")) return "7";
+    if (has("b9") && has("#9")) return "7(b9)";
+    if (has("#9")) return "7(#9)";
+    if (has("b9")) return "7(b9)";
+    if (has("b13")) return "7(b13)";
+    if (has("13")) return "13";
+    if (has("11")) return "11";
+    if (has("9")) return "9";
+    if (has("7")) return "7";
+    if (has("6") && !has("7")) return "6";
+    return "maj";
+  }
+
+  function biabChordSymbolFromId(id){
+    if (!Number.isFinite(id)) return "7";
+    if (!Object.prototype.hasOwnProperty.call(BIAB_CHORD_NAMES, id)) return "7";
+    return biabChordNameToSymbol(BIAB_CHORD_NAMES[id]);
+  }
+
+  function readU8(data, idx){ return data[idx] || 0; }
+  function readU16(data, idx){ return (data[idx] || 0) + ((data[idx + 1] || 0) << 8); }
+  function readAscii(data, idx, len){
+    let out = "";
+    for (let i=0;i<len && idx + i < data.length;i++){
+      const v = data[idx + i];
+      if (v === 0) break;
+      out += String.fromCharCode(v);
+    }
+    return out;
+  }
+
+  function biabSymbolToMeta(sym){
+    if (sym === "maj9sharp11") return {symbol:"maj9sharp11", family:"maj", key:"maj9sharp11", display:"maj9(#11)"};
+    if (sym === "mMaj9") return {symbol:"minMaj9", family:"minmaj", key:"minMaj9", display:"mMaj9"};
+    return qualityMetaFromSymbol(sym);
+  }
+
+  function biabChordFromRaw(raw){
+    const rootPc = BIAB_ROOT_PCS[raw.root] ?? 0;
+    const sym = biabChordSymbolFromId(raw.ext);
+    const meta = biabSymbolToMeta(sym);
+    const chord = makeChord(rootPc, meta);
+    if (raw.bass){
+      const bassPc = BIAB_ROOT_PCS[raw.bass];
+      if (bassPc != null && pc(bassPc) !== pc(rootPc)) chord.slash = bassPc;
+    }
+    return chord;
+  }
+
+  function biabChordEqual(a,b){
+    if (!a || !b) return false;
+    const aSlash = (a.slash!=null) ? pc(a.slash) : null;
+    const bSlash = (b.slash!=null) ? pc(b.slash) : null;
+    return pc(a.root)===pc(b.root) && a.symbol===b.symbol && aSlash===bSlash;
+  }
+
+  function biabChordsToBars(rawChords, measures, beatsPerBar){
+    const sorted = rawChords
+      .filter(c => Number.isFinite(c.beat) && c.root != null && c.ext != null)
+      .sort((a,b)=>a.beat-b.beat);
+    if (!sorted.length) return [];
+    if (sorted[0].beat > 0) sorted.unshift({ ...sorted[0], beat: 0 });
+    const lastBeat = sorted[sorted.length - 1].beat || 0;
+    const totalBars = Math.max(1, measures || Math.ceil((lastBeat + beatsPerBar) / beatsPerBar));
+    const bars = [];
+    let idx = 0;
+    let current = sorted[0];
+    for (let b=0;b<totalBars;b++){
+      const barStart = b * beatsPerBar;
+      const halfBeat = barStart + beatsPerBar / 2;
+      while (idx + 1 < sorted.length && sorted[idx + 1].beat <= barStart){
+        idx++;
+        current = sorted[idx];
+      }
+      const first = biabChordFromRaw(current);
+      let halfIdx = idx;
+      let halfRaw = current;
+      while (halfIdx + 1 < sorted.length && sorted[halfIdx + 1].beat <= halfBeat){
+        halfIdx++;
+        halfRaw = sorted[halfIdx];
+      }
+      const second = biabChordFromRaw(halfRaw);
+      const split = !biabChordEqual(first, second);
+      bars.push({ split, chords: split ? [first, second] : [first] });
+    }
+    return bars;
+  }
+
+  function parseBiabBuffer(buffer, fileName){
+    const data = new Uint8Array(buffer);
+    if (!data.length) return null;
+    const eventStart = readU16(data, data.length - 4);
+    const chordLimit = (eventStart && eventStart > 0 && eventStart < data.length) ? eventStart : data.length;
+    let idx = 0;
+    const titleLen = readU8(data, idx + 1);
+    const title = readAscii(data, idx + 2, titleLen);
+    idx += 2 + titleLen;
+    idx += 2;
+
+    const style = readU8(data, idx) - 1;
+    idx += 1;
+    idx += 1; // key index
+    const bpm = readU8(data, idx) + (readU8(data, idx + 1) << 8);
+    idx += 2;
+    idx += 2;
+
+    const sig = BIAB_STYLES[style] || [4,4];
+    const beatsPerBar = sig[0] || 4;
+    const beatUnit = sig[1] || 4;
+    const beatScale = beatsPerBar / beatUnit;
+
+    let bar = readU8(data, idx);
+    idx += 1;
+    while (bar < 255 && idx < chordLimit){
+      const val = readU8(data, idx);
+      idx += 1;
+      if (val === 0){
+        bar += readU8(data, idx);
+        idx += 1;
+      } else {
+        bar += 1;
+      }
+    }
+
+    const rawChords = [];
+    let beat = 0;
+    while (beat < (255 * 4) && idx < chordLimit){
+      const val = readU8(data, idx);
+      idx += 1;
+      if (val === 0){
+        beat += readU8(data, idx);
+        idx += 1;
+      } else {
+        rawChords.push({ beat, ext: val });
+        beat += 1;
+      }
+    }
+
+    let roots = 0;
+    beat = 0;
+    while (beat < (255 * 4) && idx < chordLimit){
+      const val = readU8(data, idx);
+      idx += 1;
+      if (val === 0){
+        beat += readU8(data, idx);
+        idx += 1;
+      } else {
+        const root = val % 18;
+        let bass = (root - 1 + Math.floor(val / 18)) % 18 + 1;
+        if (root === bass) bass = 0;
+        if (rawChords[roots]){
+          rawChords[roots].root = root;
+          rawChords[roots].bass = bass;
+        }
+        roots += 1;
+        beat += 1;
+      }
+    }
+
+    rawChords.forEach(c => { c.beat = c.beat * beatScale; });
+    const maxBeat = rawChords.reduce((m,c)=> Math.max(m, Number.isFinite(c.beat) ? c.beat : 0), 0);
+    let measures = Math.floor((maxBeat + beatsPerBar - 1) / beatsPerBar) + 1;
+    if (readU8(data, idx) === 1) idx += 1;
+    const startChorus = readU8(data, idx); idx += 1;
+    const endChorus = readU8(data, idx); idx += 1;
+    idx += 1;
+    if (endChorus && endChorus > startChorus && endChorus <= 255){
+      measures = endChorus;
+    }
+
+    const bars = biabChordsToBars(rawChords, measures, beatsPerBar);
+    return {
+      title: title || fileName || "Untitled",
+      tempo: bpm || 120,
+      bars
+    };
+  }
+
+  async function loadBiabFromFile(file){
+    if (!file) return;
+    setBiabStatus(`Loading ${file.name}...`);
+    try{
+      const buffer = await file.arrayBuffer();
+      const parsed = parseBiabBuffer(buffer, file.name);
+      if (!parsed || !parsed.bars || !parsed.bars.length){
+        setBiabStatus("Could not parse BIAB file.");
+        return;
+      }
+      pushHistory();
+      state.chartBars = parsed.bars;
+      state.playbackOrder = parsed.bars.map((_, i)=>i);
+      state.bars = parsed.bars.length;
+      state.halfEnabled = parsed.bars.some(b => b.split);
+      state.activeBar = 0;
+      state.activeHalf = 0;
+      state.currentSongTitle = parsed.title || file.name || "";
+      state.tempo = clamp(parsed.tempo || 120, 30, 320);
+      if (state.chartBars[0]?.chords?.[0]){
+        state.keyRoot = state.chartBars[0].chords[0].root;
+      }
+      assignChordModesWithLimit(state.chartBars);
+      syncUIFromState();
+      renderAll();
+      saveAll();
+      setSongStatus(`Loaded BIAB: ${state.currentSongTitle}`);
+      setBiabStatus("Loaded BIAB file.");
+    } catch {
+      setBiabStatus("Could not read BIAB file.");
+    }
+  }
+
   function filteredSongs(){
-    return [];
+    let list = songLibrary.slice();
+    if (songQuery){
+      const q = songQuery.toLowerCase();
+      list = list.filter(s =>
+        (s.title || "").toLowerCase().includes(q) ||
+        (s.composer || "").toLowerCase().includes(q)
+      );
+    }
+    if (songSort === "style"){
+      list.sort((a,b)=>{
+        const sa = (a.style || "").toLowerCase();
+        const sb = (b.style || "").toLowerCase();
+        if (sa && sb && sa !== sb) return sa.localeCompare(sb, undefined, {sensitivity:"base"});
+        return (a.title||"").localeCompare(b.title||"", undefined, {sensitivity:"base"});
+      });
+    } else if (songSort === "az"){
+      list.sort((a,b)=> (a.title||"").localeCompare(b.title||"", undefined, {sensitivity:"base"}));
+    }
+    return list;
   }
 
   function setSongStatus(text){
@@ -3750,18 +4505,75 @@
   }
 
   function renderSongList(){
-    if (E.songList) E.songList.innerHTML = "";
-    setSongStatus("Song import is disabled in this version.");
+    if (!E.songList || !E.songStatus) return;
+    E.songList.innerHTML = "";
+    if (!songLibrary.length){
+      setSongStatus("No songs loaded yet.");
+      return;
+    }
+    const list = filteredSongs();
+    setSongStatus(`Loaded ${songLibrary.length} song${songLibrary.length===1?"":"s"} · Showing ${list.length}`);
+    list.forEach((song)=>{
+      const row = document.createElement("div");
+      row.className = "songRow";
+
+      const meta = document.createElement("div");
+      meta.className = "songMeta";
+      const title = document.createElement("div");
+      title.className = "songTitle";
+      title.textContent = song.title || "Untitled";
+      const sub = document.createElement("div");
+      sub.className = "songSub";
+      const parts = [];
+      if (song.composer) parts.push(song.composer);
+      if (song.style) parts.push(song.style);
+      if (song.key) parts.push(song.key);
+      sub.textContent = parts.join(" · ");
+      meta.appendChild(title);
+      meta.appendChild(sub);
+
+      const btn = document.createElement("button");
+      btn.className = "btn small";
+      btn.type = "button";
+      btn.textContent = "Load";
+      btn.addEventListener("click", ()=> loadSongToChart(song));
+
+      row.appendChild(meta);
+      row.appendChild(btn);
+      E.songList.appendChild(row);
+    });
   }
 
-  async function loadPlaylistFromUrl(_url){
-    songLibrary = [];
-    if (E.songList) E.songList.innerHTML = "";
-    setSongStatus("Song import is disabled in this version.");
-  }
-
-  function loadSongToChart(_song){
-    setSongStatus("Song import is disabled in this version.");
+  async function loadPlaylistFromUrl(url){
+    const normalized = normalizePlaylistUrl(url);
+    if (!normalized){
+      setSongStatus("No playlist configured.");
+      return;
+    }
+    setSongStatus(`Loading ${normalized}...`);
+    try{
+      const res = await fetch(normalized, { cache: "no-store" });
+      if (!res.ok) throw new Error("bad response");
+      const text = await res.text();
+      let parsed = [];
+      try{
+        parsed = parseIrealPlaylist(text);
+      } catch {
+        setSongStatus("Playlist parse error. Try manual upload.");
+        if (E.songList) E.songList.innerHTML = "";
+        return;
+      }
+      songLibrary = parsed;
+      if (!songLibrary.length){
+        setSongStatus("No songs found in playlist.");
+        if (E.songList) E.songList.innerHTML = "";
+        return;
+      }
+      renderSongList();
+    } catch {
+      setSongStatus("Could not load playlist. Check your connection.");
+      if (E.songList) E.songList.innerHTML = "";
+    }
   }
 
   async function loadSoundFontFromUrl(url){
@@ -8264,6 +9076,11 @@
       saveAll();
     });
 
+    if (E.btnSongFetch){
+      E.btnSongFetch.addEventListener("click", ()=>{
+        loadPlaylistFromUrl(E.songUrl ? E.songUrl.value : "");
+      });
+    }
     if (E.songSearch){
       E.songSearch.addEventListener("input", ()=>{
         songQuery = E.songSearch.value || "";
@@ -8284,6 +9101,47 @@
           return;
         }
         loadSongToChart(pick(list));
+      });
+    }
+    if (E.songFile){
+      E.songFile.addEventListener("change", async ()=>{
+        const file = E.songFile.files && E.songFile.files[0];
+        if (!file) return;
+        if (isBiabFileName(file.name)){
+          await loadBiabFromFile(file);
+          if (E.songFile) E.songFile.value = "";
+          return;
+        }
+        try{
+          const text = await file.text();
+          let parsed = [];
+          try{
+            parsed = parseIrealPlaylist(text);
+          } catch {
+            setSongStatus("Could not parse file.");
+            if (E.songList) E.songList.innerHTML = "";
+            return;
+          }
+          songLibrary = parsed;
+          if (!songLibrary.length){
+            setSongStatus("No songs found in file.");
+            if (E.songList) E.songList.innerHTML = "";
+            return;
+          }
+          renderSongList();
+        } catch {
+          setSongStatus("Could not read file.");
+        } finally {
+          if (E.songFile) E.songFile.value = "";
+        }
+      });
+    }
+    if (E.biabFile){
+      E.biabFile.addEventListener("change", async ()=>{
+        const file = E.biabFile.files && E.biabFile.files[0];
+        if (!file) return;
+        await loadBiabFromFile(file);
+        if (E.biabFile) E.biabFile.value = "";
       });
     }
 
@@ -8307,7 +9165,8 @@
             if (!gameRuntime.active) startGameRound(false);
             else showGamePrompt();
           } else {
-            resetGameRuntime();
+            if (!gameRuntime.active) startGameRound(false);
+            else setGameActiveStep(gameRuntime.index);
             showGamePrompt();
           }
         }
@@ -8542,6 +9401,10 @@
     }
 
     renderSongList();
+    if (E.songUrl && !String(E.songUrl.value || "").trim()){
+      E.songUrl.value = DEFAULT_PLAYLIST_URL;
+    }
+    loadPlaylistFromUrl(E.songUrl ? E.songUrl.value : DEFAULT_PLAYLIST_URL);
     initMidiSystem();
     if (isGameMode()){
       if (state.midiInEnabled) startGameRound(false);
