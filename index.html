@@ -4726,6 +4726,7 @@
       if (count <= 0){
         AudioKit.noteOff(note);
       }
+      bumpLiveMidiPc(note, -1);
     });
     midiSustainedNotes.clear();
     applyLiveMidiKeyOutline();
@@ -4783,6 +4784,7 @@
     midiOutputCounts.clear();
     midiSustainedNotes.clear();
     midiSustainOn = false;
+    resetLiveMidiPcState();
     applyLiveMidiKeyOutline();
   }
 
@@ -4851,10 +4853,13 @@
 
       const count = (midiOutputCounts.get(outNote) || 0) + 1;
       midiOutputCounts.set(outNote, count);
+      bumpLiveMidiPc(outNote, +1);
       applyLiveMidiPcOutline(outNote);
       if (midiSustainedNotes.has(outNote)){
         AudioKit.noteOff(outNote);
         midiSustainedNotes.delete(outNote);
+        bumpLiveMidiPc(outNote, -1);
+        applyLiveMidiPcOutline(outNote);
       }
       AudioKit.noteOn(outNote, state.keysPreset, clamp(vel / 127, 0.08, 1));
       gameCheckProgressFromMidi();
@@ -4868,9 +4873,13 @@
       else midiHeldNotes.set(note, stack);
 
       const count = (midiOutputCounts.get(outNote) || 0) - 1;
+      bumpLiveMidiPc(outNote, -1);
       if (count <= 0){
         midiOutputCounts.delete(outNote);
-        if (midiSustainOn) midiSustainedNotes.add(outNote);
+        if (midiSustainOn){
+          midiSustainedNotes.add(outNote);
+          bumpLiveMidiPc(outNote, +1);
+        }
         applyLiveMidiPcOutline(outNote);
         if (!midiSustainOn) AudioKit.noteOff(outNote);
       } else {
@@ -5581,35 +5590,44 @@
 
   let pianoLiveKeyRefs = [];
   let pianoLiveKeysByPc = Array.from({ length: 12 }, ()=>[]);
+  let pianoLivePcCounts = Array.from({ length: 12 }, ()=>0);
+  let pianoLivePcOn = Array.from({ length: 12 }, ()=>false);
   const LIVE_MIDI_STROKE = "rgba(255,75,75,.98)";
   const LIVE_MIDI_STROKE_WIDTH = "5.2";
 
-  function midiHeldPitchClassSetForDisplay(){
-    const held = new Set();
+  function resetLiveMidiPcState(){
+    pianoLivePcCounts = Array.from({ length: 12 }, ()=>0);
+    pianoLivePcOn = Array.from({ length: 12 }, ()=>false);
+  }
+
+  function bumpLiveMidiPc(pitchClass, delta){
+    const p = pc(pitchClass);
+    const next = (pianoLivePcCounts[p] || 0) + Number(delta || 0);
+    pianoLivePcCounts[p] = Math.max(0, next);
+  }
+
+  function rebuildLiveMidiPcCountsFromState(){
+    pianoLivePcCounts = Array.from({ length: 12 }, ()=>0);
     midiOutputCounts.forEach((count, midi)=>{
-      if (count > 0) held.add(pc(Number(midi)));
+      const c = Math.max(0, Math.trunc(Number(count) || 0));
+      if (c <= 0) return;
+      bumpLiveMidiPc(midi, c);
     });
     midiSustainedNotes.forEach((midi)=>{
-      held.add(pc(Number(midi)));
+      bumpLiveMidiPc(midi, 1);
     });
-    return held;
   }
 
   function isLiveMidiPcActive(pitchClass){
-    const p = pc(pitchClass);
-    for (const [midi, count] of midiOutputCounts.entries()){
-      if ((count || 0) > 0 && pc(Number(midi)) === p) return true;
-    }
-    for (const midi of midiSustainedNotes.values()){
-      if (pc(Number(midi)) === p) return true;
-    }
-    return false;
+    return (pianoLivePcCounts[pc(pitchClass)] || 0) > 0;
   }
 
   function applyLiveMidiPcOutline(pitchClass){
     const p = pc(pitchClass);
     if (!Array.isArray(pianoLiveKeysByPc) || !pianoLiveKeysByPc[p] || !pianoLiveKeysByPc[p].length) return;
     const on = isGameMode() && isLiveMidiPcActive(p);
+    if (pianoLivePcOn[p] === on) return;
+    pianoLivePcOn[p] = on;
     const refs = pianoLiveKeysByPc[p];
     refs.forEach((entry)=>{
       if (!entry || !entry.el) return;
@@ -5835,6 +5853,7 @@
     if (showFret){
       pianoLiveKeyRefs = [];
       pianoLiveKeysByPc = Array.from({ length: 12 }, ()=>[]);
+      pianoLivePcOn = Array.from({ length: 12 }, ()=>false);
       renderFretboardForActive();
       return;
     }
@@ -5843,6 +5862,7 @@
     if (!ch){
       pianoLiveKeyRefs = [];
       pianoLiveKeysByPc = Array.from({ length: 12 }, ()=>[]);
+      pianoLivePcOn = Array.from({ length: 12 }, ()=>false);
       E.pianoSvg.innerHTML = "";
       E.pianoTop.textContent = "—";
       E.pianoHint.textContent = "—";
@@ -5966,6 +5986,8 @@
 
     pianoLiveKeyRefs = nextKeyRefs;
     pianoLiveKeysByPc = nextKeysByPc;
+    pianoLivePcOn = Array.from({ length: 12 }, ()=>false);
+    rebuildLiveMidiPcCountsFromState();
     applyLiveMidiKeyOutline();
   }
 
