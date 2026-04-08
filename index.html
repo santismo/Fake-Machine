@@ -714,9 +714,10 @@
           <div class="headSelect" title="Game chord difficulty">
             <label for="gameDiffTop">Game</label>
             <select id="gameDiffTop" aria-label="Game chord difficulty">
-              <option value="easy">Easy (Triads)</option>
-              <option value="medium">Medium (7ths)</option>
-              <option value="hard">Hard (Ext/Sus)</option>
+              <option value="easy">Easy (Triads · 7 modes)</option>
+              <option value="medium">Medium (7ths · 7 modes)</option>
+              <option value="hard">Hard (Ext/Sus · 7 modes)</option>
+              <option value="xhard">Extra Hard (Advanced scales)</option>
             </select>
           </div>
           <div class="transposeGroup" title="Transpose chart by semitone">
@@ -3072,6 +3073,12 @@
     }
   }
 
+  function normalizeGameDifficulty(value){
+    return (value === "easy" || value === "medium" || value === "hard" || value === "xhard")
+      ? value
+      : "medium";
+  }
+
   function syncTopProgressionControls(){
     const source = (state.progressionSource === "example" || state.progressionSource === "game")
       ? state.progressionSource
@@ -3081,9 +3088,7 @@
     const hasProg = NASHVILLE_EXAMPLES.some(p=>p.id===state.exampleProgression);
     const prog = hasProg ? state.exampleProgression : DEFAULTS.exampleProgression;
     const parent = Number.isFinite(state.exampleParentRoot) ? pc(state.exampleParentRoot) : pc(state.keyRoot || 0);
-    const gameDifficulty = (state.gameDifficulty === "easy" || state.gameDifficulty === "hard")
-      ? state.gameDifficulty
-      : "medium";
+    const gameDifficulty = normalizeGameDifficulty(state.gameDifficulty);
     state.progressionSource = source;
     state.exampleMode = mode;
     state.exampleReharmMode = reharmMode;
@@ -3122,9 +3127,7 @@
     const show = isGameMode();
     const barCount = Array.isArray(state.chartBars) ? state.chartBars.length : 0;
     const canStep = show && gameRuntime.active && barCount > 0;
-    const maxIdx = Math.max(0, barCount - 1);
     const atStart = gameRuntime.index <= 0;
-    const atEnd = gameRuntime.index >= maxIdx;
 
     if (E.gamePrevStep){
       E.gamePrevStep.style.display = show ? "flex" : "none";
@@ -3132,7 +3135,7 @@
     }
     if (E.gameNextStep){
       E.gameNextStep.style.display = show ? "flex" : "none";
-      E.gameNextStep.disabled = !canStep || atEnd;
+      E.gameNextStep.disabled = !canStep;
     }
   }
 
@@ -3324,10 +3327,10 @@
   }
 
   /* ---------- Game mode ---------- */
-  const GAME_MODE_POOL = EXAMPLE_MODE_OPTIONS
-    .map(m=>m.id)
+  const GAME_MODE_POOL_DIATONIC = ["ionian","dorian","phryg","lydian","mixo","aeolian","locrian"]
     .filter(id=>Array.isArray(SCALES[id]) && SCALES[id].length >= 7);
-  const GAME_SEVENTH_POOL = ["maj7","m7","7","ø7","dim7"];
+  const GAME_MODE_POOL_XHARD = ["melodicMinor","harmonicMinor","lydianDom","altered","mixoB13"]
+    .filter(id=>Array.isArray(SCALES[id]) && SCALES[id].length >= 7);
   const GAME_HARD_POOL = ["maj9","m9","9","11","13","m11","6/9","add9","sus","7sus","7(b9)","7(#9)","7(b13)"];
   const gameRuntime = {
     active: false,
@@ -3340,6 +3343,14 @@
 
   function isGameMode(){
     return state.progressionSource === "game";
+  }
+
+  function gameModePoolForDifficulty(diff){
+    const d = normalizeGameDifficulty(diff);
+    const diatonic = GAME_MODE_POOL_DIATONIC.length ? GAME_MODE_POOL_DIATONIC : ["ionian"];
+    if (d !== "xhard") return diatonic;
+    const adv = GAME_MODE_POOL_XHARD;
+    return (adv.length ? [...adv, ...diatonic] : diatonic);
   }
 
   function resetGameRuntime(){
@@ -3372,9 +3383,7 @@
     const notes = gameTargetNotesText(ch);
     const step = `${gameRuntime.index + 1}/8`;
     const keyLabel = `${noteName(gameRuntime.keyRoot)} ${gameRuntime.keyMode}`;
-    const diffLabel = (state.gameDifficulty === "easy" || state.gameDifficulty === "hard")
-      ? state.gameDifficulty
-      : "medium";
+    const diffLabel = normalizeGameDifficulty(state.gameDifficulty);
     const releaseHint = gameRuntime.waitRelease ? "Release keys, then " : "";
     const lead = prefix ? `${prefix} ` : "";
     if (E.msg){
@@ -3392,19 +3401,40 @@
     syncGameStepNavVisibility();
   }
 
+  function previewChordNow(ch, split=false){
+    if (!ch) return;
+    AudioKit.resume();
+    const t0 = AudioKit.now() + 0.01;
+    const chordDur = split ? 0.38 : 0.52;
+    AudioKit.playChord(ch, state.keysPreset, t0, chordDur, 0.78);
+    AudioKit.playBass(pc(ch.root), state.bassPreset, t0, Math.min(0.30, chordDur * 0.7), 0.66);
+  }
+
+  function previewGameTargetChord(){
+    const ch = gameTargetChord();
+    const bar = state.chartBars?.[gameRuntime.index];
+    previewChordNow(ch, !!bar?.split);
+  }
+
+  function normalizeGameMediumSeventh(sym){
+    return (sym === "dim7") ? "ø7" : sym;
+  }
+
   function randomGameQualitySymbol(mode, degreeIdx){
-    const diff = (state.gameDifficulty === "easy" || state.gameDifficulty === "hard")
-      ? state.gameDifficulty
-      : "medium";
+    const diff = normalizeGameDifficulty(state.gameDifficulty);
     if (diff === "easy"){
-      const diatonic = diatonicTriadSymbolForDegree(mode, degreeIdx);
-      if (chance(0.70)) return diatonic;
-      return pick(["maj","m","dim"]);
+      return diatonicTriadSymbolForDegree(mode, degreeIdx);
     }
     if (diff === "medium"){
-      const diatonic = diatonicSeventhSymbolForDegree(mode, degreeIdx);
-      if (chance(0.80)) return diatonic;
-      return pick(GAME_SEVENTH_POOL);
+      const diatonic = normalizeGameMediumSeventh(diatonicSeventhSymbolForDegree(mode, degreeIdx));
+      return diatonic;
+    }
+    if (diff === "xhard"){
+      if (chance(0.12)){
+        const diatonic = normalizeGameMediumSeventh(diatonicSeventhSymbolForDegree(mode, degreeIdx));
+        return diatonic;
+      }
+      return pick(GAME_HARD_POOL);
     }
     const diatonic = diatonicSeventhSymbolForDegree(mode, degreeIdx);
     if (chance(0.25)) return diatonic;
@@ -3414,20 +3444,25 @@
   function buildGameRoundBars(keyRoot, mode){
     const scale = SCALES[mode] || SCALES.ionian;
     const bars = [];
-    const diff = (state.gameDifficulty === "easy" || state.gameDifficulty === "hard")
-      ? state.gameDifficulty
-      : "medium";
-    const tonicSym = (diff === "easy")
+    const diff = normalizeGameDifficulty(state.gameDifficulty);
+    const tonicBase = (diff === "easy")
       ? diatonicTriadSymbolForDegree(mode, 0)
       : diatonicSeventhSymbolForDegree(mode, 0);
+    const tonicSym = (diff === "medium") ? normalizeGameMediumSeventh(tonicBase) : tonicBase;
     const tonicMeta = progressionQualityMeta(tonicSym, mode, 0);
     const tonic = makeChord(keyRoot, tonicMeta);
     tonic.mode = mode;
     tonic.scaleRoot = keyRoot;
     bars.push({ split:false, chords:[tonic] });
 
-    for (let i=1;i<7;i++){
-      const deg = rint(0, 6);
+    const middleDegrees = [1,2,3,4,5,6];
+    for (let i=middleDegrees.length-1; i>0; i--){
+      const j = rint(0, i);
+      const tmp = middleDegrees[i];
+      middleDegrees[i] = middleDegrees[j];
+      middleDegrees[j] = tmp;
+    }
+    for (const deg of middleDegrees){
       const root = pc(keyRoot + scale[deg]);
       const sym = randomGameQualitySymbol(mode, deg);
       const q = progressionQualityMeta(sym, mode, deg);
@@ -3454,7 +3489,8 @@
     }
     if (recordHistory) pushHistory();
     const keyRoot = rint(0, 11);
-    const mode = pick(GAME_MODE_POOL.length ? GAME_MODE_POOL : ["ionian"]);
+    const modePool = gameModePoolForDifficulty(state.gameDifficulty);
+    const mode = pick(modePool.length ? modePool : ["ionian"]);
     const bars = buildGameRoundBars(keyRoot, mode);
 
     gameRuntime.round += 1;
@@ -3516,6 +3552,20 @@
     const maxIdx = barCount - 1;
     const targetIdx = clamp(gameRuntime.index + step, 0, maxIdx);
     if (targetIdx === gameRuntime.index){
+      if (step > 0 && gameRuntime.index >= maxIdx){
+        if (!state.midiInEnabled){
+          showGamePrompt();
+          syncGameStepNavVisibility();
+          return false;
+        }
+        const started = startGameRound(false);
+        if (started){
+          if (player.isOn()) player.jumpTo(0, 0);
+          previewGameTargetChord();
+          showGamePrompt("New key.");
+        }
+        return started;
+      }
       syncGameStepNavVisibility();
       return false;
     }
@@ -3524,6 +3574,7 @@
     gameRuntime.waitRelease = [...midiOutputCounts.values()].some(v=>v > 0);
     setGameActiveStep(targetIdx);
     if (player.isOn()) player.jumpTo(targetIdx, 0);
+    previewGameTargetChord();
     showGamePrompt("Manual step.");
     saveAll();
     return true;
@@ -4533,9 +4584,7 @@
     const totalBars = state.chartBars.length || 0;
     const slots = flatChartSlots();
     if (isGameMode() && gameRuntime.active){
-      const diffLabel = (state.gameDifficulty === "easy" || state.gameDifficulty === "hard")
-        ? state.gameDifficulty
-        : "medium";
+      const diffLabel = normalizeGameDifficulty(state.gameDifficulty);
       E.pillLine.textContent = `Game ${gameRuntime.index + 1}/8 · ${diffLabel} · Key ${noteName(gameRuntime.keyRoot)} ${gameRuntime.keyMode}`;
     } else {
       E.pillLine.textContent = `${totalBars} bars · ${Math.max(1, slots.length)} chords`;
@@ -4723,13 +4772,20 @@
     const prev = (state.activeBar>0) ? (state.chartBars[state.activeBar-1]?.chords?.slice(-1)[0] || null) : null;
     const next = (state.activeBar<state.chartBars.length-1) ? (state.chartBars[state.activeBar+1]?.chords?.[0] || null) : null;
 
-    const {pcs: scalePCs, mode} = scalePCsForChordLocal(ch, prev, next);
+    const useGameKeyScale = isGameMode() && gameRuntime.active && Array.isArray(SCALES[gameRuntime.keyMode]);
+    const localScale = useGameKeyScale ? null : scalePCsForChordLocal(ch, prev, next);
+    const mode = useGameKeyScale ? gameRuntime.keyMode : localScale.mode;
+    const scalePCs = useGameKeyScale
+      ? SCALES[gameRuntime.keyMode].map(i=>pc(gameRuntime.keyRoot + i))
+      : localScale.pcs;
     const chordPCs = chordTonesPCs(ch).map(pc);
     const displayScalePCs = [...new Set([...(Array.isArray(scalePCs) ? scalePCs : []).map(pc), ...chordPCs])];
     const scaleSet = new Set(displayScalePCs);
     const chordSet = new Set(chordPCs);
     const melodyPcs = getActiveMelodyPcs();
-    const scaleRoot = (ch && typeof ch.scaleRoot==="number") ? ch.scaleRoot : ch.root;
+    const scaleRoot = useGameKeyScale
+      ? pc(gameRuntime.keyRoot)
+      : ((ch && typeof ch.scaleRoot==="number") ? ch.scaleRoot : ch.root);
 
     E.pianoTop.textContent = chordName(ch);
     const gameTarget = (isGameMode() && gameRuntime.active) ? ` · Target: ${gameTargetNotesText(ch)}` : "";
@@ -4928,14 +4984,21 @@
     const prev = (state.activeBar>0) ? (state.chartBars[state.activeBar-1]?.chords?.slice(-1)[0] || null) : null;
     const next = (state.activeBar<state.chartBars.length-1) ? (state.chartBars[state.activeBar+1]?.chords?.[0] || null) : null;
 
-    const {pcs: scalePCs, mode} = scalePCsForChordLocal(ch, prev, next);
+    const useGameKeyScale = isGameMode() && gameRuntime.active && Array.isArray(SCALES[gameRuntime.keyMode]);
+    const localScale = useGameKeyScale ? null : scalePCsForChordLocal(ch, prev, next);
+    const mode = useGameKeyScale ? gameRuntime.keyMode : localScale.mode;
+    const scalePCs = useGameKeyScale
+      ? SCALES[gameRuntime.keyMode].map(i=>pc(gameRuntime.keyRoot + i))
+      : localScale.pcs;
     const chordPCs = chordTonesPCs(ch).map(pc);
     const displayScalePCs = [...new Set([...(Array.isArray(scalePCs) ? scalePCs : []).map(pc), ...chordPCs])];
     const scaleSet = new Set(displayScalePCs);
     const chordSet = new Set(chordPCs);
     const melodyPcs = getActiveMelodyPcs();
 
-    const scaleRoot = (ch && typeof ch.scaleRoot==="number") ? ch.scaleRoot : ch.root;
+    const scaleRoot = useGameKeyScale
+      ? pc(gameRuntime.keyRoot)
+      : ((ch && typeof ch.scaleRoot==="number") ? ch.scaleRoot : ch.root);
     E.pianoTop.textContent = chordName(ch);
     const gameTarget = (isGameMode() && gameRuntime.active) ? ` · Target: ${gameTargetNotesText(ch)}` : "";
     E.pianoHint.textContent = `Scale: ${noteName(scaleRoot)} ${mode} · Keyboard: ${state.kbOct} oct.${gameTarget}`;
@@ -6824,9 +6887,30 @@
 
   /* ---------- Tap behavior (focus + preview) ---------- */
   function onBarTap(b, h, preview){
-    if (isGameMode() && gameRuntime.active && !state.editMode){
-      setGameActiveStep(gameRuntime.index);
-      showGamePrompt();
+    if (isGameMode() && !state.editMode){
+      const barCount = Array.isArray(state.chartBars) ? state.chartBars.length : 0;
+      const targetBar = clamp(Math.trunc(b), 0, Math.max(0, barCount - 1));
+      if (gameRuntime.active){
+        gameRuntime.index = targetBar;
+        gameRuntime.waitRelease = [...midiOutputCounts.values()].some(v=>v > 0);
+        setGameActiveStep(targetBar);
+        if (player.isOn()) player.jumpTo(targetBar, 0);
+        if (preview) previewGameTargetChord();
+        showGamePrompt("Manual step.");
+        saveAll();
+        return;
+      }
+      state.activeBar = targetBar;
+      state.activeHalf = 0;
+      highlightActiveBar();
+      renderHeaderPills();
+      renderPianoForActive();
+      updateMelodyPlayhead(0);
+      if (preview){
+        const ch = activeChord();
+        const bar = state.chartBars[state.activeBar];
+        previewChordNow(ch, !!bar?.split);
+      }
       return;
     }
     state.activeBar = clamp(b,0,Math.max(0,state.chartBars.length-1));
@@ -6848,10 +6932,7 @@
     if (preview){
       const ch = activeChord();
       if (ch){
-        AudioKit.resume();
-        // short preview chord
-        AudioKit.playChord(ch, state.keysPreset, AudioKit.now()+0.01, bar?.split ? 0.38 : 0.55, 0.75);
-        AudioKit.playBass(pc(ch.root), state.bassPreset, AudioKit.now()+0.01, 0.25, 0.65);
+        previewChordNow(ch, !!bar?.split);
       }
     }
   }
@@ -8072,8 +8153,7 @@
     }
     if (E.gameDiffTop){
       E.gameDiffTop.addEventListener("change", ()=>{
-        const v = E.gameDiffTop.value;
-        state.gameDifficulty = (v === "easy" || v === "hard") ? v : "medium";
+        state.gameDifficulty = normalizeGameDifficulty(E.gameDiffTop.value);
         if (state.progressionSource === "game"){
           startGameRound(true);
         } else {
