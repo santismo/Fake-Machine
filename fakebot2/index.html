@@ -21,8 +21,27 @@
 <body>
   <div class="topbar">
     <a href="../" aria-label="Open Fakebot Original">← v1</a>
-    <span>fakebot 2 · feature-complete original, ready for refactor</span>
+    <span>fakebot 2 · original features + FretStep sample engine</span>
   </div>
-  <iframe src="../index.html" title="Fakebot feature-complete app"></iframe>
+  <iframe id="fakebotFrame" src="../index.html" title="Fakebot feature-complete app"></iframe>
+  <script>
+    (()=>{
+      const frame = document.getElementById("fakebotFrame");
+      function inject(){
+        try{
+          const doc = frame.contentDocument;
+          if (!doc || doc.getElementById("fakebot2FretStepSamples")) return;
+          const s = doc.createElement("script");
+          s.id = "fakebot2FretStepSamples";
+          s.src = "fakebot2/fretstep-sample-engine.js?v=20260709";
+          doc.documentElement.appendChild(s);
+        } catch (err){
+          console.warn("Fakebot 2 sample engine injection failed", err);
+        }
+      }
+      frame.addEventListener("load", ()=>setTimeout(inject, 80));
+      setTimeout(inject, 400);
+    })();
+  </script>
 </body>
 </html>
