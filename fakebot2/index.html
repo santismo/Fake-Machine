@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="Fakebot 2"/>
+<meta name="theme-color" content="#05070b"/>
+<title>🤖 fakebot 2</title>
+<link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+<div id="app">
+  <header>
+    <a class="tinyLink" href="../">← v1</a>
+    <div>
+      <h1>🤖 fakebot 2</h1>
+      <p>mobile performance · game · training bot</p>
+    </div>
+    <button id="panicBtn" class="iconBtn">panic</button>
+  </header>
+
+  <section class="panel transport">
+    <button id="playBtn" class="primary">▶ loop</button>
+    <button id="replyBtn">bot reply</button>
+    <button id="mutateBtn">mutate</button>
+    <button id="newGameBtn">new game</button>
+  </section>
+
+  <section class="panel setup">
+    <label>key<select id="keySel"></select></label>
+    <label>scale<select id="scaleSel"></select></label>
+    <label>sound<select id="instSel"></select></label>
+    <label>tempo<input id="tempo" type="number" min="50" max="220" value="96"/></label>
+  </section>
+
+  <main class="stage">
+    <section class="panel now">
+      <div class="modePills">
+        <button id="perfMode" class="pill active">perform</button>
+        <button id="gameMode" class="pill">game</button>
+        <button id="trainMode" class="pill">train</button>
+      </div>
+      <div id="readout" class="readout">tap pads to wake fakebot</div>
+      <div id="score" class="score">score 0 · streak 0</div>
+    </section>
+
+    <section class="padShell panel">
+      <div id="pads" class="pads"></div>
+    </section>
+
+    <section class="panel botStrip">
+      <button data-action="copy">copy me</button>
+      <button data-action="answer">answer</button>
+      <button data-action="weird">weird</button>
+      <button data-action="simple">simple</button>
+    </section>
+
+    <section class="panel trainer">
+      <div class="trainerTop"><b>target</b><span id="targetText">press new game</span></div>
+      <div id="targetDots" class="targetDots"></div>
+    </section>
+  </main>
+</div>
+<script src="instruments.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
