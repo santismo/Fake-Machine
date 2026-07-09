@@ -6,64 +6,23 @@
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="Fakebot 2"/>
-<meta name="theme-color" content="#05070b"/>
+<meta name="theme-color" content="#0b0f14"/>
 <title>🤖 fakebot 2</title>
-<link rel="stylesheet" href="style.css"/>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#0b0f14;color:#e9eef6;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
+  body{padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+  .topbar{position:fixed;left:0;right:0;top:env(safe-area-inset-top);height:34px;z-index:10;display:flex;align-items:center;gap:8px;padding:4px 8px;background:rgba(5,8,12,.88);border-bottom:1px solid rgba(255,255,255,.09);backdrop-filter:blur(10px)}
+  .topbar a{color:#e9eef6;text-decoration:none;font-size:12px;font-weight:900;padding:5px 8px;border:1px solid rgba(255,255,255,.12);border-radius:10px;background:rgba(255,255,255,.05)}
+  .topbar span{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#9aa6b2;font-size:12px;font-weight:800}
+  iframe{position:fixed;left:0;right:0;top:calc(env(safe-area-inset-top) + 34px);bottom:env(safe-area-inset-bottom);width:100%;height:calc(100% - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 34px);border:0;background:#0b0f14}
+</style>
 </head>
 <body>
-<div id="app">
-  <header>
-    <a class="tinyLink" href="../">← v1</a>
-    <div>
-      <h1>🤖 fakebot 2</h1>
-      <p>mobile performance · game · training bot</p>
-    </div>
-    <button id="panicBtn" class="iconBtn">panic</button>
-  </header>
-
-  <section class="panel transport">
-    <button id="playBtn" class="primary">▶ loop</button>
-    <button id="replyBtn">bot reply</button>
-    <button id="mutateBtn">mutate</button>
-    <button id="newGameBtn">new game</button>
-  </section>
-
-  <section class="panel setup">
-    <label>key<select id="keySel"></select></label>
-    <label>scale<select id="scaleSel"></select></label>
-    <label>sound<select id="instSel"></select></label>
-    <label>tempo<input id="tempo" type="number" min="50" max="220" value="96"/></label>
-  </section>
-
-  <main class="stage">
-    <section class="panel now">
-      <div class="modePills">
-        <button id="perfMode" class="pill active">perform</button>
-        <button id="gameMode" class="pill">game</button>
-        <button id="trainMode" class="pill">train</button>
-      </div>
-      <div id="readout" class="readout">tap pads to wake fakebot</div>
-      <div id="score" class="score">score 0 · streak 0</div>
-    </section>
-
-    <section class="padShell panel">
-      <div id="pads" class="pads"></div>
-    </section>
-
-    <section class="panel botStrip">
-      <button data-action="copy">copy me</button>
-      <button data-action="answer">answer</button>
-      <button data-action="weird">weird</button>
-      <button data-action="simple">simple</button>
-    </section>
-
-    <section class="panel trainer">
-      <div class="trainerTop"><b>target</b><span id="targetText">press new game</span></div>
-      <div id="targetDots" class="targetDots"></div>
-    </section>
-  </main>
-</div>
-<script src="instruments.js"></script>
-<script src="app.js"></script>
+  <div class="topbar">
+    <a href="../" aria-label="Open Fakebot Original">← v1</a>
+    <span>fakebot 2 · feature-complete original, ready for refactor</span>
+  </div>
+  <iframe src="../index.html" title="Fakebot feature-complete app"></iframe>
 </body>
 </html>
