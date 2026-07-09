@@ -6,42 +6,35 @@
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="Fakebot 2"/>
-<meta name="theme-color" content="#0b0f14"/>
+<meta name="theme-color" content="#070b11"/>
 <title>🤖 fakebot 2</title>
-<style>
-  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-  html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#0b0f14;color:#e9eef6;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
-  body{padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
-  .topbar{position:fixed;left:0;right:0;top:env(safe-area-inset-top);height:34px;z-index:10;display:flex;align-items:center;gap:8px;padding:4px 8px;background:rgba(5,8,12,.88);border-bottom:1px solid rgba(255,255,255,.09);backdrop-filter:blur(10px)}
-  .topbar a{color:#e9eef6;text-decoration:none;font-size:12px;font-weight:900;padding:5px 8px;border:1px solid rgba(255,255,255,.12);border-radius:10px;background:rgba(255,255,255,.05)}
-  .topbar span{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#9aa6b2;font-size:12px;font-weight:800}
-  iframe{position:fixed;left:0;right:0;top:calc(env(safe-area-inset-top) + 34px);bottom:env(safe-area-inset-bottom);width:100%;height:calc(100% - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 34px);border:0;background:#0b0f14}
-</style>
+<link rel="stylesheet" href="mobile.css"/>
 </head>
 <body>
-  <div class="topbar">
-    <a href="../" aria-label="Open Fakebot Original">← v1</a>
-    <span>fakebot 2 · original features + FretStep sample engine</span>
+  <div class="fakebot2-shell">
+    <header class="mobileTop" aria-label="Fakebot 2 mobile shell">
+      <a class="backLink" href="../" aria-label="Open Fakebot Original">← v1</a>
+      <div class="brand">
+        <div class="brandTitle">🤖 fakebot 2</div>
+        <div class="brandSub">original features · modular mobile shell · FretStep samples</div>
+      </div>
+      <button class="shellBtn samples" type="button" data-shell="samples" aria-label="Toggle FretStep sample controls">samples</button>
+    </header>
+
+    <main class="frameWrap">
+      <iframe id="fakebotFrame" src="../index.html" title="Fakebot feature-complete app"></iframe>
+      <div class="frameStatus show" id="frameStatus">Loading Fakebot 2…</div>
+    </main>
+
+    <nav class="quickDock" aria-label="Fakebot 2 quick actions">
+      <button class="dockBtn primary" type="button" data-click="btnPlay"><strong>▶</strong><span>play</span></button>
+      <button class="dockBtn green" type="button" data-click="btnGenerate"><strong>🎰</strong><span>generate</span></button>
+      <button class="dockBtn warn" type="button" data-select="progSourceTop" data-value="game"><strong>🎮</strong><span>game</span></button>
+      <button class="dockBtn" type="button" data-section="cardLead"><strong>🎼</strong><span>chart</span></button>
+      <button class="dockBtn" type="button" data-section="cardPiano"><strong>🎹</strong><span>keys</span></button>
+      <button class="dockBtn" type="button" data-section="cardControls"><strong>🎛</strong><span>controls</span></button>
+    </nav>
   </div>
-  <iframe id="fakebotFrame" src="../index.html" title="Fakebot feature-complete app"></iframe>
-  <script>
-    (()=>{
-      const frame = document.getElementById("fakebotFrame");
-      function inject(){
-        try{
-          const doc = frame.contentDocument;
-          if (!doc || doc.getElementById("fakebot2FretStepSamples")) return;
-          const s = doc.createElement("script");
-          s.id = "fakebot2FretStepSamples";
-          s.src = "fakebot2/fretstep-sample-engine.js?v=20260709";
-          doc.documentElement.appendChild(s);
-        } catch (err){
-          console.warn("Fakebot 2 sample engine injection failed", err);
-        }
-      }
-      frame.addEventListener("load", ()=>setTimeout(inject, 80));
-      setTimeout(inject, 400);
-    })();
-  </script>
+  <script src="shell.js"></script>
 </body>
 </html>
