@@ -1,0 +1,27 @@
+:root{
+  --bg:#070b11;
+  --panel:rgba(13,18,27,.88);
+  --panel2:rgba(24,31,45,.92);
+  --line:rgba(255,255,255,.12);
+  --text:#eef4ff;
+  --muted:#94a0b4;
+  --accent:#7c5cff;
+  --accent2:#00e0a4;
+  --danger:#ff4778;
+  --topH:50px;
+  --dockH:66px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
+body{padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+.fakebot2-shell{position:fixed;inset:0;background:radial-gradient(900px 500px at 20% -10%,rgba(124,92,255,.24),transparent 60%),radial-gradient(850px 420px at 110% 15%,rgba(0,224,164,.16),transparent 58%),var(--bg);display:grid;grid-template-rows:calc(var(--topH) + env(safe-area-inset-top)) 1fr calc(var(--dockH) + env(safe-area-inset-bottom));overflow:hidden}
+.mobileTop{padding:calc(env(safe-area-inset-top) + 6px) 8px 6px;display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;align-items:center;background:rgba(5,8,12,.78);border-bottom:1px solid var(--line);backdrop-filter:blur(14px);z-index:5}
+.backLink,.shellBtn,.dockBtn{border:1px solid var(--line);background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.02));color:var(--text);border-radius:13px;text-decoration:none;font-weight:900;min-height:38px;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:8px 10px;font-size:12px;white-space:nowrap;cursor:pointer}
+.backLink:active,.shellBtn:active,.dockBtn:active{transform:translateY(1px) scale(.985)}
+.brand{min-width:0;display:grid;gap:1px;line-height:1.05}.brandTitle{font-size:16px;font-weight:950;letter-spacing:-.035em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.brandSub{font-size:10px;color:var(--muted);font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.shellBtn.samples{border-color:rgba(0,224,164,.35);color:#dfffee;background:rgba(0,224,164,.12)}
+.frameWrap{position:relative;min-height:0;overflow:hidden}.frameStatus{position:absolute;left:50%;top:10px;transform:translateX(-50%);z-index:3;max-width:calc(100% - 18px);padding:6px 9px;border-radius:999px;border:1px solid rgba(255,255,255,.12);background:rgba(8,11,18,.72);color:var(--muted);font-size:11px;font-weight:850;box-shadow:0 8px 22px rgba(0,0,0,.28);pointer-events:none;opacity:0;transition:opacity .2s ease}.frameStatus.show{opacity:1}
+#fakebotFrame{position:absolute;inset:0;width:100%;height:100%;border:0;background:#0b0f14;color-scheme:dark}
+.quickDock{padding:6px 8px calc(env(safe-area-inset-bottom) + 7px);display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;background:rgba(5,8,12,.84);border-top:1px solid var(--line);backdrop-filter:blur(16px);z-index:5}.dockBtn{min-width:0;min-height:52px;flex-direction:column;padding:6px 3px;font-size:10px;line-height:1.05}.dockBtn strong{font-size:17px;line-height:1}.dockBtn.primary{border-color:rgba(124,92,255,.55);background:rgba(124,92,255,.18)}.dockBtn.green{border-color:rgba(0,224,164,.38);background:rgba(0,224,164,.12)}.dockBtn.warn{border-color:rgba(255,207,90,.38);background:rgba(255,207,90,.10)}
+@media (min-width:760px){:root{--topH:56px;--dockH:74px}.mobileTop{padding-left:14px;padding-right:14px}.quickDock{max-width:760px;left:50%;transform:translateX(-50%);position:relative;border-left:1px solid var(--line);border-right:1px solid var(--line);border-radius:18px 18px 0 0}.brandTitle{font-size:18px}.dockBtn{font-size:11px}}
+@media (max-width:370px){.quickDock{gap:4px;padding-left:5px;padding-right:5px}.dockBtn{font-size:9px}.backLink,.shellBtn{padding-left:8px;padding-right:8px}.brandTitle{font-size:15px}}
+@media (orientation:landscape) and (max-height:520px){:root{--topH:42px;--dockH:54px}.mobileTop{padding-top:calc(env(safe-area-inset-top) + 3px);padding-bottom:3px}.brandSub{display:none}.backLink,.shellBtn{min-height:32px}.quickDock{grid-template-columns:repeat(9,minmax(0,1fr));padding-top:4px;padding-bottom:calc(env(safe-area-inset-bottom) + 4px)}.dockBtn{min-height:43px}.dockBtn strong{font-size:14px}}
