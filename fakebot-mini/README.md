@@ -15,7 +15,7 @@ Live page: [santismo.github.io/fakebot/fakebot-mini/](https://santismo.github.io
 - Song mode has two selectable libraries: the existing iReal-style songs and Miditar MIDI-marker charts. Either library can be the source for manual selection or random song choice.
 - MIDI charts turn their chord markers into progression cards and keep their original notes and timing; MIDI channels and program changes drive the selected sampled keys, bass, and drums without the backing-band arrangement.
 - Marker cards remain previewable and double as transport seek points while stopped, paused, or playing. Pause cancels queued sample events before resuming from the exact saved position.
-- Live melody and solo-track notes appear in red and octave-fold into the existing piano or fret range for display only, without changing their authored pitch or expanding the chord view. Piano visualization colors the full active key; fret visualization favors playable upper-string positions and smooth hand-position movement.
+- Live melody and solo-track notes appear in red and octave-fold into the existing piano or fret range for display only, without changing their authored pitch or expanding the chord view. Piano visualization colors the full active key; fret visualization fills the full pad and favors playable upper-string positions with smooth hand-position movement. A small `^` beside the live note name marks an octave-folded display note.
 - Melody and solo audio can be muted independently when those tracks exist. Muting never hides the red visual playhead.
 - Web MIDI controller input is intentionally excluded from Mini; the MIDI features here are song-library playback and local MIDI-file import.
 - Reset All sits beside Done at the top of Settings for quick recovery.

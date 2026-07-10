@@ -70,15 +70,17 @@ html.fakebot-mini-frame .miniFretPadCell.tone1{background:#1c1e22}
 html.fakebot-mini-frame .miniFretPadCell.isScale{border-color:rgba(120,151,179,.76);background:#415467}
 html.fakebot-mini-frame .miniFretPadCell.isChord{border-color:rgba(225,196,126,.78);background:#90743d}
 html.fakebot-mini-frame .miniFretPadCell.isRoot{border-color:rgba(195,242,220,.88);background:#397b5e;box-shadow:0 0 0 1px rgba(221,255,239,.38) inset,0 0 10px rgba(85,199,151,.22)}
-html.fakebot-mini-frame .miniFretPadCell.isMelody:not(.isChord){border-color:rgba(241,151,151,.88);background:#7b3e43}
-html.fakebot-mini-frame .miniFretPadCell.isMelody{box-shadow:0 0 0 2px rgba(232,113,113,.82) inset,0 0 8px rgba(215,110,110,.24)}
-html.fakebot-mini-frame .miniFretPadCell.isRoot.isMelody{box-shadow:0 0 0 2px rgba(232,113,113,.82) inset,0 0 10px rgba(85,199,151,.28)}
+html.fakebot-mini-frame .miniFretPadCell.isMelody{border-color:rgba(255,215,215,.94)!important;background:#b73543!important;box-shadow:0 0 0 2px rgba(255,146,146,.72) inset,0 0 9px rgba(255,75,75,.36)!important}
+html.fakebot-mini-frame .miniFretPadCell.isRoot.isMelody{background:#b73543!important;box-shadow:0 0 0 2px rgba(255,220,220,.8) inset,0 0 10px rgba(255,75,75,.42)!important}
 html.fakebot-mini-frame .miniFretPadNote{max-width:100%;padding:0 1px;overflow:hidden;color:#fbfcfd;font-size:clamp(7px,2.2vw,10px);font-weight:900;line-height:1;letter-spacing:-.055em;text-overflow:clip;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.48);pointer-events:none}
+html.fakebot-mini-frame .miniFretPadNote .miniLeadTranspose{position:relative;top:-.34em;margin-left:1px;font-size:.68em;letter-spacing:0}
 html.fakebot-mini-frame #pianoSvg rect[fill="var(--accent)"]{fill:#7897b3!important;vector-effect:non-scaling-stroke}
 html.fakebot-mini-frame #pianoSvg rect[fill="var(--keyWhite)"]{fill:#f3efe6!important}
 html.fakebot-mini-frame #pianoSvg rect[fill="var(--keyBlack)"]{fill:#15171a!important}
 html.fakebot-mini-frame #pianoSvg rect.midiMelodyKey{fill:var(--melody)!important;stroke:rgba(255,236,236,.98)!important;filter:drop-shadow(0 0 5px rgba(255,75,75,.48))}
 html.fakebot-mini-frame #pianoSvg .miniPianoNote{fill:#161719!important;font-size:28px!important;font-weight:900!important;letter-spacing:-1px!important}
+html.fakebot-mini-frame #pianoSvg .miniPianoNote.isLiveMelodyNote{fill:#fff!important;filter:drop-shadow(0 1px 2px rgba(0,0,0,.75))}
+html.fakebot-mini-frame #pianoSvg .miniLeadTranspose{fill:#fff!important;font-size:14px!important;font-weight:900!important}
 html.fakebot-mini-frame #pianoHint{margin:6px 2px 0!important;color:var(--pageMuted)!important;font-size:10px!important;text-align:center!important}
 
 html.fakebot-mini-frame #cardLead .cardHead{display:grid!important;grid-template-columns:auto 1fr auto!important;align-items:center!important;gap:8px!important}

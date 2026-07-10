@@ -6470,6 +6470,8 @@
         const melodySources = melodyByCell.get(`${stringIndex}:${fret}`) || [];
         const inMelody = melodySources.length > 0;
         const inSolo = melodySources.some(note=>note.performanceRole === "solo");
+        const displayMidi = string.midi + fret;
+        const isTransposedMelody = melodySources.some(note=>Number(note.midi) !== displayMidi);
         const semanticStates = [];
         if (inScale) semanticStates.push("scale");
         if (inChord) semanticStates.push("chord");
@@ -6483,23 +6485,33 @@
         pad.classList.toggle("isRoot", isRoot);
         pad.classList.toggle("isMelody", inMelody);
         pad.classList.toggle("isSolo", inSolo);
+        pad.classList.toggle("isTransposedMelody", isTransposedMelody);
         pad.setAttribute("role", "gridcell");
         pad.setAttribute("aria-rowindex", String(stringIndex + 2));
         pad.setAttribute("aria-colindex", String(fret + 2));
         pad.dataset.state = semanticStates.join(" ") || "none";
         if (inMelody){
           pad.dataset.sourceMidi = melodySources.map(note=>note.midi).join(",");
-          pad.dataset.displayMidi = String(string.midi + fret);
+          pad.dataset.displayMidi = String(displayMidi);
           pad.dataset.leadRole = [...new Set(melodySources.map(note=>note.performanceRole))].join(",");
+          pad.dataset.octaveFolded = String(isTransposedMelody);
         }
 
         const note = noteName(pitchClass);
         const stateLabel = semanticStates.length ? `; ${semanticStates.join(", ")}` : "";
-        pad.setAttribute("aria-label", `${string.name} string, fret ${fret}, ${note}${stateLabel}`);
-        if (inChord){
+        const transposeLabel = isTransposedMelody ? "; octave-folded display" : "";
+        pad.setAttribute("aria-label", `${string.name} string, fret ${fret}, ${note}${stateLabel}${transposeLabel}`);
+        if (inChord || inMelody){
           const label = document.createElement("span");
           label.className = "miniFretPadNote";
           label.textContent = note;
+          if (isTransposedMelody){
+            const caret = document.createElement("span");
+            caret.className = "miniLeadTranspose";
+            caret.setAttribute("aria-hidden","true");
+            caret.textContent = "^";
+            label.appendChild(caret);
+          }
           pad.appendChild(label);
         }
         row.appendChild(pad);
@@ -6781,8 +6793,8 @@
     const melodyKeySlots = [];
     const miniView = document.documentElement.classList.contains("fakebot-mini-frame");
 
-    const placeMiniNoteLabel = (x, y, pitchClass)=>{
-      if (!miniView) return;
+    const placeMiniNoteLabel = (x, y, pitchClass, displayMidi=null)=>{
+      if (!miniView) return null;
       const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
       label.setAttribute("class", "miniPianoNote");
       label.setAttribute("x", String(x));
@@ -6791,8 +6803,10 @@
       label.setAttribute("dominant-baseline", "middle");
       label.setAttribute("pointer-events", "none");
       label.setAttribute("transform", `translate(${x} ${y}) scale(1 .55) translate(${-x} ${-y})`);
+      if (Number.isFinite(displayMidi)) label.dataset.displayMidi = String(Math.round(displayMidi));
       label.textContent = noteName(pitchClass);
       svg.appendChild(label);
+      return label;
     };
 
     const W = 1000, H = 240;
@@ -6838,13 +6852,14 @@
       const ref = { el: rect, pc: p, displayMidi, baseStroke, baseStrokeWidth };
       nextKeyRefs.push(ref);
       nextKeysByPc[p].push(ref);
-      melodyKeySlots.push({el:rect,displayMidi,isBlack:false});
+      const melodySlot = {el:rect,displayMidi,isBlack:false,cx:k.x + whiteW*0.5,labelY:175,pitchClass:p,label:null};
+      melodyKeySlots.push(melodySlot);
 
       const isChord = chordSet.has(p);
       const isRoot = p === pc(ch.root);
       if (isChord){
         placeMarker(svg, k.x + whiteW*0.5, 175, isRoot ? "root" : "chord");
-        placeMiniNoteLabel(k.x + whiteW*0.5, 175, p);
+        melodySlot.label = placeMiniNoteLabel(k.x + whiteW*0.5, 175, p, displayMidi);
       }
     }
 
@@ -6875,13 +6890,14 @@
         const ref = { el: rect, pc: p, displayMidi, baseStroke, baseStrokeWidth };
         nextKeyRefs.push(ref);
         nextKeysByPc[p].push(ref);
-        melodyKeySlots.push({el:rect,displayMidi,isBlack:true});
+        const melodySlot = {el:rect,displayMidi,isBlack:true,cx:x0 + blackW*0.5,labelY:95,pitchClass:p,label:null};
+        melodyKeySlots.push(melodySlot);
 
         const isChord = chordSet.has(p);
         const isRoot = p === pc(ch.root);
         if (isChord){
           placeMarker(svg, x0 + blackW*0.5, 95, isRoot ? "root" : "chord");
-          placeMiniNoteLabel(x0 + blackW*0.5, 95, p);
+          melodySlot.label = placeMiniNoteLabel(x0 + blackW*0.5, 95, p, displayMidi);
         }
       }
     }
@@ -6899,13 +6915,29 @@
       const slot = melodyKeySlots.find(candidate=>candidate.displayMidi === displayMidi);
       if (!slot) return;
       const roles = [...new Set(notes.map(note=>note.performanceRole === "solo" ? "solo" : "melody"))];
+      const isTransposedMelody = notes.some(note=>Number(note.midi) !== displayMidi);
       slot.el.classList.add("midiMelodyKey");
+      slot.el.classList.toggle("isTransposedMelody",isTransposedMelody);
       slot.el.setAttribute("fill","var(--melody)");
       slot.el.setAttribute("stroke","rgba(255,230,230,.96)");
       slot.el.setAttribute("stroke-width",slot.isBlack ? "3" : "3.8");
       slot.el.dataset.sourceMidi = notes.map(note=>note.midi).join(",");
       slot.el.dataset.displayMidi = String(displayMidi);
       slot.el.dataset.leadRole = roles.join(",");
+      slot.el.dataset.octaveFolded = String(isTransposedMelody);
+      const label = slot.label || placeMiniNoteLabel(slot.cx,slot.labelY,slot.pitchClass,displayMidi);
+      if (label){
+        label.classList.add("isLiveMelodyNote");
+        if (isTransposedMelody){
+          const caret = document.createElementNS("http://www.w3.org/2000/svg","tspan");
+          caret.setAttribute("class","miniLeadTranspose");
+          caret.setAttribute("dx","1");
+          caret.setAttribute("baseline-shift","super");
+          caret.setAttribute("aria-hidden","true");
+          caret.textContent = "^";
+          label.appendChild(caret);
+        }
+      }
     });
 
     pianoLiveKeyRefs = nextKeyRefs;
