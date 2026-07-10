@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const VERSION = "1.2.1";
+  const VERSION = "1.3.0";
   const STORE_KEY = "fakebot-mini.samples.v1";
   const MODULE_URL = "https://unpkg.com/smplr@1.0.0/dist/index.mjs";
 
@@ -103,7 +103,7 @@
     {id:"abuse:yamaha-rx-5",instrument:"yamaha-rx-5",engine:"abuse",label:"Yamaha RX-5",group:"More drum machines"},
     {id:"abuse:simmons-sds-5",instrument:"simmons-sds-5",engine:"abuse",label:"Simmons SDS-5",group:"More drum machines"}
   ];
-  const DEFAULTS = {keys:"electric_piano_1",bass:"electric_bass_finger",drums:"LM-2",mix:.9};
+  const DEFAULTS = {keys:"electric_piano_1",bass:"electric_bass_finger",drums:"LM-2",mix:.9,muteMelody:false,muteSolo:false};
   const wait = (milliseconds)=>new Promise(resolve=>window.setTimeout(resolve,milliseconds));
 
   function readSettings(){
@@ -114,6 +114,8 @@
   if (!VOICES.some(item=>item.role === "keys" && item.id === settings.keys)) settings.keys = DEFAULTS.keys;
   if (!VOICES.some(item=>item.role === "bass" && item.id === settings.bass)) settings.bass = DEFAULTS.bass;
   if (!DRUMS.some(item=>item.id === settings.drums)) settings.drums = DEFAULTS.drums;
+  settings.muteMelody = settings.muteMelody === true;
+  settings.muteSolo = settings.muteSolo === true;
   const clamp = (value,min,max)=>Math.max(min,Math.min(max,value));
   const saveSettings = ()=>{ try{ localStorage.setItem(STORE_KEY, JSON.stringify(settings)); }catch{} };
 
@@ -130,6 +132,7 @@
     preparePromise:null,
     randomizePromise:null,
     midiPlaybackActive:false,
+    trackAvailability:{melody:false,solo:false},
     midiScheduleEpoch:0,
     midiScheduledStops:new Set(),
 
@@ -161,6 +164,40 @@
       this.cancelMidiSchedules();
       this.midiPlaybackActive = next;
       return this.midiPlaybackActive;
+    },
+
+    updateTrackMuteControls(){
+      [["melody","miniMuteMelody"],["solo","miniMuteSolo"]].forEach(([role,id])=>{
+        const button = document.getElementById(id);
+        if (!button) return;
+        const available = this.trackAvailability[role] === true;
+        const muted = settings[role === "melody" ? "muteMelody" : "muteSolo"] === true;
+        button.disabled = !available;
+        button.classList.toggle("isMuted", available && muted);
+        button.setAttribute("aria-pressed", String(available && muted));
+        button.textContent = available
+          ? (muted ? `Unmute ${role}` : `Mute ${role}`)
+          : `${role === "melody" ? "Melody" : "Solo"}: no track`;
+      });
+    },
+
+    setTrackAvailability(availability={}){
+      this.trackAvailability = {
+        melody:availability.melody === true,
+        solo:availability.solo === true
+      };
+      this.updateTrackMuteControls();
+      return {...this.trackAvailability};
+    },
+
+    toggleTrackMute(role){
+      if (role !== "melody" && role !== "solo") return false;
+      const key = role === "melody" ? "muteMelody" : "muteSolo";
+      settings[key] = !settings[key];
+      saveSettings();
+      this.updateTrackMuteControls();
+      window.dispatchEvent(new CustomEvent("fakebot-midi-track-mute",{detail:{role,muted:settings[key]}}));
+      return settings[key];
     },
 
     report(message,state="loading"){
@@ -480,6 +517,8 @@
     audio.playMidiNote = (midi,channel,time,duration,velocity=.7,roleHint="")=>{
       const resolved = Number.isFinite(channel) ? Math.round(channel) : 0;
       if (Engine.midiPlaybackActive){
+        if (roleHint === "melody" && settings.muteMelody) return;
+        if (roleHint === "solo" && settings.muteSolo) return;
         const midiEpoch = Engine.midiScheduleEpoch;
         if (resolved === 9 || roleHint === "drums") return Engine.drum(drumKindFromMidi(midi),time,velocity,midiEpoch);
         if (roleHint === "bass") return Engine.play("bass",midi,time,duration,velocity,midiEpoch);
@@ -527,6 +566,7 @@
       <label>Keys, chords &amp; MIDI<select id="miniSampleKeys">${options(VOICES.filter(item=>item.role==="keys"),settings.keys)}</select></label>
       <label>Bass<select id="miniSampleBass">${options(VOICES.filter(item=>item.role==="bass"),settings.bass)}</select></label>
       <label>Drums<select id="miniSampleDrums">${options(DRUMS,settings.drums)}</select></label>
+      <div class="miniTrackMutes" role="group" aria-label="MIDI lead track sound"><button id="miniMuteMelody" type="button" aria-pressed="false">Melody: no track</button><button id="miniMuteSolo" type="button" aria-pressed="false">Solo: no track</button></div>
       <div class="miniSampleActions"><label>Sample mix<input id="miniSampleMix" type="range" min="0" max="1.1" step="0.01" value="${settings.mix}"></label><button id="miniSampleRandom" type="button">Randomize sounds</button><button id="miniSampleRetry" type="button">Retry</button></div>
       <div class="miniSampleStatus" id="miniSampleStatus">Preparing selected samples…</div>
     </div>`;
@@ -534,6 +574,8 @@
     document.getElementById("miniSampleKeys").addEventListener("change",(event)=>Engine.select("keys",event.target.value).catch(()=>{}));
     document.getElementById("miniSampleBass").addEventListener("change",(event)=>Engine.select("bass",event.target.value).catch(()=>{}));
     document.getElementById("miniSampleDrums").addEventListener("change",(event)=>Engine.select("drums",event.target.value).catch(()=>{}));
+    document.getElementById("miniMuteMelody").addEventListener("click",()=>Engine.toggleTrackMute("melody"));
+    document.getElementById("miniMuteSolo").addEventListener("click",()=>Engine.toggleTrackMute("solo"));
     document.getElementById("miniSampleMix").addEventListener("input",(event)=>{
       settings.mix = clamp(Number(event.target.value)||0,0,1.1);
       Engine.input.gain.setTargetAtTime(settings.mix,Engine.context.currentTime,.012);
@@ -543,6 +585,11 @@
     document.getElementById("miniSampleRetry").addEventListener("click",()=>{
       Engine.preparePromise = null;
       Engine.prepare().catch(()=>{});
+    });
+    const sheet = document.getElementById("sheet");
+    Engine.setTrackAvailability({
+      melody:Number(sheet?.dataset?.midiMelodyNotes || 0) > 0,
+      solo:Number(sheet?.dataset?.midiSoloNotes || 0) > 0
     });
     Engine.prepare().catch(()=>{});
   }
@@ -557,7 +604,8 @@
         ready:async()=>{ await Engine.resume(); await Engine.prepare(); },
         randomize:()=>Engine.randomizeSounds(),
         stop:()=>Engine.stopAll(),
-        setMidiPlaybackActive:(active)=>Engine.setMidiPlaybackActive(active)
+        setMidiPlaybackActive:(active)=>Engine.setMidiPlaybackActive(active),
+        setTrackAvailability:(availability)=>Engine.setTrackAvailability(availability)
       });
     }catch(error){
       Engine.report("Samples unavailable — playback is silent","error");

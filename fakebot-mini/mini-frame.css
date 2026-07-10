@@ -77,6 +77,7 @@ html.fakebot-mini-frame .miniFretPadNote{max-width:100%;padding:0 1px;overflow:h
 html.fakebot-mini-frame #pianoSvg rect[fill="var(--accent)"]{fill:#7897b3!important;vector-effect:non-scaling-stroke}
 html.fakebot-mini-frame #pianoSvg rect[fill="var(--keyWhite)"]{fill:#f3efe6!important}
 html.fakebot-mini-frame #pianoSvg rect[fill="var(--keyBlack)"]{fill:#15171a!important}
+html.fakebot-mini-frame #pianoSvg rect.midiMelodyKey{fill:var(--melody)!important;stroke:rgba(255,236,236,.98)!important;filter:drop-shadow(0 0 5px rgba(255,75,75,.48))}
 html.fakebot-mini-frame #pianoSvg .miniPianoNote{fill:#161719!important;font-size:28px!important;font-weight:900!important;letter-spacing:-1px!important}
 html.fakebot-mini-frame #pianoHint{margin:6px 2px 0!important;color:var(--pageMuted)!important;font-size:10px!important;text-align:center!important}
 
@@ -160,6 +161,10 @@ html.fakebot-mini-frame #rowMidiInput{display:grid!important;grid-template-colum
 html.fakebot-mini-frame .miniSoundGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 html.fakebot-mini-frame .miniSoundGrid label{display:grid;gap:5px}
 html.fakebot-mini-frame .miniSoundGrid label:first-child{grid-column:1/-1}
+html.fakebot-mini-frame .miniTrackMutes{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+html.fakebot-mini-frame .miniTrackMutes button{min-height:42px;padding:0 10px;border:1px solid #4b4e54;border-radius:10px;background:#25272b;color:var(--pageInk);font-size:11px;font-weight:800}
+html.fakebot-mini-frame .miniTrackMutes button.isMuted{border-color:rgba(255,91,91,.72);background:#4a2428;color:#ffd9d9}
+html.fakebot-mini-frame .miniTrackMutes button:disabled{opacity:.48}
 html.fakebot-mini-frame .miniSampleStatus{grid-column:1/-1;min-height:34px;padding:8px 10px;border:1px solid var(--pageLine);border-radius:10px;background:#1b1c1f;color:var(--pageMuted);font-size:10px;line-height:1.3}
 html.fakebot-mini-frame .miniSampleActions{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:center}
 html.fakebot-mini-frame .miniSampleActions label{grid-column:1/-1!important}

@@ -3814,12 +3814,23 @@
     try{ window.FakebotMiniSamples?.setMidiPlaybackActive(active === true); }catch{}
   }
 
+  function setMidiTrackAvailability(availability={}){
+    try{
+      window.FakebotMiniSamples?.setTrackAvailability({
+        melody:availability.melody === true,
+        solo:availability.solo === true
+      });
+    }catch{}
+  }
+
   function deactivateMidiSong(stopTransport=false, invalidatePending=true){
     if (invalidatePending) midiSongLoadToken += 1;
     if (stopTransport && player.isOn()) player.stop();
     activeMidiSong = null;
+    resetMiniFretLeadView();
     clearLiveMidiMelodyNotes();
     setMidiSamplePlayback(false);
+    setMidiTrackAvailability({melody:false,solo:false});
   }
 
   function titleFromMidiFileName(name){
@@ -4099,7 +4110,7 @@
     return { markers, chords, bars, key };
   }
 
-  function midiMelodyTrackIndexes(parsed){
+  function midiLeadTrackRoles(parsed){
     const tracks = (Array.isArray(parsed?.tracks) ? parsed.tracks : []).filter(track=>Array.isArray(track?.notes) && track.notes.length);
     const candidates = tracks.filter((track)=>{
       const channels = Array.isArray(track.channels) ? track.channels.map(Number) : [];
@@ -4108,11 +4119,14 @@
       if (programs.length && programs.every(program=>program >= 32 && program <= 39)) return false;
       return !/\b(?:drums?|percussion|bass)\b/i.test(String(track.name || ""));
     });
-    const named = candidates.filter(track=>/\b(?:melod(?:y|ic)|lead|solo(?:ist)?|theme|head|vocal|voice)\b/i.test(String(track.name || "")));
-    if (named.length) return new Set(named.map(track=>Number(track.index)));
-    if (!candidates.length) return new Set();
+    const roles = new Map();
+    const soloTracks = candidates.filter(track=>/\b(?:solo(?:ist)?|improv(?:isation|ization)?)\b/i.test(String(track.name || "")));
+    soloTracks.forEach(track=>roles.set(Number(track.index),"solo"));
+    const melodyTracks = candidates.filter(track=>!roles.has(Number(track.index)) && /\b(?:melod(?:y|ic)|lead|theme|head|vocal|voice)\b/i.test(String(track.name || "")));
+    melodyTracks.forEach(track=>roles.set(Number(track.index),"melody"));
+    if (melodyTracks.length || soloTracks.length || !candidates.length) return roles;
 
-    const ranked = candidates.map((track)=>{
+    const ranked = candidates.filter(track=>!roles.has(Number(track.index))).map((track)=>{
       const notes = track.notes || [];
       const pitches = notes.map(note=>Number(note.midi)).filter(Number.isFinite).sort((a,b)=>a-b);
       const medianPitch = pitches.length ? pitches[Math.floor(pitches.length / 2)] : 0;
@@ -4121,11 +4135,12 @@
       const compPenalty = /\b(?:piano|comp|chords?|rhythm|pad|accomp|organ)\b/i.test(String(track.name || "")) ? 22 : 0;
       return {track,score:medianPitch + onsetRatio * 30 - compPenalty};
     }).sort((a,b)=>b.score-a.score || Number(a.track.index)-Number(b.track.index));
-    return new Set(ranked.length ? [Number(ranked[0].track.index)] : []);
+    if (ranked.length) roles.set(Number(ranked[0].track.index),"melody");
+    return roles;
   }
 
   function collectMidiNotes(parsed){
-    const melodyTracks = midiMelodyTrackIndexes(parsed);
+    const leadTrackRoles = midiLeadTrackRoles(parsed);
     return (parsed?.tracks || [])
       .flatMap((track)=>{
         const changes = Array.isArray(track?.programChanges) ? track.programChanges : [];
@@ -4139,7 +4154,8 @@
             program = Number(track.programs[note.channel]);
           }
           const role = note.channel === 10 ? "drums" : (program >= 32 && program <= 39 ? "bass" : "keys");
-          return {...note,program,role,isMelody:role === "keys" && melodyTracks.has(Number(track.index))};
+          const performanceRole = role === "keys" ? (leadTrackRoles.get(Number(track.index)) || "") : "";
+          return {...note,program,role,performanceRole,isMelody:performanceRole === "melody",isSolo:performanceRole === "solo"};
         });
       })
       .filter(note=>Number.isFinite(note?.midi) && Number.isFinite(note?.time))
@@ -4199,6 +4215,8 @@
         markers: chart.markers,
         notes,
         melodyNotes: notes.filter(note=>note.isMelody),
+        soloNotes: notes.filter(note=>note.isSolo),
+        leadNotes: notes.filter(note=>note.isMelody || note.isSolo),
         programs: collectMidiPrograms(parsed),
         programChanges: collectMidiProgramChanges(parsed),
         duration: Math.max(Number(parsed.duration) || 0, ...notes.map(note=>note.time + Math.max(0.01, Number(note.duration) || 0.01))),
@@ -4223,6 +4241,8 @@
       syncUIFromState();
       renderAll();
       if (E.sheet) E.sheet.dataset.midiMelodyNotes = String(activeMidiSong.melodyNotes.length);
+      if (E.sheet) E.sheet.dataset.midiSoloNotes = String(activeMidiSong.soloNotes.length);
+      setMidiTrackAvailability({melody:activeMidiSong.melodyNotes.length>0,solo:activeMidiSong.soloNotes.length>0});
       saveAll();
       setSongStatus(`Loaded MIDI: ${title} · ${chart.markers.length} markers · ${notes.length} notes`);
     }catch(error){
@@ -6199,15 +6219,20 @@
   function setLiveMidiMelodyNotes(notes){
     const normalized = (Array.isArray(notes) ? notes : [])
       .filter(note=>Number.isFinite(Number(note?.midi)))
-      .map(note=>({id:String(note.id || `${note.trackIndex || 0}:${note.tick || 0}:${note.midi}`),midi:Math.round(Number(note.midi))}))
-      .sort((a,b)=>a.midi-b.midi || a.id.localeCompare(b.id));
-    const signature = normalized.map(note=>`${note.id}:${note.midi}`).join("|");
+      .map(note=>({
+        id:String(note.id || `${note.trackIndex || 0}:${note.tick || 0}:${note.midi}`),
+        midi:Math.round(Number(note.midi)),
+        performanceRole:note.performanceRole === "solo" ? "solo" : "melody"
+      }))
+      .sort((a,b)=>a.midi-b.midi || a.performanceRole.localeCompare(b.performanceRole) || a.id.localeCompare(b.id));
+    const signature = normalized.map(note=>`${note.id}:${note.midi}:${note.performanceRole}`).join("|");
     if (signature === liveMidiMelodySignature) return false;
     liveMidiMelodySignature = signature;
     liveMidiMelodyNotes = normalized;
     if (E.sheet){
       E.sheet.dataset.liveMelodyNotes = String(normalized.length);
       E.sheet.dataset.liveMelodyMidi = normalized.map(note=>note.midi).join(",");
+      E.sheet.dataset.liveLeadRoles = normalized.map(note=>note.performanceRole).join(",");
     }
     renderPianoForActive();
     return true;
@@ -6228,7 +6253,7 @@
       if (!Number.isFinite(raw)) return;
       const midi = Math.round(raw);
       if (midi < 0 || midi > 127) return;
-      notes.push({id:`chart:${state.activeBar}:${state.activeHalf}:${notes.length}`,midi});
+      notes.push({id:`chart:${state.activeBar}:${state.activeHalf}:${notes.length}`,midi,performanceRole:"melody"});
     };
     const scanNotes = (notes)=>{
       if (!Array.isArray(notes)) return;
@@ -6308,6 +6333,14 @@
     for (let p=0; p<12; p++) applyLiveMidiPcOutline(p);
   }
 
+  const miniFretLeadAssignments = new Map();
+  const miniFretLeadAnchors = new Map();
+
+  function resetMiniFretLeadView(){
+    miniFretLeadAssignments.clear();
+    miniFretLeadAnchors.clear();
+  }
+
   function renderMiniFretizerPads(ch, scaleSet, chordSet, melodyNotes){
     const grid = E.miniFretPad;
     if (!grid) return;
@@ -6346,24 +6379,74 @@
     const strings = state.fretLefty ? [...baseStrings].reverse() : baseStrings;
     const rootPc = pc(ch.root);
     const melodyByCell = new Map();
-    (Array.isArray(melodyNotes) ? melodyNotes : []).forEach((melodyNote)=>{
-      const sourceMidi = Math.round(Number(melodyNote?.midi));
-      if (!Number.isFinite(sourceMidi)) return;
-      const candidates = [];
-      strings.forEach((string,stringIndex)=>{
-        for (let fret=0; fret<=12; fret++){
-          const displayMidi = string.midi + fret;
-          if (pc(displayMidi) !== pc(sourceMidi)) continue;
-          candidates.push({stringIndex,fret,displayMidi,distance:Math.abs(displayMidi-sourceMidi)});
-        }
-      });
-      candidates.sort((a,b)=>a.distance-b.distance || b.displayMidi-a.displayMidi || a.fret-b.fret || a.stringIndex-b.stringIndex);
-      const target = candidates[0];
-      if (!target) return;
+    const normalizedLeadNotes = (Array.isArray(melodyNotes) ? melodyNotes : [])
+      .filter(note=>Number.isFinite(Number(note?.midi)))
+      .map((note,index)=>({
+        ...note,
+        id:String(note.id || `lead:${index}:${note.midi}`),
+        midi:Math.round(Number(note.midi)),
+        performanceRole:note.performanceRole === "solo" ? "solo" : "melody"
+      }));
+    const activeLeadIds = new Set(normalizedLeadNotes.map(note=>note.id));
+    [...miniFretLeadAssignments.keys()].forEach((id)=>{ if (!activeLeadIds.has(id)) miniFretLeadAssignments.delete(id); });
+
+    const positions = [];
+    strings.forEach((string,stringIndex)=>{
+      for (let fret=0; fret<=12; fret++) positions.push({stringIndex,stringMidi:string.midi,fret,displayMidi:string.midi+fret});
+    });
+    const usedCells = new Set();
+    const usedStrings = new Set();
+    const chosen = [];
+    const commitPosition = (note,target)=>{
       const key = `${target.stringIndex}:${target.fret}`;
-      const sources = melodyByCell.get(key) || [];
-      sources.push(sourceMidi);
-      melodyByCell.set(key,sources);
+      usedCells.add(key);
+      usedStrings.add(target.stringIndex);
+      const entry = {...target,sourceMidi:note.midi,performanceRole:note.performanceRole,noteId:note.id};
+      chosen.push(entry);
+      const notes = melodyByCell.get(key) || [];
+      notes.push(note);
+      melodyByCell.set(key,notes);
+      miniFretLeadAssignments.set(note.id,{stringMidi:target.stringMidi,fret:target.fret,performanceRole:note.performanceRole});
+    };
+
+    normalizedLeadNotes.forEach((note)=>{
+      const prior = miniFretLeadAssignments.get(note.id);
+      if (!prior) return;
+      const target = positions.find(position=>position.stringMidi===prior.stringMidi && position.fret===prior.fret && pc(position.displayMidi)===pc(note.midi));
+      if (!target || usedCells.has(`${target.stringIndex}:${target.fret}`) || usedStrings.has(target.stringIndex)) return;
+      commitPosition(note,target);
+    });
+
+    normalizedLeadNotes
+      .filter(note=>!chosen.some(position=>position.noteId===note.id))
+      .sort((a,b)=>(a.performanceRole==="solo"?-1:0)-(b.performanceRole==="solo"?-1:0) || b.midi-a.midi)
+      .forEach((note)=>{
+        if (usedStrings.size >= 6) return;
+        const anchor = miniFretLeadAnchors.get(note.performanceRole) || null;
+        const candidates = positions.filter(position=>pc(position.displayMidi)===pc(note.midi) && !usedCells.has(`${position.stringIndex}:${position.fret}`));
+        candidates.forEach((candidate)=>{
+          const handFret = anchor ? anchor.fret : 5;
+          const handString = anchor ? anchor.stringIndex : (note.performanceRole === "solo" ? 1 : 1.5);
+          const fretMove = Math.abs(candidate.fret-handFret);
+          const stringMove = Math.abs(candidate.stringIndex-handString);
+          candidate.cost = Math.abs(candidate.displayMidi-note.midi)*.1 + fretMove*1.65 + stringMove*2.25;
+          if (fretMove > 4) candidate.cost += (fretMove-4)*2.4;
+          if (candidate.fret === 0) candidate.cost += 1.8;
+          if (usedStrings.has(candidate.stringIndex)) candidate.cost += usedStrings.size < 6 ? 28 : 7;
+          if (!anchor) candidate.cost += Math.abs(candidate.fret-5)*.35 + candidate.stringIndex*.45;
+        });
+        candidates.sort((a,b)=>a.cost-b.cost || a.fret-b.fret || a.stringIndex-b.stringIndex || b.displayMidi-a.displayMidi);
+        if (candidates[0]) commitPosition(note,candidates[0]);
+      });
+
+    ["melody","solo"].forEach((role)=>{
+      const rolePositions = chosen.filter(position=>position.performanceRole===role);
+      if (!rolePositions.length) return;
+      miniFretLeadAnchors.set(role,{
+        fret:rolePositions.reduce((sum,position)=>sum+position.fret,0)/rolePositions.length,
+        stringIndex:rolePositions.reduce((sum,position)=>sum+position.stringIndex,0)/rolePositions.length,
+        displayMidi:rolePositions.reduce((sum,position)=>sum+position.displayMidi,0)/rolePositions.length
+      });
     });
 
     strings.forEach((string, stringIndex)=>{
@@ -6386,11 +6469,12 @@
         const isRoot = inChord && pitchClass === rootPc;
         const melodySources = melodyByCell.get(`${stringIndex}:${fret}`) || [];
         const inMelody = melodySources.length > 0;
+        const inSolo = melodySources.some(note=>note.performanceRole === "solo");
         const semanticStates = [];
         if (inScale) semanticStates.push("scale");
         if (inChord) semanticStates.push("chord");
         if (isRoot) semanticStates.push("root");
-        if (inMelody) semanticStates.push("melody");
+        if (inMelody) semanticStates.push(inSolo ? "solo" : "melody");
 
         const pad = document.createElement("div");
         pad.className = `miniFretPadCell tone${(stringIndex + fret) % 2}`;
@@ -6398,13 +6482,15 @@
         pad.classList.toggle("isChord", inChord);
         pad.classList.toggle("isRoot", isRoot);
         pad.classList.toggle("isMelody", inMelody);
+        pad.classList.toggle("isSolo", inSolo);
         pad.setAttribute("role", "gridcell");
         pad.setAttribute("aria-rowindex", String(stringIndex + 2));
         pad.setAttribute("aria-colindex", String(fret + 2));
         pad.dataset.state = semanticStates.join(" ") || "none";
         if (inMelody){
-          pad.dataset.sourceMidi = melodySources.join(",");
+          pad.dataset.sourceMidi = melodySources.map(note=>note.midi).join(",");
           pad.dataset.displayMidi = String(string.midi + fret);
+          pad.dataset.leadRole = [...new Set(melodySources.map(note=>note.performanceRole))].join(",");
         }
 
         const note = noteName(pitchClass);
@@ -6752,7 +6838,7 @@
       const ref = { el: rect, pc: p, displayMidi, baseStroke, baseStrokeWidth };
       nextKeyRefs.push(ref);
       nextKeysByPc[p].push(ref);
-      melodyKeySlots.push({displayMidi,isBlack:false,cx:k.x + whiteW*0.5,cy:130});
+      melodyKeySlots.push({el:rect,displayMidi,isBlack:false});
 
       const isChord = chordSet.has(p);
       const isRoot = p === pc(ch.root);
@@ -6789,7 +6875,7 @@
         const ref = { el: rect, pc: p, displayMidi, baseStroke, baseStrokeWidth };
         nextKeyRefs.push(ref);
         nextKeysByPc[p].push(ref);
-        melodyKeySlots.push({displayMidi,isBlack:true,cx:x0 + blackW*0.5,cy:70});
+        melodyKeySlots.push({el:rect,displayMidi,isBlack:true});
 
         const isChord = chordSet.has(p);
         const isRoot = p === pc(ch.root);
@@ -6805,15 +6891,21 @@
       const sourceMidi = Math.round(Number(note?.midi));
       const displayMidi = foldMidiIntoRange(sourceMidi, displayBaseMidi, displayTopMidi);
       if (!Number.isFinite(displayMidi)) return;
-      const sources = melodyByDisplayMidi.get(displayMidi) || [];
-      sources.push(sourceMidi);
-      melodyByDisplayMidi.set(displayMidi,sources);
+      const notes = melodyByDisplayMidi.get(displayMidi) || [];
+      notes.push({...note,midi:sourceMidi});
+      melodyByDisplayMidi.set(displayMidi,notes);
     });
-    melodyByDisplayMidi.forEach((sources,displayMidi)=>{
+    melodyByDisplayMidi.forEach((notes,displayMidi)=>{
       const slot = melodyKeySlots.find(candidate=>candidate.displayMidi === displayMidi);
       if (!slot) return;
-      const marker = placeMelodyMarker(svg,slot.cx,slot.cy,slot.isBlack,sources[0],displayMidi);
-      marker.dataset.sourceMidi = sources.join(",");
+      const roles = [...new Set(notes.map(note=>note.performanceRole === "solo" ? "solo" : "melody"))];
+      slot.el.classList.add("midiMelodyKey");
+      slot.el.setAttribute("fill","var(--melody)");
+      slot.el.setAttribute("stroke","rgba(255,230,230,.96)");
+      slot.el.setAttribute("stroke-width",slot.isBlack ? "3" : "3.8");
+      slot.el.dataset.sourceMidi = notes.map(note=>note.midi).join(",");
+      slot.el.dataset.displayMidi = String(displayMidi);
+      slot.el.dataset.leadRole = roles.join(",");
     });
 
     pianoLiveKeyRefs = nextKeyRefs;
@@ -7829,7 +7921,7 @@
         return;
       }
       const songTime = midiPlayOffset + Math.max(0, now-midiPlayStartedAt);
-      const activeNotes = (runtime.melodyNotes || []).filter((note)=>{
+      const activeNotes = (runtime.leadNotes || runtime.melodyNotes || []).filter((note)=>{
         const start = Math.max(0,Number(note.time)||0);
         const end = start + Math.max(0.01,Number(note.duration)||0.01);
         return start <= songTime + 0.018 && end > songTime;
@@ -7912,7 +8004,7 @@
             when,
             duration,
             clamp(Number(note.velocity) || 0.72, 0.04, 1),
-            note.role || "keys"
+            note.performanceRole || note.role || "keys"
           );
         }
         midiScheduleTimer = window.setTimeout(refill, 200);
@@ -8348,6 +8440,7 @@
       setMidiSamplePlayback(false);
       if (options.resetMidi && activeMidiSong){
         activeMidiSong.seekTime = 0;
+        resetMiniFretLeadView();
         state.activeBar = 0;
         state.activeHalf = 0;
         highlightActiveBar();
@@ -8372,6 +8465,7 @@
     function seekMidi(time,barIndex){
       const runtime = activeMidiSong;
       if (!runtime) return false;
+      resetMiniFretLeadView();
       const continuePlayback = isPlaying;
       if (continuePlayback){
         stop();
@@ -8390,13 +8484,23 @@
       return continuePlayback;
     }
 
+    function refreshMidiPlayback(){
+      const runtime = activeMidiSong;
+      if (!runtime || !isPlaying) return false;
+      runtime.seekTime = clamp(midiPlayOffset + Math.max(0,AudioKit.now()-midiPlayStartedAt),0,runtime.duration);
+      clearMidiTimers();
+      try{ AudioKit.hardStop(); }catch{}
+      setMidiSamplePlayback(false);
+      return scheduleMidiSong();
+    }
+
     function toggle(){
       if (isPlaying) stop(); else start();
     }
 
     function isOn(){ return isPlaying; }
 
-    return { start, stop, toggle, isOn, jumpTo, seekMidi, setTempo, setChart };
+    return { start, stop, toggle, isOn, jumpTo, seekMidi, refreshMidiPlayback, setTempo, setChart };
   })();
 
   /* ---------- Undo / Redo (last 5) ---------- */
@@ -10016,6 +10120,7 @@
   /* ---------- Bind UI events ---------- */
   function bindUI(){
     window.addEventListener("beforeunload", ()=> saveAll(true));
+    window.addEventListener("fakebot-midi-track-mute", ()=>{ player.refreshMidiPlayback(); });
 
     document.addEventListener("keydown", (ev)=>{
       if (ev.defaultPrevented) return;
