@@ -1446,6 +1446,9 @@
 (() => {
   "use strict";
 
+  const IS_FAKEBOT_MINI = new URLSearchParams(window.location.search).get("variant") === "mini";
+  const variantStorageKey = (key)=>IS_FAKEBOT_MINI ? `${key}_mini` : key;
+
   /* ---------- Core helpers ---------- */
   const NOTE_NAMES = ["C","C#","D","Eb","E","F","F#","G","Ab","A","Bb","B"];
   const NOTE_TO_PC = {
@@ -3647,7 +3650,7 @@
     document.documentElement.style.setProperty("--pageGlowB", t.b);
     document.documentElement.style.setProperty("--pageGlowC", t.c);
     state.pageTheme = themeId;
-    try{ localStorage.setItem("fm_page_theme", themeId); }catch{}
+    try{ localStorage.setItem(variantStorageKey("fm_page_theme"), themeId); }catch{}
   }
 
   const PIANO_THEMES = {
@@ -3688,20 +3691,20 @@
     const t = PIANO_THEMES[id] || PIANO_THEMES.classic;
     for (const k of Object.keys(t.vars)) document.documentElement.style.setProperty(k, t.vars[k]);
     state.pianoTheme = id;
-    try{ localStorage.setItem("fm_piano_theme", id); }catch{}
+    try{ localStorage.setItem(variantStorageKey("fm_piano_theme"), id); }catch{}
   }
 
   function applyFretTheme(id){
     const t = FRET_THEMES[id] || FRET_THEMES.rosewood;
     for (const k of Object.keys(t.vars)) document.documentElement.style.setProperty(k, t.vars[k]);
     state.fretTheme = id;
-    try{ localStorage.setItem("fm_fret_theme", id); }catch{}
+    try{ localStorage.setItem(variantStorageKey("fm_fret_theme"), id); }catch{}
   }
 
   function applyMorphBg(on){
     state.morphBg = !!on;
     document.documentElement.style.setProperty("--morphOn", state.morphBg ? "1" : "0");
-    try{ localStorage.setItem("fm_morph_bg", state.morphBg ? "1" : "0"); }catch{}
+    try{ localStorage.setItem(variantStorageKey("fm_morph_bg"), state.morphBg ? "1" : "0"); }catch{}
   }
 
 
@@ -5449,18 +5452,31 @@
 
   function placeMarker(svg, cx, cy, kind){
     const style = state.markerStyle || "dots";
+    const miniView = document.documentElement.classList.contains("fakebot-mini-frame");
     const fillVar = (kind==="root") ? "var(--good)" : "var(--chord)";
     const rootStroke = "rgba(255,255,255,.82)";
     const chordStroke = "rgba(0,0,0,.55)";
 
     if (style==="dots"){
+      if (miniView){
+        const e = document.createElementNS("http://www.w3.org/2000/svg","ellipse");
+        e.setAttribute("cx", String(cx));
+        e.setAttribute("cy", String(cy));
+        e.setAttribute("rx", kind==="root" ? "32" : "30");
+        e.setAttribute("ry", kind==="root" ? "15" : "14");
+        e.setAttribute("fill", fillVar);
+        e.setAttribute("stroke", kind==="root" ? rootStroke : chordStroke);
+        e.setAttribute("stroke-width", kind==="root" ? "4" : "3");
+        svg.appendChild(e);
+        return;
+      }
       const c = document.createElementNS("http://www.w3.org/2000/svg","circle");
       c.setAttribute("cx", String(cx));
       c.setAttribute("cy", String(cy));
-      c.setAttribute("r", "10");
+      c.setAttribute("r", miniView ? (kind==="root" ? "32" : "30") : "10");
       c.setAttribute("fill", fillVar);
       c.setAttribute("stroke", kind==="root" ? rootStroke : chordStroke);
-      c.setAttribute("stroke-width", kind==="root" ? "2.2" : "1.4");
+      c.setAttribute("stroke-width", miniView ? (kind==="root" ? "4" : "3") : (kind==="root" ? "2.2" : "1.4"));
       svg.appendChild(c);
       return;
     }
@@ -5468,7 +5484,7 @@
       const c = document.createElementNS("http://www.w3.org/2000/svg","circle");
       c.setAttribute("cx", String(cx));
       c.setAttribute("cy", String(cy));
-      c.setAttribute("r", "12");
+      c.setAttribute("r", miniView ? "32" : "12");
       c.setAttribute("fill", kind==="root" ? fillVar : "transparent");
       c.setAttribute("stroke", kind==="root" ? rootStroke : fillVar);
       c.setAttribute("stroke-width", kind==="root" ? "3.2" : "2.4");
@@ -5477,10 +5493,11 @@
     }
     if (style==="squares"){
       const r = document.createElementNS("http://www.w3.org/2000/svg","rect");
-      r.setAttribute("x", String(cx-10));
-      r.setAttribute("y", String(cy-10));
-      r.setAttribute("width", "20");
-      r.setAttribute("height", "20");
+      const half = miniView ? 30 : 10;
+      r.setAttribute("x", String(cx-half));
+      r.setAttribute("y", String(cy-half));
+      r.setAttribute("width", String(half*2));
+      r.setAttribute("height", String(half*2));
       r.setAttribute("rx", "5");
       r.setAttribute("fill", fillVar);
       r.setAttribute("stroke", kind==="root" ? rootStroke : chordStroke);
@@ -5489,7 +5506,8 @@
       return;
     }
     const tri = document.createElementNS("http://www.w3.org/2000/svg","path");
-    tri.setAttribute("d", `M ${cx} ${cy-12} L ${cx-12} ${cy+10} L ${cx+12} ${cy+10} Z`);
+    const triangleSize = miniView ? 32 : 12;
+    tri.setAttribute("d", `M ${cx} ${cy-triangleSize} L ${cx-triangleSize} ${cy+triangleSize*.84} L ${cx+triangleSize} ${cy+triangleSize*.84} Z`);
     tri.setAttribute("fill", fillVar);
     tri.setAttribute("stroke", kind==="root" ? rootStroke : chordStroke);
     tri.setAttribute("stroke-width", kind==="root" ? "2.2" : "1.4");
@@ -5895,11 +5913,26 @@
     svg.innerHTML = "";
     const nextKeyRefs = [];
     const nextKeysByPc = Array.from({ length: 12 }, ()=>[]);
+    const miniView = document.documentElement.classList.contains("fakebot-mini-frame");
+
+    const placeMiniNoteLabel = (x, y, pitchClass)=>{
+      if (!miniView) return;
+      const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      label.setAttribute("class", "miniPianoNote");
+      label.setAttribute("x", String(x));
+      label.setAttribute("y", String(y));
+      label.setAttribute("text-anchor", "middle");
+      label.setAttribute("dominant-baseline", "middle");
+      label.setAttribute("pointer-events", "none");
+      label.setAttribute("transform", `translate(${x} ${y}) scale(1 .4) translate(${-x} ${-y})`);
+      label.textContent = noteName(pitchClass);
+      svg.appendChild(label);
+    };
 
     const W = 1000, H = 240;
     const baseOct = clamp(Number(state.kbOct)||2, 1, 4);
     const needWide = (ch.intervals?.length||0) >= 5;
-    const oct = clamp(needWide ? Math.max(baseOct, 3) : baseOct, 1, 4);
+    const oct = miniView ? baseOct : clamp(needWide ? Math.max(baseOct, 3) : baseOct, 1, 4);
     const whiteKeyCount = 7 * oct;
     const whiteW = W / whiteKeyCount;
     const whiteH = 230;
@@ -5924,6 +5957,7 @@
       rect.setAttribute("y", "0");
       rect.setAttribute("width", String(whiteW));
       rect.setAttribute("height", String(whiteH));
+      if (miniView){ rect.setAttribute("rx", "4"); rect.setAttribute("ry", "4"); }
 
       const inScale = scaleSet.has(p);
       const baseStroke = inScale ? `rgba(0,0,0,var(--scaleStrokeAlpha))` : "var(--keyBorderStrong)";
@@ -5940,14 +5974,15 @@
       const isRoot = p === pc(ch.root);
       if (isChord){
         placeMarker(svg, k.x + whiteW*0.5, 175, isRoot ? "root" : "chord");
+        placeMiniNoteLabel(k.x + whiteW*0.5, 175, p);
       }
       if (melodyPcs.has(p)){
         placeMelodyMarker(svg, k.x + whiteW*0.5, 130, false);
       }
     }
 
-    const blackW = whiteW*0.62;
-    const blackH = 140;
+    const blackW = whiteW*(miniView ? 0.68 : 0.62);
+    const blackH = miniView ? 142 : 140;
     const blackOffsets = {1:0.70, 3:1.72, 6:3.70, 8:4.72, 10:5.74};
     for (let o=0;o<oct;o++){
       for (const pRel of [1,3,6,8,10]){
@@ -5977,6 +6012,7 @@
         const isRoot = p === pc(ch.root);
         if (isChord){
           placeMarker(svg, x0 + blackW*0.5, 95, isRoot ? "root" : "chord");
+          placeMiniNoteLabel(x0 + blackW*0.5, 95, p);
         }
         if (melodyPcs.has(p)){
           placeMelodyMarker(svg, x0 + blackW*0.5, 70, true);
@@ -6142,6 +6178,13 @@
       masterLevel = clamp(raw, 0, 1);
       if (master) master.gain.value = masterLevel;
       return masterLevel;
+    }
+
+    function createExternalInput(){
+      const context = ensure();
+      const input = context.createGain();
+      input.connect(comp);
+      return { context, input };
     }
 
     function soundFontActive(){
@@ -6824,9 +6867,34 @@
     return {
       ensure, now, resume, playChord, playNote, noteOn, noteOff, playMidiNote, playBass, playDrumHit, hardStop,
       loadSoundFontUrl, loadSoundFontBuffer, updateSoundFontPrograms, setMidiProgram,
-      soundFontActive, soundFontAllNotesOff, setMasterVolume
+      soundFontActive, soundFontAllNotesOff, setMasterVolume, createExternalInput
     };
   })();
+
+  // Mini is silent until its sampled backend replaces these public methods.
+  // This keeps keyboard shortcuts and failed asset loads from reaching the
+  // legacy synthesized voices.
+  if (IS_FAKEBOT_MINI){
+    const silentAudio = ()=>{};
+    ["playChord","playNote","noteOn","noteOff","playMidiNote","playBass","playDrumHit"]
+      .forEach((method)=>{ AudioKit[method] = silentAudio; });
+  }
+
+  // Same-origin product shells can reuse the generator while replacing only
+  // presentation and audio. Keep the exposed surface small and read-only.
+  window.FakebotAudioKit = AudioKit;
+  window.FakebotCore = Object.freeze({
+    variant: IS_FAKEBOT_MINI ? "mini" : "classic",
+    audio: AudioKit,
+    chordVoicingMidi: (ch, style)=>chordVoicingMidi(ch, style),
+    chordVoicingForPreset: (ch, preset)=>{
+      const config = KEY_PRESETS[preset] || KEY_PRESETS.ep;
+      return chordVoicingMidi(ch, config.vStyle || "closed");
+    },
+    chordTonesPCs: (ch)=>chordTonesPCs(ch),
+    chordName: (ch)=>chordName(ch),
+    noteName: (pitchClass)=>noteName(pitchClass)
+  });
 
   window.addEventListener("pointerdown", () => { AudioKit.resume(); }, { once:true, passive:true });
 
@@ -8379,7 +8447,9 @@
   /* ---------- Locks UI ---------- */
   function setLockBtn(btn, on, label){
     btn.classList.toggle("on", !!on);
-    btn.innerHTML = (on ? "🔒" : "🔓");
+    btn.textContent = IS_FAKEBOT_MINI ? (on ? "Locked" : "Lock") : (on ? "🔒" : "🔓");
+    btn.setAttribute("aria-label", `${on ? "Unlock" : "Lock"} ${label}`);
+    btn.setAttribute("aria-pressed", String(!!on));
   }
 
   function syncLocksUI(){
@@ -8649,7 +8719,7 @@
       const el = document.getElementById(id);
       if (el) app.appendChild(el);
     });
-    try{ localStorage.setItem("fm_order", JSON.stringify(order)); }catch{}
+    try{ localStorage.setItem(variantStorageKey("fm_order"), JSON.stringify(order)); }catch{}
   }
 
   function renderOrderList(){
@@ -8782,7 +8852,7 @@
 
   function writeSaveAll(){
     try{
-      localStorage.setItem("fm_state", JSON.stringify(buildSavePayload()));
+      localStorage.setItem(variantStorageKey("fm_state"), JSON.stringify(buildSavePayload()));
     }catch{}
   }
 
@@ -8803,7 +8873,7 @@
   }
 
   function loadAll(){
-    const saved = safeJSONParse(safeStorageGet("fm_state"), null);
+    const saved = safeJSONParse(safeStorageGet(variantStorageKey("fm_state")), null);
     if (!saved) return false;
 
     // chart
@@ -8882,7 +8952,7 @@
   }
 
   function loadOrder(){
-    const o = safeJSONParse(safeStorageGet("fm_order"), null);
+    const o = safeJSONParse(safeStorageGet(variantStorageKey("fm_order")), null);
     if (Array.isArray(o) && o.length) applyOrder(o);
   }
 
@@ -9468,6 +9538,14 @@
 
     let loaded = false;
     try{ loaded = loadAll(); }catch{ loaded = false; }
+    if (IS_FAKEBOT_MINI){
+      state.progressionSource = "generate";
+      state.viewMode = "piano";
+      state.markerStyle = "dots";
+      state.kbOct = 2;
+      state.morphBg = false;
+      state.soundFontEnabled = false;
+    }
     // defaults for “all menus collapsed”: details are collapsed by default in markup
     // set theme
     applyPageTheme(state.pageTheme);
@@ -9503,7 +9581,7 @@
     if (isGameMode()){
       startGameRound(false);
     }
-    if (state.soundFontUrl) loadSoundFontFromUrl(state.soundFontUrl);
+    if (!IS_FAKEBOT_MINI && state.soundFontUrl) loadSoundFontFromUrl(state.soundFontUrl);
 
   }
 

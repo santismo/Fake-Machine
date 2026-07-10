@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const VERSION = "20260709b";
+  const VERSION = "20260710c";
   const frame = document.getElementById("fakebotFrame");
   const status = document.getElementById("frameStatus");
   let statusTimer = null;

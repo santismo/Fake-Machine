@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Fakebot Mini">
+  <meta name="theme-color" content="#0b0c0e">
+  <title>Fakebot Mini</title>
+  <link rel="stylesheet" href="shell.css?v=20260710j">
+</head>
+<body>
+  <div class="miniShell">
+    <header class="miniTopbar">
+      <a class="miniBack" href="../" aria-label="Open original Fakebot">Fakebot</a>
+      <div class="miniBrand">
+        <strong>Fakebot Mini</strong>
+        <span id="miniAudioStatus">Preparing samples</span>
+      </div>
+      <button class="miniTopAction" type="button" data-mini-action="settings">Settings</button>
+    </header>
+
+    <main class="miniFrameWrap">
+      <iframe id="miniFrame" src="../index.html?variant=mini&amp;v=20260710j" title="Fakebot Mini chord generator"></iframe>
+      <div class="miniLoading" id="miniLoading" role="status">Loading Fakebot Mini…</div>
+    </main>
+
+    <nav class="miniDock" aria-label="Primary actions">
+      <button type="button" data-mini-action="play" id="miniPlay">Play</button>
+      <button type="button" data-mini-action="generate" class="miniGenerate">Generate</button>
+      <button type="button" data-mini-action="settings">Settings</button>
+    </nav>
+  </div>
+  <script src="shell.js?v=20260710j"></script>
+</body>
+</html>

@@ -1,37 +1,46 @@
 (function(){
   "use strict";
-  const STORE_KEY = "fakebot2.fretstepSamples.v1";
-  const DEFAULTS = { enabled:true, keys:"real:gm:music_box", bass:"real:chip:gb_bass", drums:"fretstep:drums:arcade", route:"all", mix:0.82 };
+  const STORE_KEY = "fakebot2.fretstepSamples.v2";
+  const DEFAULTS = { enabled:true, keys:"real:gm:electric_piano_1", bass:"real:gm:electric_bass_finger", drums:"real:drum:LM-2", route:"all", mix:0.82 };
   const NOTE_NAMES = ["C","Db","D","Eb","E","F","Gb","G","Ab","A","Bb","B"];
   const INSTRUMENTS = [
-    {id:"real:gm:music_box", name:"FretStep GM Music Box", group:"keys", wave:"fm", roots:[60,72], duration:1.35, gain:.78, fmRatio:3, modIndex:1.8, bitDepth:10, pluck:true, color:"#ffcf5a"},
-    {id:"real:gm:tinkle_bell", name:"FretStep Coin Bell", group:"keys", wave:"fm", roots:[60,72,84], duration:1.05, gain:.84, fmRatio:5, modIndex:1.6, bitDepth:9, pluck:true, color:"#00e0a4"},
-    {id:"real:gm:marimba", name:"FretStep GM Marimba", group:"keys", wave:"triangle", roots:[48,60,72], duration:.82, gain:.82, bitDepth:10, pluck:true, color:"#ff9d4a"},
-    {id:"real:gm:kalimba", name:"FretStep GM Kalimba", group:"keys", wave:"triangle", roots:[60,72], duration:1.15, gain:.78, bitDepth:9, pluck:true, color:"#46f59c"},
-    {id:"real:gm:acoustic_guitar_steel", name:"FretStep Steel Guitar", group:"keys", wave:"saw", roots:[48,60,72], duration:1.05, gain:.58, bitDepth:11, pluck:true, lowpass:.55, color:"#b67cff"},
-    {id:"real:gm:electric_guitar_muted", name:"FretStep Muted Guitar", group:"keys", wave:"pulse", duty:.24, roots:[48,60,72], duration:.52, gain:.74, bitDepth:9, pluck:true, lowpass:.45, color:"#7aa2ff"},
+    {id:"real:gm:electric_piano_1", name:"Sample Electric Piano", group:"keys", sample:true, instrument:"electric_piano_1"},
+    {id:"real:gm:acoustic_grand_piano", name:"Sample Grand Piano", group:"keys", sample:true, instrument:"acoustic_grand_piano"},
+    {id:"real:gm:music_box", name:"Sample Music Box", group:"keys", sample:true, instrument:"music_box"},
+    {id:"real:gm:vibraphone", name:"Sample Vibraphone", group:"keys", sample:true, instrument:"vibraphone"},
+    {id:"real:gm:marimba", name:"Sample Marimba", group:"keys", sample:true, instrument:"marimba"},
+    {id:"real:gm:acoustic_guitar_steel", name:"Sample Steel Guitar", group:"keys", sample:true, instrument:"acoustic_guitar_steel"},
+    {id:"real:gm:drawbar_organ", name:"Sample Drawbar Organ", group:"keys", sample:true, instrument:"drawbar_organ"},
+    {id:"real:gm:string_ensemble_1", name:"Sample String Ensemble", group:"keys", sample:true, instrument:"string_ensemble_1"},
     {id:"real:chip:coin_pluck", name:"8-Bit Coin Pluck", group:"keys", wave:"pulse", duty:.2, roots:[60,72,84], duration:.58, gain:.86, bitDepth:4, pluck:true, pitchEnd:1.6, color:"#ffee78"},
     {id:"real:chip:tiny_bell", name:"8-Bit Tiny Bell", group:"keys", wave:"fm", roots:[60,72,84], duration:.92, gain:.82, fmRatio:3, modIndex:2.1, bitDepth:5, pluck:true, color:"#78f0ff"},
     {id:"real:chip:fm_keys", name:"16-Bit FM Keys", group:"keys", wave:"fm", roots:[48,60,72], duration:1.18, gain:.68, fmRatio:1.5, modIndex:1.9, bitDepth:8, color:"#ac7cff"},
     {id:"real:chip:pcm_pad", name:"16-Bit PCM Pad", group:"keys", wave:"organ", roots:[48,60,72], duration:2.4, gain:.48, bitDepth:8, pad:true, color:"#7c5cff"},
-    {id:"real:gm:fx_3_crystal", name:"FretStep Crystal FX", group:"keys", wave:"fm", roots:[60,72], duration:1.45, gain:.68, fmRatio:6, modIndex:2.3, bitDepth:7, pluck:true, color:"#b9ffff"},
+    {id:"real:gm:fx_3_crystal", name:"Sample Crystal FX", group:"keys", sample:true, instrument:"fx_3_crystal"},
     {id:"real:chip:gb_bass", name:"Gameboy Bass", group:"bass", wave:"pulse", duty:.25, roots:[36,48], duration:1.2, gain:.94, bitDepth:4, lowpass:.45, color:"#ff4778"},
-    {id:"real:gm:electric_bass_finger", name:"FretStep Finger Bass", group:"bass", wave:"triangle", roots:[36,48], duration:1.15, gain:.86, bitDepth:10, lowpass:.36, pluck:true, color:"#46f59c"},
-    {id:"real:gm:slap_bass_1", name:"FretStep Slap Bass", group:"bass", wave:"saw", roots:[36,48], duration:.74, gain:.86, bitDepth:8, pluck:true, lowpass:.48, color:"#ffcf5a"},
+    {id:"real:gm:electric_bass_finger", name:"Sample Finger Bass", group:"bass", sample:true, instrument:"electric_bass_finger"},
+    {id:"real:gm:acoustic_bass", name:"Sample Acoustic Bass", group:"bass", sample:true, instrument:"acoustic_bass"},
+    {id:"real:gm:fretless_bass", name:"Sample Fretless Bass", group:"bass", sample:true, instrument:"fretless_bass"},
+    {id:"real:gm:slap_bass_1", name:"Sample Slap Bass", group:"bass", sample:true, instrument:"slap_bass_1"},
+    {id:"real:gm:synth_bass_1", name:"Sample Synth Bass", group:"bass", sample:true, instrument:"synth_bass_1"},
     {id:"real:chipsfx:gem_1.wav", name:"CC0 Gem SFX", group:"fx", sampleUrl:"https://raw.githubusercontent.com/subsoap/chip-sounds/master/chip-sounds/gem_1.wav", root:72, gain:.9, color:"#00e0a4"},
     {id:"real:chipsfx:bonus_1.wav", name:"CC0 Bonus SFX", group:"fx", sampleUrl:"https://raw.githubusercontent.com/subsoap/chip-sounds/master/chip-sounds/bonus_1.wav", root:72, gain:.86, color:"#ffcf5a"},
     {id:"real:chipsfx:pew.wav", name:"CC0 Pew Shot", group:"fx", sampleUrl:"https://raw.githubusercontent.com/subsoap/chip-sounds/master/chip-sounds/pew.wav", root:72, gain:.78, color:"#ff4778"}
   ];
   const DRUM_KITS = [
-    {id:"fretstep:drums:arcade", name:"FretStep Arcade Kit"},
-    {id:"fretstep:drums:tight", name:"FretStep Tight Kit"},
-    {id:"fretstep:drums:lofi", name:"FretStep Lo-Fi Kit"}
+    {id:"real:drum:LM-2", name:"Sample Linn LM-2", instrument:"LM-2"},
+    {id:"real:drum:TR-808", name:"Sample TR-808", instrument:"TR-808"},
+    {id:"real:drum:Casio-RZ1", name:"Sample Casio RZ-1", instrument:"Casio-RZ1"},
+    {id:"real:drum:MFB-512", name:"Sample MFB-512", instrument:"MFB-512"}
   ];
   function readSettings(){
     try { return Object.assign({}, DEFAULTS, JSON.parse(localStorage.getItem(STORE_KEY) || "{}")); }
     catch { return Object.assign({}, DEFAULTS); }
   }
   const settings = readSettings();
+  if (!INSTRUMENTS.some(x=>x.id === settings.keys && x.group === "keys")) settings.keys = DEFAULTS.keys;
+  if (!INSTRUMENTS.some(x=>x.id === settings.bass && x.group === "bass")) settings.bass = DEFAULTS.bass;
+  if (!DRUM_KITS.some(x=>x.id === settings.drums)) settings.drums = DEFAULTS.drums;
   function saveSettings(){ try { localStorage.setItem(STORE_KEY, JSON.stringify(settings)); } catch {} }
   function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
   function midiHz(m){ return 440 * Math.pow(2, (m - 69) / 12); }
@@ -69,7 +78,7 @@
     return s;
   }
   const Engine = {
-    ctx:null, master:null, buffers:new Map(), urlBuffers:new Map(), active:new Map(),
+    ctx:null, master:null, buffers:new Map(), urlBuffers:new Map(), active:new Map(), sampleInstruments:new Map(), sampleRuntimePromise:null, hostAudio:null, status:null,
     ensure(){
       if (this.ctx) return this.ctx;
       const AC = window.AudioContext || window.webkitAudioContext;
@@ -81,12 +90,96 @@
       this.master.connect(comp); comp.connect(this.ctx.destination);
       return this.ctx;
     },
-    async resume(){ const c = this.ensure(); if (c.state === "suspended") { try { await c.resume(); } catch {} } },
+    async resume(){
+      const c = this.ensure();
+      if (c.state === "suspended") c.resume().catch(()=>{});
+      return c;
+    },
     updateMix(){ if (this.master) this.master.gain.value = settings.enabled ? clamp(Number(settings.mix)||.82, 0, 1.25) : 0; },
+    setStatus(text){ if (typeof this.status === "function") this.status(text); },
+    sampleRuntime(){
+      if (!this.sampleRuntimePromise){
+        this.setStatus("Loading FretStep sample library…");
+        this.sampleRuntimePromise = import("https://unpkg.com/smplr@1.0.0/dist/index.mjs").catch((err)=>{
+          this.sampleRuntimePromise = null;
+          throw err;
+        });
+      }
+      return this.sampleRuntimePromise;
+    },
+    sampleProgress(label){
+      return ({loaded,total}={})=>{
+        if (Number.isFinite(total) && total > 0) this.setStatus(`${label} · ${loaded || 0}/${total}`);
+      };
+    },
+    sampleInstrument(id, type="voice"){
+      const key = `${type}:${id}`;
+      if (this.sampleInstruments.has(key)) return this.sampleInstruments.get(key);
+      const promise = (async()=>{
+        const c = this.ensure();
+        const runtime = await this.sampleRuntime();
+        const destination = this.master;
+        let instance;
+        if (type === "drum"){
+          const kit = DRUM_KITS.find(x=>x.id === id) || DRUM_KITS[0];
+          this.setStatus(`Loading ${kit.name}…`);
+          instance = runtime.DrumMachine(c, { destination, instrument:kit.instrument, volume:100, onLoadProgress:this.sampleProgress(kit.name) });
+        } else {
+          const voice = getInst(id);
+          this.setStatus(`Loading ${voice.name}…`);
+          instance = runtime.Soundfont(c, { destination, kit:"FluidR3_GM", instrument:voice.instrument, volume:100, onLoadProgress:this.sampleProgress(voice.name) });
+        }
+        await instance.ready;
+        this.setStatus(`${type === "drum" ? (DRUM_KITS.find(x=>x.id === id)?.name || "Drums") : getInst(id).name} ready`);
+        return instance;
+      })().catch((err)=>{
+        this.sampleInstruments.delete(key);
+        throw err;
+      });
+      this.sampleInstruments.set(key, promise);
+      return promise;
+    },
+    async playSampleVoice(id, midi, vel=.75, t0, dur=.55){
+      const target = this.sourceTime(t0);
+      try{
+        await this.resume();
+        const instance = await this.sampleInstrument(id, "voice");
+        const time = Math.max(this.ctx.currentTime + .006, target);
+        instance.start({ note:midi, time, duration:Math.max(.08, Number(dur)||.55), velocity:Math.round(clamp(Number(vel)||.75,.05,1)*127) });
+      }catch(err){
+        this.setStatus("Sample unavailable · using lightweight fallback");
+        const fallback = getInst(id).group === "bass" ? "real:chip:gb_bass" : "real:chip:fm_keys";
+        this.playInstrument(fallback, midi, vel, t0, dur);
+      }
+    },
+    drumGroupName(kind, instance){
+      const preferred = {
+        kick:["Kick","Bass Drum"], snare:["Snare"], clap:["Clap","Snare"], hat:["Hi-Hat Closed","Hihat Closed","Closed Hat","hihat-close","hihat","hat"],
+        ride:["Ride","Cymbal"], crash:["Crash","Cymbal"], tom:["Tom Mid","Mid Tom","Tom"]
+      }[kind] || [kind];
+      const groups = typeof instance?.getGroupNames === "function" ? instance.getGroupNames() : [];
+      const norm = value=>String(value||"").toLowerCase().replace(/[^a-z0-9]+/g, "");
+      const mapped = groups.map(raw=>({raw,key:norm(raw)}));
+      for (const name of preferred){ const match = mapped.find(item=>item.key === norm(name)); if (match) return match.raw; }
+      for (const name of preferred){ const key = norm(name); const match = mapped.find(item=>item.key.includes(key) || key.includes(item.key)); if (match) return match.raw; }
+      return preferred[0];
+    },
+    async playSampleDrum(kind, vel=.8, t0){
+      const target = this.sourceTime(t0);
+      try{
+        await this.resume();
+        const instance = await this.sampleInstrument(settings.drums, "drum");
+        instance.start({ note:this.drumGroupName(kind, instance), time:Math.max(this.ctx.currentTime + .006, target), velocity:Math.round(clamp(Number(vel)||.8,.05,1)*127) });
+      }catch(err){
+        this.setStatus("Drum samples unavailable · using lightweight fallback");
+        const buf = this.drumBuffer(kind, "fallback");
+        this.playBuffer(buf, 60, 60, vel, t0, buf.duration, {gainScale:1});
+      }
+    },
     sourceTime(t0){
       const c = this.ensure();
       let hostNow = c.currentTime;
-      try { if (typeof AudioKit !== "undefined" && AudioKit && typeof AudioKit.now === "function") hostNow = AudioKit.now(); } catch {}
+      try { if (this.hostAudio && typeof this.hostAudio.now === "function") hostNow = this.hostAudio.now(); } catch {}
       return c.currentTime + Math.max(0, (Number.isFinite(t0) ? t0 : hostNow) - hostNow);
     },
     renderedBuffer(inst, root){
@@ -150,6 +243,7 @@
       if (!settings.enabled || !Number.isFinite(midi)) return;
       this.ensure(); this.updateMix();
       const inst = getInst(id);
+      if (inst.sample) return this.playSampleVoice(id, midi, vel, t0, dur);
       if (inst.sampleUrl){
         if (this.urlBuffers.has(inst.sampleUrl)){
           return this.playBuffer(this.urlBuffers.get(inst.sampleUrl), midi, inst.root || 72, vel, t0, dur, inst);
@@ -166,6 +260,7 @@
     },
     noteOn(id, midi, vel=.75){
       if (!Number.isFinite(midi)) return;
+      if (getInst(id).sample){ this.playInstrument(id, midi, vel, undefined, 6); return; }
       const handle = this.playInstrument(id, midi, vel, undefined, 3.5);
       if (!handle) return;
       const stack = this.active.get(midi) || [];
@@ -203,20 +298,22 @@
       this.buffers.set(key, buf); return buf;
     },
     playDrum(kind, vel=.8, t0){
-      const kit = settings.drums || DRUM_KITS[0].id;
-      const buf = this.drumBuffer(kind, kit);
-      return this.playBuffer(buf, 60, 60, vel, t0, buf.duration, {gainScale:1});
+      return this.playSampleDrum(kind, vel, t0);
     },
     stopAll(){
       this.active.forEach((stack, midi)=>stack.forEach(()=>this.noteOff(midi)));
       this.active.clear();
+      this.sampleInstruments.forEach(promise=>Promise.resolve(promise).then(instance=>{ try { if (typeof instance.stop === "function") instance.stop(); } catch {} }).catch(()=>{}));
     },
     async preload(){
       this.ensure();
-      [settings.keys, settings.bass].forEach(id=>{ const inst=getInst(id); (inst.roots||[60]).forEach(r=>this.renderedBuffer(inst,r)); });
-      ["kick","snare","hat","ride","tom","crash"].forEach(k=>this.drumBuffer(k, settings.drums));
+      const tasks = [];
+      [settings.keys, settings.bass].forEach(id=>{ const inst=getInst(id); if (inst.sample) tasks.push(this.sampleInstrument(id, "voice")); else (inst.roots||[60]).forEach(r=>this.renderedBuffer(inst,r)); });
+      tasks.push(this.sampleInstrument(settings.drums, "drum"));
       const urls = INSTRUMENTS.filter(x=>x.sampleUrl);
-      await Promise.allSettled(urls.map(x=>this.urlBuffer(x)));
+      tasks.push(...urls.map(x=>this.urlBuffer(x)));
+      const results = await Promise.allSettled(tasks);
+      if (results.some(result=>result.status === "rejected")) throw new Error("Some samples could not be loaded");
     }
   };
   function enabledFor(role){ return !!settings.enabled && (settings.route === "all" || settings.route === role); }
@@ -239,7 +336,9 @@
     return "snare";
   }
   function patchAudioKit(){
-    if (typeof AudioKit === "undefined" || !AudioKit || AudioKit.__fakebot2SamplesPatched) return false;
+    const AudioKit = window.FakebotAudioKit;
+    if (!AudioKit || AudioKit.__fakebot2SamplesPatched) return false;
+    Engine.hostAudio = AudioKit;
     const original = {
       playChord:AudioKit.playChord && AudioKit.playChord.bind(AudioKit),
       playNote:AudioKit.playNote && AudioKit.playNote.bind(AudioKit),
@@ -306,19 +405,24 @@
         <div class="row"><label>keys/chords<select id="fb2KeysInst">${optionList(INSTRUMENTS.filter(x=>x.group==="keys"||x.group==="fx"), settings.keys)}</select></label><label>bass<select id="fb2BassInst">${optionList(INSTRUMENTS.filter(x=>x.group==="bass"), settings.bass)}</select></label></div>
         <div class="row"><label>drums<select id="fb2DrumKit">${optionList(DRUM_KITS, settings.drums)}</select></label><label>route<select id="fb2Route"><option value="all">all tracks</option><option value="keys">keys only</option><option value="bass">bass only</option><option value="drums">drums only</option></select></label></div>
         <label>sample mix <input id="fb2Mix" type="range" min="0" max="1.25" step="0.01"></label>
-        <button id="fb2Preload" type="button">preload samples</button><div id="fakebot2SampleStatus">Fakebot 2 sample engine patched into original AudioKit.</div>
+        <button id="fb2Preload" type="button">load selected sounds</button><div id="fakebot2SampleStatus">Real FretStep samples are ready to load.</div>
       </div>`;
     document.body.appendChild(panel);
     const enabled = document.getElementById("fb2SampleEnabled"), keys = document.getElementById("fb2KeysInst"), bass = document.getElementById("fb2BassInst"), drums = document.getElementById("fb2DrumKit"), route = document.getElementById("fb2Route"), mix = document.getElementById("fb2Mix"), status = document.getElementById("fakebot2SampleStatus"), badge = document.getElementById("fakebot2SampleBadge");
     enabled.checked = !!settings.enabled; route.value = settings.route; mix.value = settings.mix;
+    Engine.status = text=>{ status.textContent = text; };
     function sync(){ badge.textContent = settings.enabled ? "on" : "off"; badge.style.color = settings.enabled ? "#00e0a4" : "#9aa6b2"; Engine.updateMix(); saveSettings(); }
-    enabled.onchange = ()=>{ settings.enabled = enabled.checked; sync(); status.textContent = settings.enabled ? "Sample engine on: original features, FretStep-style sounds." : "Sample engine bypassed; original Fakebot audio restored."; };
+    enabled.onchange = ()=>{ settings.enabled = enabled.checked; sync(); status.textContent = settings.enabled ? "FretStep sample playback on." : "Sample engine bypassed; original Fakebot audio restored."; };
     keys.onchange = ()=>{ settings.keys = keys.value; sync(); status.textContent = `Keys: ${getInst(settings.keys).name}`; };
     bass.onchange = ()=>{ settings.bass = bass.value; sync(); status.textContent = `Bass: ${getInst(settings.bass).name}`; };
     drums.onchange = ()=>{ settings.drums = drums.value; sync(); status.textContent = `Drums: ${DRUM_KITS.find(x=>x.id===settings.drums)?.name || settings.drums}`; };
     route.onchange = ()=>{ settings.route = route.value; sync(); status.textContent = `Routing samples to ${settings.route}.`; };
     mix.oninput = ()=>{ settings.mix = Number(mix.value); sync(); };
-    document.getElementById("fb2Preload").onclick = async ()=>{ status.textContent = "Preloading rendered + URL samples…"; await Engine.resume(); await Engine.preload(); status.textContent = "Samples ready. Try Play, Generate, MIDI, piano, or game mode."; };
+    document.getElementById("fb2Preload").onclick = async ()=>{
+      status.textContent = "Loading selected FretStep samples…";
+      try{ await Engine.resume(); await Engine.preload(); status.textContent = "Selected keys, bass, and drums are ready."; }
+      catch(err){ status.textContent = "Samples could not load. Lightweight fallback remains available."; }
+    };
     sync();
   }
   function boot(attempt=0){
