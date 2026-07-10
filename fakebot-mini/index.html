@@ -8,30 +8,29 @@
   <meta name="apple-mobile-web-app-title" content="Fakebot Mini">
   <meta name="theme-color" content="#0b0c0e">
   <title>Fakebot Mini</title>
-  <link rel="stylesheet" href="shell.css?v=20260710j">
+  <link rel="stylesheet" href="shell.css?v=20260710o">
 </head>
 <body>
   <div class="miniShell">
-    <header class="miniTopbar">
-      <a class="miniBack" href="../" aria-label="Open original Fakebot">Fakebot</a>
-      <div class="miniBrand">
-        <strong>Fakebot Mini</strong>
-        <span id="miniAudioStatus">Preparing samples</span>
-      </div>
-      <button class="miniTopAction" type="button" data-mini-action="settings">Settings</button>
-    </header>
-
     <main class="miniFrameWrap">
-      <iframe id="miniFrame" src="../index.html?variant=mini&amp;v=20260710j" title="Fakebot Mini chord generator"></iframe>
+      <div class="miniAudioState" id="miniAudioStatus" data-state="loading" role="status">Preparing samples</div>
+      <iframe id="miniFrame" src="../index.html?variant=mini&amp;v=20260710o" title="Fakebot Mini chord generator" allow="autoplay"></iframe>
       <div class="miniLoading" id="miniLoading" role="status">Loading Fakebot Mini…</div>
     </main>
 
     <nav class="miniDock" aria-label="Primary actions">
-      <button type="button" data-mini-action="play" id="miniPlay">Play</button>
-      <button type="button" data-mini-action="generate" class="miniGenerate">Generate</button>
-      <button type="button" data-mini-action="settings">Settings</button>
+      <button type="button" data-mini-action="play" id="miniPlay" aria-label="Play" title="Play">
+        <svg class="miniIcon miniIconPlay" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5 19 12 8 18.5Z"/></svg>
+        <svg class="miniIcon miniIconPause" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>
+      </button>
+      <button type="button" data-mini-action="generate" class="miniGenerate" aria-label="Generate progression" title="Generate progression">
+        <svg class="miniIcon miniIconStroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h3.2c2.5 0 3.5 2 4.8 5s2.3 5 4.8 5H20m-3-3 3 3-3 3M4 17h3.2c1.4 0 2.3-.6 3-1.5m3.6-7C14.5 7.6 15.4 7 16.8 7H20m-3-3 3 3-3 3"/></svg>
+      </button>
+      <button type="button" data-mini-action="settings" id="miniSettings" aria-label="Open settings" aria-expanded="false" title="Open settings">
+        <svg class="miniIcon miniIconStroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h8m4 0h4M4 17h4m4 0h8M12 4v6M8 14v6"/><circle cx="12" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>
+      </button>
     </nav>
   </div>
-  <script src="shell.js?v=20260710j"></script>
+  <script src="shell.js?v=20260710o"></script>
 </body>
 </html>

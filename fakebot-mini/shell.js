@@ -1,12 +1,16 @@
 (() => {
   "use strict";
-  const VERSION = "20260710j";
+  const VERSION = "20260710o";
   const frame = document.getElementById("miniFrame");
   const loading = document.getElementById("miniLoading");
   const audioStatus = document.getElementById("miniAudioStatus");
   const playButton = document.getElementById("miniPlay");
+  const settingsButton = document.getElementById("miniSettings");
+  const dock = document.querySelector(".miniDock");
   let loadingTimer = 0;
   let bootedDocument = null;
+  let playPending = false;
+  let stateSyncTimer = 0;
 
   function showStatus(message, hold=1400){
     if (!loading) return;
@@ -56,14 +60,29 @@
     const source = frameDocument()?.getElementById("btnPlay");
     if (!source || !playButton) return;
     const playing = String(source.textContent || "").includes("⏸");
-    playButton.textContent = playing ? "Pause" : "Play";
+    playButton.dataset.playing = String(playing);
+    playButton.setAttribute("aria-label", playing ? "Pause" : "Play");
+    playButton.title = playing ? "Pause" : "Play";
+  }
+
+  function syncSettingsState(){
+    if (!settingsButton) return;
+    const open = frameDocument()?.body?.classList.contains("mini-settings-open") || false;
+    settingsButton.setAttribute("aria-expanded", String(open));
+    settingsButton.setAttribute("aria-label", open ? "Close settings" : "Open settings");
+    settingsButton.title = open ? "Close settings" : "Open settings";
   }
 
   function watchPlayback(){
     const source = frameDocument()?.getElementById("btnPlay");
     if (!source) return;
     syncPlayLabel();
-    new MutationObserver(syncPlayLabel).observe(source, {childList:true,subtree:true,characterData:true});
+    syncSettingsState();
+    window.clearInterval(stateSyncTimer);
+    stateSyncTimer = window.setInterval(()=>{
+      syncPlayLabel();
+      syncSettingsState();
+    }, 250);
   }
 
   async function bootFrame(){
@@ -89,6 +108,7 @@
     if (!doc || !win){ showStatus("Still loading…"); return; }
     if (action === "settings"){
       win.FakebotMiniUI?.toggleSettings();
+      window.setTimeout(syncSettingsState, 30);
       return;
     }
     if (action === "generate"){
@@ -102,14 +122,32 @@
       return;
     }
     if (action === "play"){
+      const innerPlay = doc.getElementById("btnPlay");
+      const alreadyPlaying = String(innerPlay?.textContent || "").includes("⏸");
+      if (alreadyPlaying){
+        innerPlay?.click();
+        window.setTimeout(syncPlayLabel, 40);
+        return;
+      }
+      if (playPending) return;
+      playPending = true;
+      if (playButton){ playButton.disabled = true; playButton.dataset.loading = "true"; }
       try{
         if (!win.FakebotMiniSamples) throw new Error("Sample backend is not ready");
         showStatus("Preparing selected samples…", 2400);
         await win.FakebotMiniSamples.ready();
-        doc.getElementById("btnPlay")?.click();
+        innerPlay?.click();
         window.setTimeout(syncPlayLabel, 40);
-      }catch{
-        showStatus("Samples unavailable. Open Settings to retry.", 3400);
+      }catch(error){
+        showStatus(
+          String(error?.message || "").includes("user gesture")
+            ? "Tap Play again to enable audio."
+            : "Samples unavailable. Open Settings to retry.",
+          3400
+        );
+      }finally{
+        playPending = false;
+        if (playButton){ playButton.disabled = false; playButton.dataset.loading = "false"; }
       }
     }
   }
@@ -121,6 +159,12 @@
     runAction(button.dataset.miniAction);
   });
 
+  document.addEventListener("pointerdown",(event)=>{
+    const button = event.target.closest("[data-mini-action='play']");
+    if (!button) return;
+    frameWindow()?.FakebotAudioKit?.resume?.().catch(()=>{});
+  },{passive:true});
+
   window.addEventListener("message", (event)=>{
     if (event.source !== frameWindow() || !event.data || event.data.source !== "fakebot-mini") return;
     if (event.data.type === "audio-status" && audioStatus){
@@ -128,6 +172,11 @@
       audioStatus.dataset.state = event.data.state || "loading";
     }
     if (event.data.type === "ui-ready") showStatus("Fakebot Mini ready", 1000);
+    if (event.data.type === "settings-state" && dock){
+      if (event.data.open){ dock.setAttribute("inert", ""); dock.setAttribute("aria-hidden", "true"); }
+      else{ dock.removeAttribute("inert"); dock.removeAttribute("aria-hidden"); }
+    }
+    if (event.data.type === "settings-closed") settingsButton?.focus();
   });
 
   frame?.addEventListener("load", bootFrame);

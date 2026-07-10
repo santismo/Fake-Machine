@@ -1,33 +1,110 @@
 (() => {
   "use strict";
-  const VERSION = "1.0.0";
+  const VERSION = "1.1.0";
   const STORE_KEY = "fakebot-mini.samples.v1";
   const MODULE_URL = "https://unpkg.com/smplr@1.0.0/dist/index.mjs";
 
   const VOICES = [
-    {id:"electric_piano_1",label:"Electric Piano",role:"keys"},
-    {id:"acoustic_grand_piano",label:"Grand Piano",role:"keys"},
-    {id:"music_box",label:"Music Box",role:"keys"},
-    {id:"vibraphone",label:"Vibraphone",role:"keys"},
-    {id:"marimba",label:"Marimba",role:"keys"},
-    {id:"acoustic_guitar_steel",label:"Steel Guitar",role:"keys"},
-    {id:"drawbar_organ",label:"Drawbar Organ",role:"keys"},
-    {id:"string_ensemble_1",label:"String Ensemble",role:"keys"},
-    {id:"fx_3_crystal",label:"Crystal",role:"keys"},
-    {id:"electric_bass_finger",label:"Finger Bass",role:"bass"},
-    {id:"acoustic_bass",label:"Acoustic Bass",role:"bass"},
-    {id:"fretless_bass",label:"Fretless Bass",role:"bass"},
-    {id:"slap_bass_1",label:"Slap Bass",role:"bass"},
-    {id:"synth_bass_1",label:"Sampled Synth Bass",role:"bass"}
+    {id:"acoustic_grand_piano",label:"Grand Piano",role:"keys",group:"Pianos & keys"},
+    {id:"bright_acoustic_piano",label:"Bright Piano",role:"keys",group:"Pianos & keys"},
+    {id:"electric_grand_piano",label:"Electric Grand",role:"keys",group:"Pianos & keys"},
+    {id:"honkytonk_piano",label:"Honky-tonk Piano",role:"keys",group:"Pianos & keys"},
+    {id:"electric_piano_1",label:"Electric Piano 1",role:"keys",group:"Pianos & keys"},
+    {id:"electric_piano_2",label:"Electric Piano 2",role:"keys",group:"Pianos & keys"},
+    {id:"harpsichord",label:"Harpsichord",role:"keys",group:"Pianos & keys"},
+    {id:"clavinet",label:"Clavinet",role:"keys",group:"Pianos & keys"},
+    {id:"celesta",label:"Celesta",role:"keys",group:"Pianos & keys"},
+    {id:"music_box",label:"Music Box",role:"keys",group:"Pianos & keys"},
+    {id:"ep:CP80",instrument:"CP80",engine:"ep",label:"CP-80 Electric Grand",role:"keys",group:"Pianos & keys"},
+    {id:"ep:WurlitzerEP200",instrument:"WurlitzerEP200",engine:"ep",label:"Wurlitzer EP200",role:"keys",group:"Pianos & keys"},
+    {id:"ep:PianetT",instrument:"PianetT",engine:"ep",label:"Pianet T",role:"keys",group:"Pianos & keys"},
+    {id:"ep:TX81Z",instrument:"TX81Z",engine:"ep",label:"TX81Z FM Piano",role:"keys",group:"Pianos & keys"},
+
+    {id:"glockenspiel",label:"Glockenspiel",role:"keys",group:"Mallets & bells"},
+    {id:"vibraphone",label:"Vibraphone",role:"keys",group:"Mallets & bells"},
+    {id:"marimba",label:"Marimba",role:"keys",group:"Mallets & bells"},
+    {id:"xylophone",label:"Xylophone",role:"keys",group:"Mallets & bells"},
+    {id:"tubular_bells",label:"Tubular Bells",role:"keys",group:"Mallets & bells"},
+    {id:"dulcimer",label:"Dulcimer",role:"keys",group:"Mallets & bells"},
+    {id:"steel_drums",label:"Steel Drums",role:"keys",group:"Mallets & bells"},
+    {id:"kalimba",label:"Kalimba",role:"keys",group:"Mallets & bells"},
+    {id:"mallet:Balafon - Hard Mallet",instrument:"Balafon - Hard Mallet",engine:"mallet",label:"Balafon",role:"keys",group:"Mallets & bells"},
+    {id:"mallet:Vibraphone - Soft Mallets",instrument:"Vibraphone - Soft Mallets",engine:"mallet",label:"Soft Vibraphone",role:"keys",group:"Mallets & bells"},
+    {id:"mallet:Xylophone - Medium Mallets",instrument:"Xylophone - Medium Mallets",engine:"mallet",label:"Medium Xylophone",role:"keys",group:"Mallets & bells"},
+
+    {id:"drawbar_organ",label:"Drawbar Organ",role:"keys",group:"Organs"},
+    {id:"percussive_organ",label:"Percussive Organ",role:"keys",group:"Organs"},
+    {id:"rock_organ",label:"Rock Organ",role:"keys",group:"Organs"},
+    {id:"church_organ",label:"Church Organ",role:"keys",group:"Organs"},
+    {id:"reed_organ",label:"Reed Organ",role:"keys",group:"Organs"},
+    {id:"accordion",label:"Accordion",role:"keys",group:"Organs"},
+
+    {id:"acoustic_guitar_nylon",label:"Nylon Guitar",role:"keys",group:"Guitars & strings"},
+    {id:"acoustic_guitar_steel",label:"Steel Guitar",role:"keys",group:"Guitars & strings"},
+    {id:"electric_guitar_jazz",label:"Jazz Guitar",role:"keys",group:"Guitars & strings"},
+    {id:"electric_guitar_clean",label:"Clean Guitar",role:"keys",group:"Guitars & strings"},
+    {id:"electric_guitar_muted",label:"Muted Guitar",role:"keys",group:"Guitars & strings"},
+    {id:"banjo",label:"Banjo",role:"keys",group:"Guitars & strings"},
+    {id:"orchestral_harp",label:"Orchestral Harp",role:"keys",group:"Guitars & strings"},
+    {id:"violin",label:"Violin",role:"keys",group:"Guitars & strings"},
+    {id:"cello",label:"Cello",role:"keys",group:"Guitars & strings"},
+    {id:"string_ensemble_1",label:"String Ensemble 1",role:"keys",group:"Guitars & strings"},
+    {id:"string_ensemble_2",label:"String Ensemble 2",role:"keys",group:"Guitars & strings"},
+    {id:"pizzicato_strings",label:"Pizzicato Strings",role:"keys",group:"Guitars & strings"},
+
+    {id:"choir_aahs",label:"Choir Aahs",role:"keys",group:"Winds & voices"},
+    {id:"voice_oohs",label:"Voice Oohs",role:"keys",group:"Winds & voices"},
+    {id:"trumpet",label:"Trumpet",role:"keys",group:"Winds & voices"},
+    {id:"french_horn",label:"French Horn",role:"keys",group:"Winds & voices"},
+    {id:"flute",label:"Flute",role:"keys",group:"Winds & voices"},
+    {id:"clarinet",label:"Clarinet",role:"keys",group:"Winds & voices"},
+    {id:"alto_sax",label:"Alto Sax",role:"keys",group:"Winds & voices"},
+
+    {id:"synth_strings_1",label:"Synth Strings",role:"keys",group:"Pads & color"},
+    {id:"pad_1_new_age",label:"New Age Pad",role:"keys",group:"Pads & color"},
+    {id:"pad_2_warm",label:"Warm Pad",role:"keys",group:"Pads & color"},
+    {id:"pad_3_polysynth",label:"Poly Synth Pad",role:"keys",group:"Pads & color"},
+    {id:"pad_7_halo",label:"Halo Pad",role:"keys",group:"Pads & color"},
+    {id:"fx_3_crystal",label:"Crystal",role:"keys",group:"Pads & color"},
+    {id:"mellotron:MIXED STRGS",instrument:"MIXED STRGS",engine:"mellotron",label:"Mellotron Strings",role:"keys",group:"Tape sounds"},
+    {id:"mellotron:8VOICE CHOIR",instrument:"8VOICE CHOIR",engine:"mellotron",label:"Mellotron Choir",role:"keys",group:"Tape sounds"},
+    {id:"mellotron:TRON FLUTE",instrument:"TRON FLUTE",engine:"mellotron",label:"Mellotron Flute",role:"keys",group:"Tape sounds"},
+    {id:"mellotron:MKII ORGAN",instrument:"MKII ORGAN",engine:"mellotron",label:"Mellotron Organ",role:"keys",group:"Tape sounds"},
+    {id:"mellotron:MKII VIBES",instrument:"MKII VIBES",engine:"mellotron",label:"Mellotron Vibes",role:"keys",group:"Tape sounds"},
+
+    {id:"electric_bass_finger",label:"Finger Bass",role:"bass",group:"Basses"},
+    {id:"electric_bass_pick",label:"Pick Bass",role:"bass",group:"Basses"},
+    {id:"acoustic_bass",label:"Acoustic Bass",role:"bass",group:"Basses"},
+    {id:"fretless_bass",label:"Fretless Bass",role:"bass",group:"Basses"},
+    {id:"slap_bass_1",label:"Slap Bass 1",role:"bass",group:"Basses"},
+    {id:"slap_bass_2",label:"Slap Bass 2",role:"bass",group:"Basses"},
+    {id:"synth_bass_1",label:"Synth Bass 1",role:"bass",group:"Basses"},
+    {id:"synth_bass_2",label:"Synth Bass 2",role:"bass",group:"Basses"},
+    {id:"smolken:Arco",instrument:"Arco",engine:"smolken",label:"Smolken Arco Bass",role:"bass",group:"Basses"},
+    {id:"smolken:Pizzicato",instrument:"Pizzicato",engine:"smolken",label:"Smolken Pizzicato Bass",role:"bass",group:"Basses"},
+    {id:"smolken:Switched",instrument:"Switched",engine:"smolken",label:"Smolken Switched Bass",role:"bass",group:"Basses"}
   ];
   const DRUMS = [
-    {id:"LM-2",label:"Linn LM-2"},
-    {id:"TR-808",label:"TR-808"},
-    {id:"Casio-RZ1",label:"Casio RZ-1"},
-    {id:"MFB-512",label:"MFB-512"},
-    {id:"Roland CR-8000",label:"Roland CR-8000"}
+    {id:"LM-2",label:"Linn LM-2",group:"Classic kits"},
+    {id:"TR-808",label:"TR-808",group:"Classic kits"},
+    {id:"Casio-RZ1",label:"Casio RZ-1",group:"Classic kits"},
+    {id:"MFB-512",label:"MFB-512",group:"Classic kits"},
+    {id:"Roland CR-8000",label:"Roland CR-8000",group:"Classic kits"},
+    {id:"abuse:roland-tr-606",instrument:"roland-tr-606",engine:"abuse",label:"Roland TR-606",group:"More drum machines"},
+    {id:"abuse:roland-tr-707",instrument:"roland-tr-707",engine:"abuse",label:"Roland TR-707",group:"More drum machines"},
+    {id:"abuse:roland-tr-808",instrument:"roland-tr-808",engine:"abuse",label:"Roland TR-808 Extended",group:"More drum machines"},
+    {id:"abuse:roland-tr-909",instrument:"roland-tr-909",engine:"abuse",label:"Roland TR-909",group:"More drum machines"},
+    {id:"abuse:roland-cr-78",instrument:"roland-cr-78",engine:"abuse",label:"Roland CR-78",group:"More drum machines"},
+    {id:"abuse:linn-lm-1",instrument:"linn-lm-1",engine:"abuse",label:"Linn LM-1",group:"More drum machines"},
+    {id:"abuse:linn-9000",instrument:"linn-9000",engine:"abuse",label:"Linn 9000",group:"More drum machines"},
+    {id:"abuse:oberheim-dmx",instrument:"oberheim-dmx",engine:"abuse",label:"Oberheim DMX",group:"More drum machines"},
+    {id:"abuse:emu-sp-12",instrument:"emu-sp-12",engine:"abuse",label:"E-mu SP-12",group:"More drum machines"},
+    {id:"abuse:boss-dr-110",instrument:"boss-dr-110",engine:"abuse",label:"Boss DR-110",group:"More drum machines"},
+    {id:"abuse:yamaha-rx-5",instrument:"yamaha-rx-5",engine:"abuse",label:"Yamaha RX-5",group:"More drum machines"},
+    {id:"abuse:simmons-sds-5",instrument:"simmons-sds-5",engine:"abuse",label:"Simmons SDS-5",group:"More drum machines"}
   ];
   const DEFAULTS = {keys:"electric_piano_1",bass:"electric_bass_finger",drums:"LM-2",mix:.9};
+  const wait = (milliseconds)=>new Promise(resolve=>window.setTimeout(resolve,milliseconds));
 
   function readSettings(){
     try{ return {...DEFAULTS,...JSON.parse(localStorage.getItem(STORE_KEY) || "{}")}; }
@@ -51,6 +128,7 @@
     holds:new Map(),
     statusElement:null,
     preparePromise:null,
+    randomizePromise:null,
 
     report(message,state="loading"){
       if (this.statusElement){
@@ -68,6 +146,10 @@
       this.context = external.context;
       this.input = external.input;
       this.input.gain.value = clamp(Number(settings.mix)||.9,0,1.1);
+      const voicingProbe = this.core.chordVoicingForPreset({
+        root:0,symbol:"maj7",family:"maj",intervals:[0,4,7,11],scaleRoot:0
+      },"ep");
+      if (!Array.isArray(voicingProbe) || !voicingProbe.length) throw new Error("Fakebot chord voicing bridge is unavailable");
     },
 
     async runtime(){
@@ -92,9 +174,11 @@
       if (this.instruments.has(key)) return this.instruments.get(key);
       const promise = (async()=>{
         const runtime = await this.runtime();
-        const label = role === "drums"
-          ? (DRUMS.find(item=>item.id === id)?.label || id)
-          : (VOICES.find(item=>item.id === id)?.label || id);
+        const definition = role === "drums"
+          ? DRUMS.find(item=>item.id === id)
+          : VOICES.find(item=>item.role === role && item.id === id);
+        if (!definition) throw new Error(`Unknown ${role} sample`);
+        const label = definition.label;
         this.report(`Loading ${label}…`);
         const common = {
           destination:this.input,
@@ -104,9 +188,22 @@
             if (Number.isFinite(total) && total > 0) this.report(`${label} ${loaded || 0}/${total}`);
           }
         };
-        const instance = role === "drums"
-          ? runtime.DrumMachine(this.context,{...common,instrument:id})
-          : runtime.Soundfont(this.context,{...common,kit:"FluidR3_GM",instrument:id});
+        let instance;
+        if (role === "drums"){
+          instance = definition.engine === "abuse"
+            ? runtime.DrumAbuse(this.context,{...common,source:{kind:"machine",machine:definition.instrument}})
+            : runtime.DrumMachine(this.context,{...common,instrument:definition.instrument || definition.id});
+        }else if (definition.engine === "ep"){
+          instance = runtime.ElectricPiano(this.context,{...common,instrument:definition.instrument,formats:["ogg","m4a"]});
+        }else if (definition.engine === "mallet"){
+          instance = runtime.Mallet(this.context,{...common,instrument:definition.instrument});
+        }else if (definition.engine === "mellotron"){
+          instance = runtime.Mellotron(this.context,{...common,instrument:definition.instrument});
+        }else if (definition.engine === "smolken"){
+          instance = runtime.Smolken(this.context,{...common,instrument:definition.instrument});
+        }else{
+          instance = runtime.Soundfont(this.context,{...common,kit:"FluidR3_GM",instrument:definition.instrument || definition.id});
+        }
         await instance.ready;
         return instance;
       })().catch((error)=>{
@@ -120,10 +217,18 @@
     async prepare(){
       if (this.preparePromise) return this.preparePromise;
       this.preparePromise = (async()=>{
-        await this.load("keys",settings.keys);
-        await this.load("bass",settings.bass);
-        await this.load("drums",settings.drums);
-        this.report("Samples ready","ready");
+        const results = await Promise.allSettled([
+          this.load("keys",settings.keys),
+          this.load("bass",settings.bass),
+          this.load("drums",settings.drums)
+        ]);
+        if (results[0].status === "rejected") throw results[0].reason;
+        this.report(
+          results.slice(1).some(result=>result.status === "rejected")
+            ? "Keys ready · some rhythm samples unavailable"
+            : "Samples ready",
+          "ready"
+        );
       })().catch((error)=>{
         this.preparePromise = null;
         this.report("Samples unavailable — tap Retry","error");
@@ -133,8 +238,11 @@
     },
 
     async resume(){
-      this.host.resume().catch(()=>{});
-      if (this.context.state === "suspended") this.context.resume().catch(()=>{});
+      if (this.context.state !== "running"){
+        const attempt = Promise.resolve(this.context.resume()).catch(()=>{});
+        await Promise.race([attempt,wait(900)]);
+      }
+      if (this.context.state !== "running") throw new Error("Audio is waiting for a user gesture");
     },
 
     async play(role,midi,time,duration,velocity){
@@ -179,7 +287,7 @@
 
     drumName(kind,instance){
       const preferred = {
-        kick:["Kick","Bass Drum"],snare:["Snare"],clap:["Clap","Snare"],hat:["Hi-Hat Closed","Hihat Closed","Closed Hat","hihat-close","hihat","hat"],
+        kick:["Kick","Bass Drum"],snare:["Snare"],clap:["Clap","Snare"],hat:["Hi-Hat Closed","Hihat Closed","Closed Hat","hhclosed","hihat-close","hihat","hat"],
         ride:["Ride","Cymbal"],crash:["Crash","Cymbal"],tom:["Tom Mid","Mid Tom","Tom"]
       }[kind] || [kind];
       const groups = typeof instance?.getGroupNames === "function" ? instance.getGroupNames() : [];
@@ -187,7 +295,7 @@
       const mapped = groups.map(raw=>({raw,key:normalize(raw)}));
       for (const name of preferred){ const match = mapped.find(item=>item.key === normalize(name)); if (match) return match.raw; }
       for (const name of preferred){ const key = normalize(name); const match = mapped.find(item=>item.key.includes(key)||key.includes(item.key)); if (match) return match.raw; }
-      return preferred[0];
+      return ({kick:36,snare:38,clap:39,hat:42,ride:51,crash:49,tom:45})[kind] || 38;
     },
 
     async drum(kind,time,velocity){
@@ -209,6 +317,21 @@
       this.instruments.forEach((promise)=>Promise.resolve(promise).then((instance)=>{ try{ instance.stop?.(); }catch{} }).catch(()=>{}));
     },
 
+    cleanupUnused(){
+      const keep = new Set([
+        this.instrumentKey("keys",settings.keys),
+        this.instrumentKey("bass",settings.bass),
+        this.instrumentKey("drums",settings.drums)
+      ]);
+      this.instruments.forEach((promise,key)=>{
+        if (keep.has(key)) return;
+        this.instruments.delete(key);
+        Promise.resolve(promise).then((instance)=>{
+          try{ instance.stop?.(); instance.dispose?.(); }catch{}
+        }).catch(()=>{});
+      });
+    },
+
     async select(role,id){
       const previous = settings[role];
       settings[role] = id;
@@ -224,8 +347,58 @@
         }
         this.report(`${role === "drums" ? "Drums" : role === "bass" ? "Bass" : "Keys"} ready`,"ready");
       }catch{
+        settings[role] = previous;
+        saveSettings();
+        const select = document.getElementById(`miniSample${role === "keys" ? "Keys" : role === "bass" ? "Bass" : "Drums"}`);
+        if (select) select.value = previous;
         this.report("Selected samples could not load","error");
         throw new Error("sample load failed");
+      }
+    },
+
+    async randomizeSounds(){
+      if (this.randomizePromise) return this.randomizePromise;
+      const randomButton = document.getElementById("miniSampleRandom");
+      if (randomButton) randomButton.disabled = true;
+      this.randomizePromise = (async()=>{
+      const previous = {keys:settings.keys,bass:settings.bass,drums:settings.drums};
+      const pickDifferent = (items,current)=>{
+        const choices = items.filter(item=>item.id !== current);
+        return (choices[Math.floor(Math.random()*choices.length)] || items[0]).id;
+      };
+      settings.keys = pickDifferent(VOICES.filter(item=>item.role === "keys"),settings.keys);
+      settings.bass = pickDifferent(VOICES.filter(item=>item.role === "bass"),settings.bass);
+      settings.drums = pickDifferent(DRUMS,settings.drums);
+      saveSettings();
+      const values = {miniSampleKeys:settings.keys,miniSampleBass:settings.bass,miniSampleDrums:settings.drums};
+      Object.entries(values).forEach(([id,value])=>{ const select = document.getElementById(id); if (select) select.value = value; });
+      this.stopAll();
+      this.preparePromise = null;
+      this.report("Loading a new sound set…");
+      try{
+        await Promise.all([
+          this.load("keys",settings.keys),
+          this.load("bass",settings.bass),
+          this.load("drums",settings.drums)
+        ]);
+        this.cleanupUnused();
+        this.preparePromise = Promise.resolve();
+        this.report("New sounds ready","ready");
+      }catch(error){
+        Object.assign(settings,previous);
+        saveSettings();
+        const restored = {miniSampleKeys:settings.keys,miniSampleBass:settings.bass,miniSampleDrums:settings.drums};
+        Object.entries(restored).forEach(([id,value])=>{ const select = document.getElementById(id); if (select) select.value = value; });
+        this.preparePromise = null;
+        this.cleanupUnused();
+        this.report("Could not load that sound set — previous sounds restored","error");
+        throw error;
+      }
+      })();
+      try{ return await this.randomizePromise; }
+      finally{
+        this.randomizePromise = null;
+        if (randomButton) randomButton.disabled = false;
       }
     }
   };
@@ -272,7 +445,7 @@
     audio.playDrumHit = (kind,preset,time,velocity=.8)=>Engine.drum(kind||"snare",time,velocity);
     audio.resume = async()=>{
       original.resume().catch(()=>{});
-      if (Engine.context.state === "suspended") Engine.context.resume().catch(()=>{});
+      if (Engine.context.state !== "running") Engine.context.resume().catch(()=>{});
       Engine.prepare().catch(()=>{});
     };
     audio.hardStop = ()=>{ Engine.stopAll(); original.hardStop(); };
@@ -280,8 +453,21 @@
     audio.__fakebotMiniSamples = Object.freeze({version:VERSION,engine:Engine});
   }
 
+  function escapeMarkup(value){
+    return String(value).replace(/[&<>"']/g,(char)=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[char]);
+  }
+
   function options(items,selected){
-    return items.map((item)=>`<option value="${item.id}"${item.id===selected?" selected":""}>${item.label}</option>`).join("");
+    const groups = new Map();
+    items.forEach((item)=>{
+      const group = item.group || "Samples";
+      if (!groups.has(group)) groups.set(group,[]);
+      groups.get(group).push(item);
+    });
+    return [...groups.entries()].map(([group,entries])=>{
+      const choices = entries.map((item)=>`<option value="${escapeMarkup(item.id)}"${item.id===selected?" selected":""}>${escapeMarkup(item.label)}</option>`).join("");
+      return `<optgroup label="${escapeMarkup(group)}">${choices}</optgroup>`;
+    }).join("");
   }
 
   function mountControls(){
@@ -293,7 +479,7 @@
       <label>Keys and chords<select id="miniSampleKeys">${options(VOICES.filter(item=>item.role==="keys"),settings.keys)}</select></label>
       <label>Bass<select id="miniSampleBass">${options(VOICES.filter(item=>item.role==="bass"),settings.bass)}</select></label>
       <label>Drums<select id="miniSampleDrums">${options(DRUMS,settings.drums)}</select></label>
-      <div class="miniSampleActions"><label>Sample mix<input id="miniSampleMix" type="range" min="0" max="1.1" step="0.01" value="${settings.mix}"></label><button id="miniSampleRetry" type="button">Retry</button></div>
+      <div class="miniSampleActions"><label>Sample mix<input id="miniSampleMix" type="range" min="0" max="1.1" step="0.01" value="${settings.mix}"></label><button id="miniSampleRandom" type="button">Randomize sounds</button><button id="miniSampleRetry" type="button">Retry</button></div>
       <div class="miniSampleStatus" id="miniSampleStatus">Preparing selected samples…</div>
     </div>`;
     Engine.statusElement = document.getElementById("miniSampleStatus");
@@ -305,6 +491,7 @@
       Engine.input.gain.setTargetAtTime(settings.mix,Engine.context.currentTime,.012);
       saveSettings();
     });
+    document.getElementById("miniSampleRandom").addEventListener("click",()=>Engine.randomizeSounds().catch(()=>{}));
     document.getElementById("miniSampleRetry").addEventListener("click",()=>{
       Engine.preparePromise = null;
       Engine.prepare().catch(()=>{});
@@ -320,6 +507,7 @@
       window.FakebotMiniSamples = Object.freeze({
         version:VERSION,
         ready:async()=>{ await Engine.resume(); await Engine.prepare(); },
+        randomize:()=>Engine.randomizeSounds(),
         stop:()=>Engine.stopAll()
       });
     }catch(error){
