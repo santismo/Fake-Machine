@@ -6828,6 +6828,11 @@
     };
   })();
 
+  // Fakebot 2 is loaded as a same-origin shell around this app. Expose only
+  // the public audio surface so its optional sample engine can replace the
+  // built-in voices without reaching into the rest of Fakebot's state.
+  window.FakebotAudioKit = AudioKit;
+
   window.addEventListener("pointerdown", () => { AudioKit.resume(); }, { once:true, passive:true });
 
   /* ---------- Player (Transport) ---------- */

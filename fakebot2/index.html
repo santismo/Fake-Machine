@@ -8,33 +8,33 @@
 <meta name="apple-mobile-web-app-title" content="Fakebot 2"/>
 <meta name="theme-color" content="#070b11"/>
 <title>🤖 fakebot 2</title>
-<link rel="stylesheet" href="mobile.css"/>
+<link rel="stylesheet" href="mobile.css?v=20260710c"/>
 </head>
 <body>
   <div class="fakebot2-shell">
     <header class="mobileTop" aria-label="Fakebot 2 mobile shell">
-      <a class="backLink" href="../" aria-label="Open Fakebot Original">← v1</a>
+      <a class="backLink" href="../" aria-label="Open Fakebot Original">v1</a>
       <div class="brand">
         <div class="brandTitle">🤖 fakebot 2</div>
-        <div class="brandSub">original features · modular mobile shell · FretStep samples</div>
+        <div class="brandSub">mobile chord lab</div>
       </div>
-      <button class="shellBtn samples" type="button" data-shell="samples" aria-label="Toggle FretStep sample controls">samples</button>
+      <button class="shellBtn samples" type="button" data-shell="samples" aria-label="Open sound controls">sounds</button>
     </header>
 
     <main class="frameWrap">
-      <iframe id="fakebotFrame" src="../index.html" title="Fakebot feature-complete app"></iframe>
+      <iframe id="fakebotFrame" src="../index.html?v=20260710c" title="Fakebot feature-complete app"></iframe>
       <div class="frameStatus show" id="frameStatus">Loading Fakebot 2…</div>
     </main>
 
     <nav class="quickDock" aria-label="Fakebot 2 quick actions">
       <button class="dockBtn primary" type="button" data-click="btnPlay"><strong>▶</strong><span>play</span></button>
-      <button class="dockBtn green" type="button" data-click="btnGenerate"><strong>🎰</strong><span>generate</span></button>
+      <button class="dockBtn green" type="button" data-click="btnGenerate"><strong>✦</strong><span>new</span></button>
       <button class="dockBtn warn" type="button" data-select="progSourceTop" data-value="game"><strong>🎮</strong><span>game</span></button>
       <button class="dockBtn" type="button" data-section="cardLead"><strong>🎼</strong><span>chart</span></button>
       <button class="dockBtn" type="button" data-section="cardPiano"><strong>🎹</strong><span>keys</span></button>
-      <button class="dockBtn" type="button" data-section="cardControls"><strong>🎛</strong><span>controls</span></button>
+      <button class="dockBtn" type="button" data-section="cardControls"><strong>🎛</strong><span>tune</span></button>
     </nav>
   </div>
-  <script src="shell.js"></script>
+  <script src="shell.js?v=20260710c"></script>
 </body>
 </html>
