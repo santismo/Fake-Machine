@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const VERSION = "20260710y";
+  const VERSION = "20260710z";
   const frame = document.getElementById("miniFrame");
   const loading = document.getElementById("miniLoading");
   const audioStatus = document.getElementById("miniAudioStatus");
