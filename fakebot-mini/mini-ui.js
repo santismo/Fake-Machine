@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const UI_VERSION = "20260710s";
+  const UI_VERSION = "20260710x";
 
   const byId = (id)=>document.getElementById(id);
   const make = (tag, className, text)=>{
@@ -34,7 +34,7 @@
       btnEdit:"Edit",
       btnRandomAll:"Randomize everything",
       btnStyleRand:"Randomize style",
-      btnDefaults:"Reset defaults",
+      btnDefaults:"Reset all",
       btnUndo:"Undo",
       btnRedo:"Redo",
       btnCopy:"Copy progression",
@@ -97,6 +97,7 @@
   function buildSettings(){
     hideControlFor("biabFile");
     hideControlFor("biabStatus");
+    byId("rowMidiInput")?.remove();
 
     const backdrop = make("div", "miniSettingsBackdrop");
     backdrop.setAttribute("aria-hidden", "true");
@@ -115,7 +116,14 @@
     const close = make("button", "", "Done");
     close.type = "button";
     close.dataset.miniCloseSettings = "true";
-    header.append(heading, close);
+    const headerActions = make("div", "miniSettingsHeaderActions");
+    const reset = byId("btnDefaults");
+    if (reset){
+      reset.setAttribute("aria-label", "Reset all settings to defaults");
+      headerActions.appendChild(reset);
+    }
+    headerActions.appendChild(close);
+    header.append(heading, headerActions);
 
     const body = make("div", "miniSettingsBody");
 
@@ -143,7 +151,7 @@
 
     const toolsBody = make("div", "miniSettingsSectionBody");
     const toolsGrid = make("div", "miniToolsGrid");
-    ["btnRandomAll","btnStyleRand","btnDefaults","btnUndo","btnRedo","btnCopy"].forEach((id)=>moveIfPresent(toolsGrid, byId(id)));
+    ["btnRandomAll","btnStyleRand","btnUndo","btnRedo","btnCopy"].forEach((id)=>moveIfPresent(toolsGrid, byId(id)));
     toolsBody.appendChild(toolsGrid);
 
     const complexity = byId("complexity");
