@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const VERSION = "1.2.0";
+  const VERSION = "1.2.1";
   const STORE_KEY = "fakebot-mini.samples.v1";
   const MODULE_URL = "https://unpkg.com/smplr@1.0.0/dist/index.mjs";
 
@@ -130,9 +130,36 @@
     preparePromise:null,
     randomizePromise:null,
     midiPlaybackActive:false,
+    midiScheduleEpoch:0,
+    midiScheduledStops:new Set(),
+
+    cancelMidiSchedules(){
+      this.midiScheduleEpoch += 1;
+      this.midiScheduledStops.forEach((stop)=>{ try{ stop(); }catch{} });
+      this.midiScheduledStops.clear();
+      return this.midiScheduleEpoch;
+    },
+
+    isCurrentMidiSchedule(epoch){
+      return Number.isFinite(epoch)
+        && this.midiPlaybackActive
+        && epoch === this.midiScheduleEpoch;
+    },
+
+    trackMidiSchedule(stop,epoch){
+      if (typeof stop !== "function") return;
+      if (!this.isCurrentMidiSchedule(epoch)){
+        try{ stop(); }catch{}
+        return;
+      }
+      this.midiScheduledStops.add(stop);
+    },
 
     setMidiPlaybackActive(active){
-      this.midiPlaybackActive = active === true;
+      const next = active === true;
+      this.midiPlaybackActive = false;
+      this.cancelMidiSchedules();
+      this.midiPlaybackActive = next;
       return this.midiPlaybackActive;
     },
 
@@ -251,17 +278,21 @@
       if (this.context.state !== "running") throw new Error("Audio is waiting for a user gesture");
     },
 
-    async play(role,midi,time,duration,velocity){
+    async play(role,midi,time,duration,velocity,midiEpoch=null){
       try{
+        if (midiEpoch !== null && !this.isCurrentMidiSchedule(midiEpoch)) return;
         const id = settings[role];
         const instance = await this.load(role,id);
-        instance.start({
+        if (midiEpoch !== null && !this.isCurrentMidiSchedule(midiEpoch)) return;
+        const stop = instance.start({
           note:Math.round(midi),
           time:Math.max(this.context.currentTime+.006,Number(time)||this.context.currentTime+.006),
           duration:Math.max(.06,Number(duration)||.5),
           velocity:Math.round(clamp(Number(velocity)||.75,.04,1)*127)
         });
+        if (midiEpoch !== null) this.trackMidiSchedule(stop,midiEpoch);
       }catch{
+        if (midiEpoch !== null && !this.isCurrentMidiSchedule(midiEpoch)) return;
         this.report("Samples unavailable — playback is silent","error");
       }
     },
@@ -304,20 +335,25 @@
       return ({kick:36,snare:38,clap:39,hat:42,ride:51,crash:49,tom:45})[kind] || 38;
     },
 
-    async drum(kind,time,velocity){
+    async drum(kind,time,velocity,midiEpoch=null){
       try{
+        if (midiEpoch !== null && !this.isCurrentMidiSchedule(midiEpoch)) return;
         const instance = await this.load("drums",settings.drums);
-        instance.start({
+        if (midiEpoch !== null && !this.isCurrentMidiSchedule(midiEpoch)) return;
+        const stop = instance.start({
           note:this.drumName(kind,instance),
           time:Math.max(this.context.currentTime+.006,Number(time)||this.context.currentTime+.006),
           velocity:Math.round(clamp(Number(velocity)||.8,.04,1)*127)
         });
+        if (midiEpoch !== null) this.trackMidiSchedule(stop,midiEpoch);
       }catch{
+        if (midiEpoch !== null && !this.isCurrentMidiSchedule(midiEpoch)) return;
         this.report("Drum samples unavailable — playback is silent","error");
       }
     },
 
     stopAll(){
+      this.cancelMidiSchedules();
       this.holds.forEach((stack)=>stack.forEach((token)=>{ token.cancelled=true; try{ if (typeof token.stop === "function") token.stop(); }catch{} }));
       this.holds.clear();
       this.instruments.forEach((promise)=>Promise.resolve(promise).then((instance)=>{ try{ instance.stop?.(); }catch{} }).catch(()=>{}));
@@ -444,9 +480,10 @@
     audio.playMidiNote = (midi,channel,time,duration,velocity=.7,roleHint="")=>{
       const resolved = Number.isFinite(channel) ? Math.round(channel) : 0;
       if (Engine.midiPlaybackActive){
-        if (resolved === 9 || roleHint === "drums") return Engine.drum(drumKindFromMidi(midi),time,velocity);
-        if (roleHint === "bass") return Engine.play("bass",midi,time,duration,velocity);
-        return Engine.play("keys",midi,time,duration,velocity);
+        const midiEpoch = Engine.midiScheduleEpoch;
+        if (resolved === 9 || roleHint === "drums") return Engine.drum(drumKindFromMidi(midi),time,velocity,midiEpoch);
+        if (roleHint === "bass") return Engine.play("bass",midi,time,duration,velocity,midiEpoch);
+        return Engine.play("keys",midi,time,duration,velocity,midiEpoch);
       }
       if (resolved === 9) return Engine.drum(drumKindFromMidi(midi),time,velocity);
       if (resolved === 1) return Engine.play("bass",midi,time,duration,velocity);

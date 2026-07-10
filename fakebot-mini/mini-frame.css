@@ -121,6 +121,8 @@ html.fakebot-mini-frame .miniSettingsHeader{min-height:62px;padding:10px 12px;di
 html.fakebot-mini-frame .miniSettingsHeader strong{font-size:18px;letter-spacing:-.025em}
 html.fakebot-mini-frame .miniSettingsHeader span{display:block;margin-top:2px;color:var(--pageMuted);font-size:10px;font-weight:600}
 html.fakebot-mini-frame .miniSettingsHeader button{min-height:40px;padding:0 14px;border:1px solid var(--pageLine);border-radius:11px;background:#202226;color:var(--pageInk);font-weight:800}
+html.fakebot-mini-frame .miniSettingsHeaderActions{display:flex;align-items:center;justify-content:flex-end;gap:6px}
+html.fakebot-mini-frame .miniSettingsHeaderActions #btnDefaults{min-width:0!important;padding-inline:11px!important;background:#18191c!important;font-size:11px!important}
 html.fakebot-mini-frame .miniSettingsBody{min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:10px 10px calc(18px + env(safe-area-inset-bottom));display:grid;grid-auto-rows:max-content;align-content:start;gap:10px}
 html.fakebot-mini-frame .miniSettingsSection{min-height:max-content;border:1px solid var(--pageLine);border-radius:16px;background:var(--pagePanel);overflow:hidden}
 html.fakebot-mini-frame .miniSettingsSection>h2{margin:0;padding:12px;border-bottom:1px solid var(--pageLine);color:var(--pageInk);font-size:12px;line-height:1;text-transform:uppercase;letter-spacing:.1em}

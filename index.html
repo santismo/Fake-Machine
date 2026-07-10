@@ -3818,6 +3818,7 @@
     if (invalidatePending) midiSongLoadToken += 1;
     if (stopTransport && player.isOn()) player.stop();
     activeMidiSong = null;
+    clearLiveMidiMelodyNotes();
     setMidiSamplePlayback(false);
   }
 
@@ -4098,7 +4099,33 @@
     return { markers, chords, bars, key };
   }
 
+  function midiMelodyTrackIndexes(parsed){
+    const tracks = (Array.isArray(parsed?.tracks) ? parsed.tracks : []).filter(track=>Array.isArray(track?.notes) && track.notes.length);
+    const candidates = tracks.filter((track)=>{
+      const channels = Array.isArray(track.channels) ? track.channels.map(Number) : [];
+      if (channels.length && channels.every(channel=>channel === 10)) return false;
+      const programs = Object.values(track.programs || {}).map(Number).filter(Number.isFinite);
+      if (programs.length && programs.every(program=>program >= 32 && program <= 39)) return false;
+      return !/\b(?:drums?|percussion|bass)\b/i.test(String(track.name || ""));
+    });
+    const named = candidates.filter(track=>/\b(?:melod(?:y|ic)|lead|solo(?:ist)?|theme|head|vocal|voice)\b/i.test(String(track.name || "")));
+    if (named.length) return new Set(named.map(track=>Number(track.index)));
+    if (!candidates.length) return new Set();
+
+    const ranked = candidates.map((track)=>{
+      const notes = track.notes || [];
+      const pitches = notes.map(note=>Number(note.midi)).filter(Number.isFinite).sort((a,b)=>a-b);
+      const medianPitch = pitches.length ? pitches[Math.floor(pitches.length / 2)] : 0;
+      const distinctOnsets = new Set(notes.map(note=>Math.round((Number(note.time) || 0) * 1000))).size;
+      const onsetRatio = notes.length ? distinctOnsets / notes.length : 0;
+      const compPenalty = /\b(?:piano|comp|chords?|rhythm|pad|accomp|organ)\b/i.test(String(track.name || "")) ? 22 : 0;
+      return {track,score:medianPitch + onsetRatio * 30 - compPenalty};
+    }).sort((a,b)=>b.score-a.score || Number(a.track.index)-Number(b.track.index));
+    return new Set(ranked.length ? [Number(ranked[0].track.index)] : []);
+  }
+
   function collectMidiNotes(parsed){
+    const melodyTracks = midiMelodyTrackIndexes(parsed);
     return (parsed?.tracks || [])
       .flatMap((track)=>{
         const changes = Array.isArray(track?.programChanges) ? track.programChanges : [];
@@ -4112,7 +4139,7 @@
             program = Number(track.programs[note.channel]);
           }
           const role = note.channel === 10 ? "drums" : (program >= 32 && program <= 39 ? "bass" : "keys");
-          return {...note,program,role};
+          return {...note,program,role,isMelody:role === "keys" && melodyTracks.has(Number(track.index))};
         });
       })
       .filter(note=>Number.isFinite(note?.midi) && Number.isFinite(note?.time))
@@ -4171,6 +4198,7 @@
         parsed,
         markers: chart.markers,
         notes,
+        melodyNotes: notes.filter(note=>note.isMelody),
         programs: collectMidiPrograms(parsed),
         programChanges: collectMidiProgramChanges(parsed),
         duration: Math.max(Number(parsed.duration) || 0, ...notes.map(note=>note.time + Math.max(0.01, Number(note.duration) || 0.01))),
@@ -4194,6 +4222,7 @@
       player.setChart(state.chartBars, state.playbackOrder);
       syncUIFromState();
       renderAll();
+      if (E.sheet) E.sheet.dataset.midiMelodyNotes = String(activeMidiSong.melodyNotes.length);
       saveAll();
       setSongStatus(`Loaded MIDI: ${title} · ${chart.markers.length} markers · ${notes.length} notes`);
     }catch(error){
@@ -6141,28 +6170,65 @@
     svg.appendChild(tri);
   }
 
-  function placeMelodyMarker(svg, cx, cy, isBlack){
+  function placeMelodyMarker(svg, cx, cy, isBlack, sourceMidi=null, displayMidi=null){
     const dot = document.createElementNS("http://www.w3.org/2000/svg","circle");
+    dot.setAttribute("class", "midiMelodyMarker");
     dot.setAttribute("cx", String(cx));
     dot.setAttribute("cy", String(cy));
     dot.setAttribute("r", isBlack ? "7" : "8.5");
     dot.setAttribute("fill", "var(--melody)");
     dot.setAttribute("stroke", "rgba(0,0,0,.6)");
     dot.setAttribute("stroke-width", "1.4");
+    if (Number.isFinite(sourceMidi)) dot.dataset.sourceMidi = String(Math.round(sourceMidi));
+    if (Number.isFinite(displayMidi)) dot.dataset.displayMidi = String(Math.round(displayMidi));
     svg.appendChild(dot);
+    return dot;
   }
 
-  function getActiveMelodyPcs(){
-    const pcs = new Set();
+  function foldMidiIntoRange(value, low, high){
+    let midi = Math.round(Number(value));
+    if (!Number.isFinite(midi) || !Number.isFinite(low) || !Number.isFinite(high) || high < low) return null;
+    while (midi > high) midi -= 12;
+    while (midi < low) midi += 12;
+    return midi >= low && midi <= high ? midi : null;
+  }
+
+  let liveMidiMelodyNotes = [];
+  let liveMidiMelodySignature = "";
+
+  function setLiveMidiMelodyNotes(notes){
+    const normalized = (Array.isArray(notes) ? notes : [])
+      .filter(note=>Number.isFinite(Number(note?.midi)))
+      .map(note=>({id:String(note.id || `${note.trackIndex || 0}:${note.tick || 0}:${note.midi}`),midi:Math.round(Number(note.midi))}))
+      .sort((a,b)=>a.midi-b.midi || a.id.localeCompare(b.id));
+    const signature = normalized.map(note=>`${note.id}:${note.midi}`).join("|");
+    if (signature === liveMidiMelodySignature) return false;
+    liveMidiMelodySignature = signature;
+    liveMidiMelodyNotes = normalized;
+    if (E.sheet){
+      E.sheet.dataset.liveMelodyNotes = String(normalized.length);
+      E.sheet.dataset.liveMelodyMidi = normalized.map(note=>note.midi).join(",");
+    }
+    renderPianoForActive();
+    return true;
+  }
+
+  function clearLiveMidiMelodyNotes(){
+    return setLiveMidiMelodyNotes([]);
+  }
+
+  function getActiveMelodyNotes(){
+    if (activeMidiSong) return liveMidiMelodyNotes.slice();
+    const notes = [];
     const bar = state.chartBars?.[state.activeBar];
-    if (!bar || typeof bar !== "object") return pcs;
+    if (!bar || typeof bar !== "object") return notes;
 
     const pushMidi = (value)=>{
       const raw = Number(value);
       if (!Number.isFinite(raw)) return;
       const midi = Math.round(raw);
       if (midi < 0 || midi > 127) return;
-      pcs.add(pc(midi));
+      notes.push({id:`chart:${state.activeBar}:${state.activeHalf}:${notes.length}`,midi});
     };
     const scanNotes = (notes)=>{
       if (!Array.isArray(notes)) return;
@@ -6182,7 +6248,11 @@
     scanNotes(bar.notes);
     if (Array.isArray(bar.melodyByHalf)) scanNotes(bar.melodyByHalf[half]);
     if (Array.isArray(bar.notesByHalf)) scanNotes(bar.notesByHalf[half]);
-    return pcs;
+    return notes;
+  }
+
+  function getActiveMelodyPcs(){
+    return new Set(getActiveMelodyNotes().map(note=>pc(note.midi)));
   }
 
   let pianoLiveKeyRefs = [];
@@ -6238,7 +6308,7 @@
     for (let p=0; p<12; p++) applyLiveMidiPcOutline(p);
   }
 
-  function renderMiniFretizerPads(ch, scaleSet, chordSet, melodyPcs){
+  function renderMiniFretizerPads(ch, scaleSet, chordSet, melodyNotes){
     const grid = E.miniFretPad;
     if (!grid) return;
     grid.innerHTML = "";
@@ -6266,15 +6336,35 @@
     fragment.appendChild(headerRow);
 
     const baseStrings = [
-      { label:"e", name:"high E", open:4 },
-      { label:"B", name:"B", open:11 },
-      { label:"G", name:"G", open:7 },
-      { label:"D", name:"D", open:2 },
-      { label:"A", name:"A", open:9 },
-      { label:"E", name:"low E", open:4 }
+      { label:"e", name:"high E", open:4, midi:64 },
+      { label:"B", name:"B", open:11, midi:59 },
+      { label:"G", name:"G", open:7, midi:55 },
+      { label:"D", name:"D", open:2, midi:50 },
+      { label:"A", name:"A", open:9, midi:45 },
+      { label:"E", name:"low E", open:4, midi:40 }
     ];
     const strings = state.fretLefty ? [...baseStrings].reverse() : baseStrings;
     const rootPc = pc(ch.root);
+    const melodyByCell = new Map();
+    (Array.isArray(melodyNotes) ? melodyNotes : []).forEach((melodyNote)=>{
+      const sourceMidi = Math.round(Number(melodyNote?.midi));
+      if (!Number.isFinite(sourceMidi)) return;
+      const candidates = [];
+      strings.forEach((string,stringIndex)=>{
+        for (let fret=0; fret<=12; fret++){
+          const displayMidi = string.midi + fret;
+          if (pc(displayMidi) !== pc(sourceMidi)) continue;
+          candidates.push({stringIndex,fret,displayMidi,distance:Math.abs(displayMidi-sourceMidi)});
+        }
+      });
+      candidates.sort((a,b)=>a.distance-b.distance || b.displayMidi-a.displayMidi || a.fret-b.fret || a.stringIndex-b.stringIndex);
+      const target = candidates[0];
+      if (!target) return;
+      const key = `${target.stringIndex}:${target.fret}`;
+      const sources = melodyByCell.get(key) || [];
+      sources.push(sourceMidi);
+      melodyByCell.set(key,sources);
+    });
 
     strings.forEach((string, stringIndex)=>{
       const row = document.createElement("div");
@@ -6294,7 +6384,8 @@
         const inScale = scaleSet.has(pitchClass);
         const inChord = chordSet.has(pitchClass);
         const isRoot = inChord && pitchClass === rootPc;
-        const inMelody = melodyPcs.has(pitchClass);
+        const melodySources = melodyByCell.get(`${stringIndex}:${fret}`) || [];
+        const inMelody = melodySources.length > 0;
         const semanticStates = [];
         if (inScale) semanticStates.push("scale");
         if (inChord) semanticStates.push("chord");
@@ -6311,6 +6402,10 @@
         pad.setAttribute("aria-rowindex", String(stringIndex + 2));
         pad.setAttribute("aria-colindex", String(fret + 2));
         pad.dataset.state = semanticStates.join(" ") || "none";
+        if (inMelody){
+          pad.dataset.sourceMidi = melodySources.join(",");
+          pad.dataset.displayMidi = String(string.midi + fret);
+        }
 
         const note = noteName(pitchClass);
         const stateLabel = semanticStates.length ? `; ${semanticStates.join(", ")}` : "";
@@ -6352,7 +6447,8 @@
     const chordPCs = chordTonesPCs(ch).map(pc);
     const scaleSet = new Set((Array.isArray(scalePCs) ? scalePCs : []).map(pc));
     const chordSet = new Set(chordPCs);
-    const melodyPcs = getActiveMelodyPcs();
+    const melodyNotes = getActiveMelodyNotes();
+    const melodyPcs = new Set(melodyNotes.map(note=>pc(note.midi)));
     const scaleRoot = useGameKeyScale
       ? pc(gameRuntime.keyRoot)
       : ((ch && typeof ch.scaleRoot==="number") ? ch.scaleRoot : ch.root);
@@ -6366,7 +6462,7 @@
     const svg = E.fretSvg;
     svg.innerHTML = "";
     if (IS_FAKEBOT_MINI){
-      renderMiniFretizerPads(ch, scaleSet, chordSet, melodyPcs);
+      renderMiniFretizerPads(ch, scaleSet, chordSet, melodyNotes);
       return;
     }
 
@@ -6583,7 +6679,7 @@
     const chordPCs = chordTonesPCs(ch).map(pc);
     const scaleSet = new Set((Array.isArray(scalePCs) ? scalePCs : []).map(pc));
     const chordSet = new Set(chordPCs);
-    const melodyPcs = getActiveMelodyPcs();
+    const melodyNotes = getActiveMelodyNotes();
 
     const scaleRoot = useGameKeyScale
       ? pc(gameRuntime.keyRoot)
@@ -6596,6 +6692,7 @@
     svg.innerHTML = "";
     const nextKeyRefs = [];
     const nextKeysByPc = Array.from({ length: 12 }, ()=>[]);
+    const melodyKeySlots = [];
     const miniView = document.documentElement.classList.contains("fakebot-mini-frame");
 
     const placeMiniNoteLabel = (x, y, pitchClass)=>{
@@ -6616,6 +6713,8 @@
     const baseOct = clamp(Number(state.kbOct)||2, 1, 4);
     const needWide = (ch.intervals?.length||0) >= 5;
     const oct = miniView ? baseOct : clamp(needWide ? Math.max(baseOct, 3) : baseOct, 1, 4);
+    const displayBaseMidi = 48;
+    const displayTopMidi = displayBaseMidi + oct * 12 - 1;
     const whiteKeyCount = 7 * oct;
     const whiteW = W / whiteKeyCount;
     const whiteH = 230;
@@ -6635,6 +6734,7 @@
     for (let i=0;i<keyPos.length;i++){
       const k = keyPos[i];
       const p = pc(k.pc);
+      const displayMidi = displayBaseMidi + k.pc;
       const rect = document.createElementNS("http://www.w3.org/2000/svg","rect");
       rect.setAttribute("x", String(k.x));
       rect.setAttribute("y", "0");
@@ -6649,18 +6749,16 @@
       rect.setAttribute("stroke", baseStroke);
       rect.setAttribute("stroke-width", baseStrokeWidth);
       svg.appendChild(rect);
-      const ref = { el: rect, pc: p, baseStroke, baseStrokeWidth };
+      const ref = { el: rect, pc: p, displayMidi, baseStroke, baseStrokeWidth };
       nextKeyRefs.push(ref);
       nextKeysByPc[p].push(ref);
+      melodyKeySlots.push({displayMidi,isBlack:false,cx:k.x + whiteW*0.5,cy:130});
 
       const isChord = chordSet.has(p);
       const isRoot = p === pc(ch.root);
       if (isChord){
         placeMarker(svg, k.x + whiteW*0.5, 175, isRoot ? "root" : "chord");
         placeMiniNoteLabel(k.x + whiteW*0.5, 175, p);
-      }
-      if (melodyPcs.has(p)){
-        placeMelodyMarker(svg, k.x + whiteW*0.5, 130, false);
       }
     }
 
@@ -6671,7 +6769,8 @@
       for (const pRel of [1,3,6,8,10]){
         const baseWhiteIndex = blackOffsets[pRel];
         const x0 = (o*7 + baseWhiteIndex) * whiteW - blackW/2;
-        const p = pc(pRel + 12*o);
+        const displayMidi = displayBaseMidi + pRel + 12*o;
+        const p = pc(displayMidi);
         const rect = document.createElementNS("http://www.w3.org/2000/svg","rect");
         rect.setAttribute("x", String(x0));
         rect.setAttribute("y", "0");
@@ -6687,9 +6786,10 @@
         rect.setAttribute("stroke", baseStroke);
         rect.setAttribute("stroke-width", baseStrokeWidth);
         svg.appendChild(rect);
-        const ref = { el: rect, pc: p, baseStroke, baseStrokeWidth };
+        const ref = { el: rect, pc: p, displayMidi, baseStroke, baseStrokeWidth };
         nextKeyRefs.push(ref);
         nextKeysByPc[p].push(ref);
+        melodyKeySlots.push({displayMidi,isBlack:true,cx:x0 + blackW*0.5,cy:70});
 
         const isChord = chordSet.has(p);
         const isRoot = p === pc(ch.root);
@@ -6697,11 +6797,24 @@
           placeMarker(svg, x0 + blackW*0.5, 95, isRoot ? "root" : "chord");
           placeMiniNoteLabel(x0 + blackW*0.5, 95, p);
         }
-        if (melodyPcs.has(p)){
-          placeMelodyMarker(svg, x0 + blackW*0.5, 70, true);
-        }
       }
     }
+
+    const melodyByDisplayMidi = new Map();
+    melodyNotes.forEach((note)=>{
+      const sourceMidi = Math.round(Number(note?.midi));
+      const displayMidi = foldMidiIntoRange(sourceMidi, displayBaseMidi, displayTopMidi);
+      if (!Number.isFinite(displayMidi)) return;
+      const sources = melodyByDisplayMidi.get(displayMidi) || [];
+      sources.push(sourceMidi);
+      melodyByDisplayMidi.set(displayMidi,sources);
+    });
+    melodyByDisplayMidi.forEach((sources,displayMidi)=>{
+      const slot = melodyKeySlots.find(candidate=>candidate.displayMidi === displayMidi);
+      if (!slot) return;
+      const marker = placeMelodyMarker(svg,slot.cx,slot.cy,slot.isBlack,sources[0],displayMidi);
+      marker.dataset.sourceMidi = sources.join(",");
+    });
 
     pianoLiveKeyRefs = nextKeyRefs;
     pianoLiveKeysByPc = nextKeysByPc;
@@ -7599,6 +7712,8 @@
     let nextTickAt = 0;
     let uiTimer = null;
     let midiScheduleTimer = null;
+    let midiVisualTimer = null;
+    let midiSessionId = 0;
     let midiPlayStartedAt = 0;
     let midiPlayOffset = 0;
     let midiNoteCursor = 0;
@@ -7697,14 +7812,37 @@
     }
 
     function clearMidiTimers(){
+      midiSessionId += 1;
       if (midiScheduleTimer) window.clearTimeout(midiScheduleTimer);
       midiScheduleTimer = null;
+      if (midiVisualTimer) window.clearTimeout(midiVisualTimer);
+      midiVisualTimer = null;
+      clearLiveMidiMelodyNotes();
+    }
+
+    function runMidiVisualClock(runtime,sessionId){
+      if (!isPlaying || activeMidiSong !== runtime || sessionId !== midiSessionId) return;
+      const now = AudioKit.now();
+      if (now < midiPlayStartedAt){
+        clearLiveMidiMelodyNotes();
+        midiVisualTimer = window.setTimeout(()=>runMidiVisualClock(runtime,sessionId), Math.max(12, Math.min(45, (midiPlayStartedAt-now)*1000)));
+        return;
+      }
+      const songTime = midiPlayOffset + Math.max(0, now-midiPlayStartedAt);
+      const activeNotes = (runtime.melodyNotes || []).filter((note)=>{
+        const start = Math.max(0,Number(note.time)||0);
+        const end = start + Math.max(0.01,Number(note.duration)||0.01);
+        return start <= songTime + 0.018 && end > songTime;
+      });
+      setLiveMidiMelodyNotes(activeNotes);
+      midiVisualTimer = window.setTimeout(()=>runMidiVisualClock(runtime,sessionId), 34);
     }
 
     function scheduleMidiSong(){
       const runtime = activeMidiSong;
       if (!runtime || !runtime.notes.length) return false;
       clearMidiTimers();
+      const sessionId = midiSessionId;
       setMidiSamplePlayback(true);
 
       let offset = Math.max(0, Number(runtime.seekTime) || 0);
@@ -7735,9 +7873,10 @@
       midiMarkerCursor = 0;
       runtime.markers.forEach((marker,index)=>{ if (marker.time <= offset + 0.001) midiMarkerCursor = index; });
       applyUiFocus(midiMarkerCursor, 0, 0);
+      runMidiVisualClock(runtime,sessionId);
 
       const refill = ()=>{
-        if (!isPlaying || activeMidiSong !== runtime) return;
+        if (!isPlaying || activeMidiSong !== runtime || sessionId !== midiSessionId) return;
         const songTime = midiPlayOffset + Math.max(0, AudioKit.now() - midiPlayStartedAt);
         runtime.seekTime = clamp(songTime, 0, runtime.duration);
         if (songTime >= runtime.duration){
@@ -8205,11 +8344,19 @@
       uiTimer = null;
       clearMidiTimers();
       nextTickAt = 0;
-      if (wasPlaying) AudioKit.hardStop();
+      if (wasPlaying){ try{ AudioKit.hardStop(); }catch{} }
       setMidiSamplePlayback(false);
       if (options.resetMidi && activeMidiSong){
         activeMidiSong.seekTime = 0;
         state.activeBar = 0;
+        state.activeHalf = 0;
+        highlightActiveBar();
+      } else if (activeMidiSong){
+        let markerIndex = 0;
+        activeMidiSong.markers.forEach((marker,index)=>{
+          if (Number(marker.time) <= Number(activeMidiSong.seekTime) + 0.001) markerIndex = index;
+        });
+        state.activeBar = clamp(markerIndex,0,Math.max(0,state.chartBars.length-1));
         state.activeHalf = 0;
         highlightActiveBar();
       }
@@ -8222,13 +8369,34 @@
       renderPianoForActive();
     }
 
+    function seekMidi(time,barIndex){
+      const runtime = activeMidiSong;
+      if (!runtime) return false;
+      const continuePlayback = isPlaying;
+      if (continuePlayback){
+        stop();
+      }
+      runtime.seekTime = clamp(Number(time)||0,0,Math.max(0,runtime.duration));
+      const markerIndex = clamp(Math.trunc(Number(barIndex)||0),0,Math.max(0,state.chartBars.length-1));
+      applyUiFocus(markerIndex,0,0);
+      if (E.sheet) E.sheet.dataset.midiSeekTime = runtime.seekTime.toFixed(3);
+      if (!continuePlayback){
+        clearMidiTimers();
+        try{ AudioKit.hardStop(); }catch{}
+        setMidiSamplePlayback(false);
+        applyUiFocus(markerIndex,0,0);
+      }
+      if (continuePlayback) start();
+      return continuePlayback;
+    }
+
     function toggle(){
       if (isPlaying) stop(); else start();
     }
 
     function isOn(){ return isPlaying; }
 
-    return { start, stop, toggle, isOn, jumpTo, setTempo, setChart };
+    return { start, stop, toggle, isOn, jumpTo, seekMidi, setTempo, setChart };
   })();
 
   /* ---------- Undo / Redo (last 5) ---------- */
@@ -8672,14 +8840,13 @@
   /* ---------- Tap behavior (focus + preview) ---------- */
   function onBarTap(b, h, preview){
     if (activeMidiSong){
-      if (player.isOn()) player.stop();
-      state.activeBar = clamp(b, 0, Math.max(0, state.chartBars.length - 1));
-      state.activeHalf = 0;
-      activeMidiSong.seekTime = Math.max(0, Number(activeMidiSong.markers[state.activeBar]?.time) || 0);
-      highlightActiveBar();
-      renderHeaderPills();
-      renderPianoForActive();
-      updateMelodyPlayhead(0);
+      const markerIndex = clamp(b, 0, Math.max(0, state.chartBars.length - 1));
+      const markerTime = Math.max(0, Number(activeMidiSong.markers[markerIndex]?.time) || 0);
+      player.seekMidi(markerTime,markerIndex);
+      if (preview){
+        const chord = activeChord();
+        if (chord && !chord.markerOnly && chordTonesPCs(chord).length) previewChordNow(chord,false,false);
+      }
       saveAll();
       return;
     }
@@ -10427,6 +10594,9 @@
       state.kbOct = 2;
       state.morphBg = false;
       state.soundFontEnabled = false;
+      state.midiInEnabled = false;
+      state.midiInputId = "";
+      if (E.rowMidiInput) E.rowMidiInput.style.display = "none";
     } else {
       state.songLibraryKind = "ireal";
       E.songLibraryKind?.querySelector('option[value="midi"]')?.remove();
@@ -10468,7 +10638,7 @@
     } else {
       loadPlaylistFromUrl(E.songUrl ? E.songUrl.value : DEFAULT_PLAYLIST_URL);
     }
-    initMidiSystem();
+    if (!IS_FAKEBOT_MINI) initMidiSystem();
     if (isGameMode()){
       startGameRound(false);
     }
