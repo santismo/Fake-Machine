@@ -1563,6 +1563,12 @@
   function chordTonesPCs(ch){
     return [...new Set(chordIntervals(ch).map(i=>pc(ch.root+i)))];
   }
+  function chordFitsScale(ch, scaleRoot, mode){
+    if (!ch || !Array.isArray(SCALES[mode])) return true;
+    const scale = new Set(SCALES[mode].map(interval=>pc(scaleRoot + interval)));
+    if (chordTonesPCs(ch).some(tone=>!scale.has(pc(tone)))) return false;
+    return ch.slash==null || scale.has(pc(ch.slash));
+  }
 
   /* ---------- Chord-local scale selection (context-aware) ---------- */
   function candidatesForChord(ch){
@@ -1726,7 +1732,7 @@
       : (state.scaleLimitEnabled ?? true);
     const maxLimit = 32;
     const limit = limitEnabled
-      ? clamp(Number(overrideLimit ?? state.scalesUsed)||1, 1, maxLimit)
+      ? clamp(Math.trunc(Number(overrideLimit ?? state.scalesUsed)||1), 1, maxLimit)
       : Number.POSITIVE_INFINITY;
 
     const contextSpan = 4;
@@ -1755,16 +1761,6 @@
       return slots[idx+1]?.chord || null;
     };
 
-    // Single-scale hard clamp: force all chords to key root/mode
-    if (limitEnabled && limit===1 && SCALES[state.keyMode]){
-      const rootPc = pc(state.keyRoot);
-      for (const slot of slots){
-        slot.chord.mode = state.keyMode;
-        slot.chord.scaleRoot = rootPc;
-      }
-      return;
-    }
-
     const pcsFor = (center, mode)=>{
       const base = SCALES[mode] || SCALES.mixo;
       return new Set(base.map(i=>pc(center + i)));
@@ -1775,6 +1771,80 @@
       if (ch.slash!=null && !set.has(pc(ch.slash))) return false;
       return true;
     };
+    const nearestScaleTone = (rootPc, scaleSet)=>{
+      let best = rootPc;
+      let bestDist = 99;
+      for (const p of scaleSet){
+        const d = Math.min((p - rootPc + 12) % 12, (rootPc - p + 12) % 12);
+        if (d < bestDist){ bestDist = d; best = p; }
+      }
+      return best;
+    };
+    const retuneChordToScale = (slot, scaleRoot, mode)=>{
+      const scaleSet = pcsFor(scaleRoot, mode);
+      const limiters = state.limiter || DEFAULTS.limiter;
+      const weights = state.weights || macroToWeights(state.chaos);
+      const baseOpts = buildQualityOptions(limiters);
+      const scaleTones = [...scaleSet];
+
+      let rootPc = pc(slot.chord.root);
+      if (!scaleSet.has(rootPc)) rootPc = nearestScaleTone(rootPc, scaleSet);
+      const hasFitAt = (r)=>baseOpts.some(o=>{
+        const tones = (CHORDS[o.v.symbol] || []).map(iv=>pc(r + iv));
+        return tones.every(p=>scaleSet.has(p));
+      });
+      if (!hasFitAt(rootPc)){
+        let best = rootPc;
+        let bestDist = 99;
+        for (const tone of scaleTones){
+          if (!hasFitAt(tone)) continue;
+          const d = Math.min((tone - rootPc + 12) % 12, (rootPc - tone + 12) % 12);
+          if (d < bestDist){ bestDist = d; best = tone; }
+        }
+        rootPc = best;
+      }
+      const quality = chooseQuality(limiters, weights, scaleSet, rootPc, scaleSet);
+      let replacement = makeChord(rootPc, quality);
+      if (!chordFits(replacement,scaleRoot,mode)){
+        // When no enabled quality can satisfy a hard scale cap, the scale cap
+        // wins and falls back to the nearest diatonic triad.
+        const safeQualities = [
+          {symbol:"maj",family:"maj",key:"maj",display:""},
+          {symbol:"min",family:"min",key:"min",display:"m"},
+          {symbol:"dim",family:"dim",key:"dim",display:"dim"}
+        ];
+        const safeCandidates = [];
+        for (const tone of scaleTones){
+          for (const safeQuality of safeQualities){
+            const candidate = makeChord(tone,safeQuality);
+            if (!chordFits(candidate,scaleRoot,mode)) continue;
+            const distance = Math.min((tone-rootPc+12)%12,(rootPc-tone+12)%12);
+            const familyBonus = safeQuality.family === slot.chord.family ? 20 : 0;
+            safeCandidates.push({candidate,score:familyBonus-distance});
+          }
+        }
+        safeCandidates.sort((a,b)=>b.score-a.score);
+        if (safeCandidates.length) replacement = safeCandidates[0].candidate;
+      }
+      replacement.mode = mode;
+      replacement.scaleRoot = pc(scaleRoot);
+      if (slot.chord.slash!=null && scaleSet.has(pc(slot.chord.slash))) replacement.slash = pc(slot.chord.slash);
+      else delete slot.chord.slash;
+      Object.assign(slot.chord, replacement);
+    };
+
+    // Single-scale hard clamp: keep both metadata and chord tones inside the center scale.
+    if (limitEnabled && limit===1 && SCALES[state.keyMode]){
+      const rootPc = pc(state.keyRoot);
+      for (const slot of slots){
+        if (!chordFits(slot.chord, rootPc, state.keyMode)) retuneChordToScale(slot, rootPc, state.keyMode);
+        else{
+          slot.chord.mode = state.keyMode;
+          slot.chord.scaleRoot = rootPc;
+        }
+      }
+      return;
+    }
 
     const candidateCentersForMode = (ch, mode)=>{
       const intervals = SCALES[mode] || SCALES.mixo;
@@ -1973,52 +2043,6 @@
       return s;
     };
 
-    function nearestScaleTone(rootPc, scaleSet){
-      let best = rootPc;
-      let bestDist = 99;
-      for (const p of scaleSet){
-        const d = Math.min((p - rootPc + 12) % 12, (rootPc - p + 12) % 12);
-        if (d < bestDist){
-          bestDist = d;
-          best = p;
-        }
-      }
-      return best;
-    }
-
-    function retuneChordToScale(slot, scaleRoot, mode){
-      const scaleSet = pcsFor(scaleRoot, mode);
-      const limiters = state.limiter || DEFAULTS.limiter;
-      const weights = state.weights || macroToWeights(state.chaos);
-      const baseOpts = buildQualityOptions(limiters);
-      const scaleTones = [...scaleSet];
-
-      let rootPc = pc(slot.chord.root);
-      if (!scaleSet.has(rootPc)) rootPc = nearestScaleTone(rootPc, scaleSet);
-
-      // If current root can't support any in-scale quality, find a nearby scale root that can.
-      const hasFitAt = (r)=>baseOpts.some(o=>{
-        const tones = (CHORDS[o.v.symbol] || []).map(iv=>pc(r + iv));
-        return tones.every(p=>scaleSet.has(p));
-      });
-      if (!hasFitAt(rootPc)){
-        let best = rootPc;
-        let bestDist = 99;
-        for (const t of scaleTones){
-          if (!hasFitAt(t)) continue;
-          const d = Math.min((t - rootPc + 12) % 12, (rootPc - t + 12) % 12);
-          if (d < bestDist){ bestDist = d; best = t; }
-        }
-        rootPc = best;
-      }
-      const q = chooseQuality(limiters, weights, scaleSet, rootPc, scaleSet);
-      const replacement = makeChord(rootPc, q);
-      replacement.mode = mode;
-      replacement.scaleRoot = pc(scaleRoot);
-      if (slot.chord.slash!=null && scaleSet.has(pc(slot.chord.slash))) replacement.slash = pc(slot.chord.slash);
-      Object.assign(slot.chord, replacement);
-    }
-
     const candLists = slots.map((slot, idx)=>{
       const chord = slot.chord;
       let list = candPer[idx].filter(c=> paletteSet.has(c.sig));
@@ -2030,6 +2054,29 @@
           if (!chordFits(chord, meta.root, meta.mode)) continue;
           const score = scoreModeForContext(chord, meta.mode, null, null, meta.root);
           list.push({mode:meta.mode, score, center:meta.root, sig});
+        }
+      }
+      if (!list.length && limitEnabled && palette.length){
+        const tones = chordTonesPCs(chord).map(pc);
+        let target = null;
+        let targetScore = -Infinity;
+        for (const sig of palette){
+          const meta = sigMeta.get(sig);
+          if (!meta) continue;
+          const scaleSet = sigToSet(sig);
+          const overlap = tones.reduce((count,tone)=>count + (scaleSet.has(tone) ? 1 : 0), 0);
+          const distance = Math.min((pc(chord.root)-meta.root+12)%12,(meta.root-pc(chord.root)+12)%12);
+          const score = overlap*10 - distance;
+          if (score > targetScore){ targetScore = score; target = {sig,meta}; }
+        }
+        if (target){
+          retuneChordToScale(slot,target.meta.root,target.meta.mode);
+          list = [{
+            mode:target.meta.mode,
+            center:target.meta.root,
+            sig:target.sig,
+            score:scoreModeForContext(slot.chord,target.meta.mode,null,null,target.meta.root)
+          }];
         }
       }
       if (!list.length) list = candPer[idx].slice();
@@ -2084,8 +2131,9 @@
         continue;
       }
 
-      chord.mode = chosen.mode || "mixo";
-      chord.scaleRoot = pc((chosen && typeof chosen.center==="number") ? chosen.center : chord.root);
+      const canonical = limitEnabled ? sigMeta.get(chosen.sig) : null;
+      chord.mode = canonical?.mode || chosen.mode || "mixo";
+      chord.scaleRoot = pc(canonical?.root ?? ((chosen && typeof chosen.center==="number") ? chosen.center : chord.root));
     }
 
     // Hard cap: if any extra signatures slipped through, remap them into the top `limit`
@@ -5054,10 +5102,15 @@
 
       const c1 = bar?.chords?.[0] || null;
       const c2 = bar?.chords?.[1] || null;
+      const c1Inside = !c1 || chordFitsScale(c1,state.keyRoot,state.keyMode);
+      const c2Inside = !c2 || chordFitsScale(c2,state.keyRoot,state.keyMode);
 
       const sym = document.createElement("div");
       sym.className = "sym";
       sym.textContent = c1 ? chordName(c1) : "—";
+      sym.dataset.keyCenter = c1Inside ? "inside" : "outside";
+      if (c1) sym.dataset.scale = `${pc(c1.scaleRoot ?? c1.root)}:${c1.mode || "mixo"}`;
+      sym.classList.toggle("outOfCenter", !c1Inside);
 
       el.appendChild(num);
       el.appendChild(sym);
@@ -5067,6 +5120,9 @@
         sym2 = document.createElement("div");
         sym2.className = "sym sym2";
         sym2.textContent = chordName(c2);
+        sym2.dataset.keyCenter = c2Inside ? "inside" : "outside";
+        sym2.dataset.scale = `${pc(c2.scaleRoot ?? c2.root)}:${c2.mode || "mixo"}`;
+        sym2.classList.toggle("outOfCenter", !c2Inside);
         el.appendChild(sym2);
 
         const hh = document.createElement("div");
@@ -5081,6 +5137,10 @@
         hh.appendChild(top); hh.appendChild(bot);
         el.appendChild(hh);
       }
+
+      const centerState = c1Inside && c2Inside ? "inside" : (!c1Inside && (!c2 || !c2Inside) ? "outside" : "mixed");
+      el.dataset.keyCenter = centerState;
+      el.classList.toggle("hasOutOfCenter", centerState !== "inside");
 
       el.addEventListener("click", ()=> onBarTap(b,0,true));
       E.sheet.appendChild(el);
@@ -5679,8 +5739,7 @@
       ? SCALES[gameRuntime.keyMode].map(i=>pc(gameRuntime.keyRoot + i))
       : localScale.pcs;
     const chordPCs = chordTonesPCs(ch).map(pc);
-    const displayScalePCs = [...new Set([...(Array.isArray(scalePCs) ? scalePCs : []).map(pc), ...chordPCs])];
-    const scaleSet = new Set(displayScalePCs);
+    const scaleSet = new Set((Array.isArray(scalePCs) ? scalePCs : []).map(pc));
     const chordSet = new Set(chordPCs);
     const melodyPcs = getActiveMelodyPcs();
     const scaleRoot = useGameKeyScale
@@ -5897,8 +5956,7 @@
       ? SCALES[gameRuntime.keyMode].map(i=>pc(gameRuntime.keyRoot + i))
       : localScale.pcs;
     const chordPCs = chordTonesPCs(ch).map(pc);
-    const displayScalePCs = [...new Set([...(Array.isArray(scalePCs) ? scalePCs : []).map(pc), ...chordPCs])];
-    const scaleSet = new Set(displayScalePCs);
+    const scaleSet = new Set((Array.isArray(scalePCs) ? scalePCs : []).map(pc));
     const chordSet = new Set(chordPCs);
     const melodyPcs = getActiveMelodyPcs();
 
@@ -5924,7 +5982,7 @@
       label.setAttribute("text-anchor", "middle");
       label.setAttribute("dominant-baseline", "middle");
       label.setAttribute("pointer-events", "none");
-      label.setAttribute("transform", `translate(${x} ${y}) scale(1 .4) translate(${-x} ${-y})`);
+      label.setAttribute("transform", `translate(${x} ${y}) scale(1 .55) translate(${-x} ${-y})`);
       label.textContent = noteName(pitchClass);
       svg.appendChild(label);
     };
@@ -6185,6 +6243,11 @@
       const input = context.createGain();
       input.connect(comp);
       return { context, input };
+    }
+
+    function chordVoicingForPreset(ch, preset){
+      const config = KEY_PRESETS[preset] || KEY_PRESETS.ep;
+      return chordVoicingMidi(ch, config.vStyle || "closed");
     }
 
     function soundFontActive(){
@@ -6867,7 +6930,8 @@
     return {
       ensure, now, resume, playChord, playNote, noteOn, noteOff, playMidiNote, playBass, playDrumHit, hardStop,
       loadSoundFontUrl, loadSoundFontBuffer, updateSoundFontPrograms, setMidiProgram,
-      soundFontActive, soundFontAllNotesOff, setMasterVolume, createExternalInput
+      soundFontActive, soundFontAllNotesOff, setMasterVolume, createExternalInput,
+      chordVoicingMidi, chordVoicingForPreset
     };
   })();
 
@@ -6886,11 +6950,8 @@
   window.FakebotCore = Object.freeze({
     variant: IS_FAKEBOT_MINI ? "mini" : "classic",
     audio: AudioKit,
-    chordVoicingMidi: (ch, style)=>chordVoicingMidi(ch, style),
-    chordVoicingForPreset: (ch, preset)=>{
-      const config = KEY_PRESETS[preset] || KEY_PRESETS.ep;
-      return chordVoicingMidi(ch, config.vStyle || "closed");
-    },
+    chordVoicingMidi: (ch, style)=>AudioKit.chordVoicingMidi(ch, style),
+    chordVoicingForPreset: (ch, preset)=>AudioKit.chordVoicingForPreset(ch, preset),
     chordTonesPCs: (ch)=>chordTonesPCs(ch),
     chordName: (ch)=>chordName(ch),
     noteName: (pitchClass)=>noteName(pitchClass)
@@ -7753,7 +7814,7 @@
     chooseKeyCenter();
 
     const scaleLimiterOn = state.scaleLimitEnabled ?? true;
-    const singleScale = (scaleLimiterOn && state.scalesUsed===1 && SCALES[state.keyMode])
+    const singleScale = (scaleLimiterOn && Number(state.scalesUsed)===1 && SCALES[state.keyMode])
       ? new Set(SCALES[state.keyMode].map(i=>pc(state.keyRoot+i)))
       : null;
     const keyScaleSet = SCALES[state.keyMode]
@@ -7784,7 +7845,7 @@
     const recentRoots = [];
 
     // controlled “center drift”: allow only N center changes, spread across bars
-    const driftBudget = clamp(Number(state.scalesUsed)||8, 1, 32);
+    const driftBudget = clamp(Math.trunc(Number(state.scalesUsed)||8), 1, 32);
     let driftLeft = driftBudget;
     let lastDriftAt = -999;
 
@@ -7821,7 +7882,7 @@
         let ch = makeChord(root, q);
 
         // more “jazz” feeling: nudge dom chords toward ii-V-ish by biasing a ii before V
-        if (logic===PROGRESSION_LOGICS.jazzFunctional && ch.family==="dom" && chance(0.35)){
+        if (!singleScale && logic===PROGRESSION_LOGICS.jazzFunctional && ch.family==="dom" && chance(0.35)){
           // if this is first half, try set this chord as ii and next as V
           if (split && h===0){
             const iiRoot = pc(root - 5); // ii is a 5th below V
@@ -7830,11 +7891,11 @@
           }
         }
 
-        ch = maybeAlt(ch, limit, w);
+        if (!singleScale) ch = maybeAlt(ch, limit, w);
         ch = maybeSlash(ch, limit, w);
 
         // chromatic option: side-slip roots (only if limiter allows chromatic)
-        if (limit.tChrom && chance(clamp(w.rootChaos,0,100)/100 * 0.18)){
+        if (!singleScale && limit.tChrom && chance(clamp(w.rootChaos,0,100)/100 * 0.18)){
           ch.root = pc(ch.root + (chance(0.5)? 1 : -1));
           ch.scaleRoot = ch.root;
         }
@@ -9146,17 +9207,17 @@
       });
     }
     bindRangePair(E.scalesUsed, E.scalesUsedNum, (v)=>{
-      state.scalesUsed=v;
-      assignChordModesWithLimit(state.chartBars);
-      renderPianoForActive();
+      state.scalesUsed=clamp(Math.trunc(Number(v)||1),1,32);
+      if (state.progressionSource === "generate") assignChordModesWithLimit(state.chartBars);
+      renderAll();
       saveAll();
     });
     if (E.scaleLimitEnabled){
       E.scaleLimitEnabled.addEventListener("change", ()=>{
         state.scaleLimitEnabled = !!E.scaleLimitEnabled.checked;
         syncScaleLimiterUI();
-        assignChordModesWithLimit(state.chartBars);
-        renderPianoForActive();
+        if (state.progressionSource === "generate") assignChordModesWithLimit(state.chartBars);
+        renderAll();
         saveAll();
       });
     }
@@ -9555,7 +9616,7 @@
 
     // hydrate UI
     syncUIFromState();
-    assignChordModesWithLimit(state.chartBars);
+    if (state.progressionSource === "generate") assignChordModesWithLimit(state.chartBars);
 
     bindUI();
     updateUndoRedoButtons();

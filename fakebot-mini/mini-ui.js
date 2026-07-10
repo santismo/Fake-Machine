@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const UI_VERSION = "20260710a";
+  const UI_VERSION = "20260710o";
 
   const byId = (id)=>document.getElementById(id);
   const make = (tag, className, text)=>{
@@ -103,6 +103,8 @@
 
     const panel = make("aside", "");
     panel.id = "miniSettingsPanel";
+    panel.setAttribute("role", "dialog");
+    panel.setAttribute("aria-modal", "true");
     panel.setAttribute("aria-label", "Fakebot Mini settings");
     panel.setAttribute("aria-hidden", "true");
     panel.setAttribute("inert", "");
@@ -187,8 +189,15 @@
       settings.panel.setAttribute("aria-hidden", open ? "false" : "true");
       if (open) settings.panel.removeAttribute("inert");
       else settings.panel.setAttribute("inert", "");
+      const content = byId("miniContent");
+      if (content){
+        if (open) content.setAttribute("inert", "");
+        else content.removeAttribute("inert");
+      }
       settings.backdrop.setAttribute("aria-hidden", open ? "false" : "true");
       if (open) window.setTimeout(()=>settings.close.focus(), 30);
+      window.parent.postMessage({source:"fakebot-mini",type:"settings-state",open:!!open}, "*");
+      if (!open) window.parent.postMessage({source:"fakebot-mini",type:"settings-closed"}, "*");
     };
 
     settings.close.addEventListener("click", ()=>setSettingsOpen(false));
