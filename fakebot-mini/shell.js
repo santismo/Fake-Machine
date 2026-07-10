@@ -1,12 +1,13 @@
 (() => {
   "use strict";
-  const VERSION = "20260710o";
+  const VERSION = "20260710q";
   const frame = document.getElementById("miniFrame");
   const loading = document.getElementById("miniLoading");
   const audioStatus = document.getElementById("miniAudioStatus");
   const playButton = document.getElementById("miniPlay");
   const settingsButton = document.getElementById("miniSettings");
   const dock = document.querySelector(".miniDock");
+  const shell = document.querySelector(".miniShell");
   let loadingTimer = 0;
   let bootedDocument = null;
   let playPending = false;
@@ -172,9 +173,11 @@
       audioStatus.dataset.state = event.data.state || "loading";
     }
     if (event.data.type === "ui-ready") showStatus("Fakebot Mini ready", 1000);
-    if (event.data.type === "settings-state" && dock){
-      if (event.data.open){ dock.setAttribute("inert", ""); dock.setAttribute("aria-hidden", "true"); }
-      else{ dock.removeAttribute("inert"); dock.removeAttribute("aria-hidden"); }
+    if (event.data.type === "settings-state"){
+      const open = !!event.data.open;
+      shell?.classList.toggle("has-open-settings", open);
+      if (open){ dock?.setAttribute("inert", ""); dock?.setAttribute("aria-hidden", "true"); }
+      else{ dock?.removeAttribute("inert"); dock?.removeAttribute("aria-hidden"); }
     }
     if (event.data.type === "settings-closed") settingsButton?.focus();
   });

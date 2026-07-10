@@ -81,10 +81,10 @@ html.fakebot-mini-frame .bar .sym2{width:100%!important;margin-top:7px!important
 html.fakebot-mini-frame .bar .num{top:8px!important;right:9px!important;color:#676b72!important;font-size:9px!important}
 
 html.fakebot-mini-frame .miniSettingsBackdrop{position:fixed;inset:0;z-index:19990;background:rgba(0,0,0,.62);opacity:0;visibility:hidden;transition:opacity .18s ease,visibility .18s ease}
-html.fakebot-mini-frame #miniSettingsPanel{position:fixed;z-index:20000;left:50%;bottom:0;width:min(100%,680px);height:min(92dvh,900px);display:flex;flex-direction:column;transform:translate(-50%,102%);transition:transform .22s ease;border:1px solid var(--pageLine);border-bottom:0;border-radius:22px 22px 0 0;background:#101113;box-shadow:0 -18px 50px rgba(0,0,0,.42);overflow:hidden}
+html.fakebot-mini-frame #miniSettingsPanel{position:fixed;z-index:20000;left:50%;bottom:0;width:min(100%,680px);height:min(92dvh,900px);display:flex;flex-direction:column;transform:translate(-50%,102%);visibility:hidden;transition:transform .22s ease,visibility 0s linear .22s;border:1px solid var(--pageLine);border-bottom:0;border-radius:22px 22px 0 0;background:#101113;box-shadow:none;overflow:hidden}
 html.fakebot-mini-frame body.mini-settings-open{overflow:hidden!important}
 html.fakebot-mini-frame body.mini-settings-open .miniSettingsBackdrop{opacity:1;visibility:visible}
-html.fakebot-mini-frame body.mini-settings-open #miniSettingsPanel{transform:translate(-50%,0)}
+html.fakebot-mini-frame body.mini-settings-open #miniSettingsPanel{transform:translate(-50%,0);visibility:visible;transition:transform .22s ease,visibility 0s;box-shadow:0 -18px 50px rgba(0,0,0,.42)}
 html.fakebot-mini-frame .miniSettingsHeader{min-height:62px;padding:10px 12px;display:grid;grid-template-columns:1fr auto;align-items:center;gap:10px;border-bottom:1px solid var(--pageLine);background:#141517}
 html.fakebot-mini-frame .miniSettingsHeader strong{font-size:18px;letter-spacing:-.025em}
 html.fakebot-mini-frame .miniSettingsHeader span{display:block;margin-top:2px;color:var(--pageMuted);font-size:10px;font-weight:600}
