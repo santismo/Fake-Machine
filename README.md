@@ -7,6 +7,10 @@ Mobile-first Fakebot 2:
 
 https://santismo.github.io/fakebot/fakebot2/
 
+Fakebot Mini — streamlined sample-based chord generator:
+
+https://santismo.github.io/fakebot/fakebot-mini/
+
 hotkeys
 
 Space: Play / Pause

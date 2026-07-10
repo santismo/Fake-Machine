@@ -1,0 +1,34 @@
+:root{
+  --shell-bg:#0b0c0e;
+  --shell-panel:#141517;
+  --shell-raised:#1b1c1f;
+  --shell-line:#2b2d31;
+  --shell-text:#f4f4f2;
+  --shell-muted:#92969d;
+  --shell-accent:#d7b56d;
+  --top-height:54px;
+  --dock-height:72px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%;margin:0;overflow:hidden;background:var(--shell-bg);color:var(--shell-text);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif}
+button,a{font:inherit}
+button{color:inherit;cursor:pointer}
+.miniShell{position:fixed;inset:0;display:grid;grid-template-rows:calc(var(--top-height) + env(safe-area-inset-top)) minmax(0,1fr) calc(var(--dock-height) + env(safe-area-inset-bottom));background:var(--shell-bg)}
+.miniTopbar{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;padding:calc(7px + env(safe-area-inset-top)) 10px 7px;border-bottom:1px solid var(--shell-line);background:rgba(11,12,14,.96);z-index:10}
+.miniBack,.miniTopAction,.miniDock button{min-height:40px;border:1px solid var(--shell-line);border-radius:12px;background:var(--shell-raised);color:var(--shell-text);font-size:12px;font-weight:760;text-decoration:none;display:flex;align-items:center;justify-content:center;padding:0 12px}
+.miniBack{color:var(--shell-muted)}
+.miniBrand{min-width:0;display:grid;gap:2px}
+.miniBrand strong{font-size:16px;letter-spacing:-.025em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.miniBrand span{font-size:10px;color:var(--shell-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.miniBrand span[data-state="ready"]{color:#7dd7ad}
+.miniBrand span[data-state="error"]{color:#e48a8a}
+.miniFrameWrap{position:relative;min-height:0;overflow:hidden}
+#miniFrame{position:absolute;inset:0;width:100%;height:100%;border:0;background:var(--shell-bg);color-scheme:dark}
+.miniLoading{position:absolute;left:50%;top:14px;transform:translateX(-50%);z-index:5;padding:7px 11px;border:1px solid var(--shell-line);border-radius:999px;background:var(--shell-raised);color:var(--shell-muted);font-size:11px;font-weight:700;opacity:0;pointer-events:none;transition:opacity .18s ease;white-space:nowrap}
+.miniLoading.show{opacity:1}
+.miniDock{display:grid;grid-template-columns:.8fr 1.4fr .8fr;gap:8px;padding:8px 10px calc(8px + env(safe-area-inset-bottom));border-top:1px solid var(--shell-line);background:rgba(11,12,14,.97);z-index:10}
+.miniDock button{min-height:52px;font-size:13px}
+.miniDock .miniGenerate{background:var(--shell-accent);border-color:var(--shell-accent);color:#18140d;font-size:14px;font-weight:850}
+.miniDock button:active,.miniTopAction:active,.miniBack:active{transform:scale(.985)}
+@media(max-width:360px){.miniTopAction{padding:0 9px}.miniBack{padding:0 9px}.miniBrand strong{font-size:15px}.miniDock{gap:6px;padding-left:7px;padding-right:7px}}
+@media(orientation:landscape) and (max-height:520px){:root{--top-height:44px;--dock-height:58px}.miniTopbar{padding-top:calc(4px + env(safe-area-inset-top));padding-bottom:4px}.miniBack,.miniTopAction{min-height:34px}.miniBrand span{display:none}.miniDock{max-width:620px;width:100%;margin:0 auto;padding-top:5px;padding-bottom:calc(5px + env(safe-area-inset-bottom))}.miniDock button{min-height:46px}}
