@@ -802,6 +802,7 @@
           <svg id="pianoSvg" viewBox="0 0 1000 240" preserveAspectRatio="none" aria-label="Piano keyboard"></svg>
         </div>
         <div class="fretBox" id="fretBox" style="display:none;">
+          <div class="miniFretPad" id="miniFretPad" role="grid" aria-label="Compact guitar fretboard, frets 0 through 12" style="display:none;"></div>
           <svg id="fretSvg" viewBox="0 0 1000 240" preserveAspectRatio="none" aria-label="Guitar fretboard"></svg>
         </div>
         <div class="hint" id="pianoHint">—</div>
@@ -813,6 +814,7 @@
       <div class="cardHead">
         <div class="row" style="gap:8px;align-items:center;">
           <div class="title">🎼</div>
+          <button class="btn tiny densityBtn" id="btnCardDensity" type="button" aria-label="Show 2 chord cards per row" title="Chord card density: 2 per row" style="display:none;">2×</button>
           <button class="btn tiny" id="btnEdit" title="Edit chart">✏️</button>
         </div>
         <div class="title" id="leadKey">—</div>
@@ -891,6 +893,13 @@
           </summary>
           <div class="groupBody">
             <div class="controls">
+              <div class="control">
+                <label>Song library</label>
+                <select id="songLibraryKind">
+                  <option value="ireal" selected>Chord charts (iReal)</option>
+                  <option value="midi">Miditar MIDI markers</option>
+                </select>
+              </div>
               <div class="control" style="grid-column: 1 / -1;">
                 <div class="msg" id="songStatus" style="margin:0;">Loading playlist...</div>
               </div>
@@ -912,6 +921,11 @@
                   <button class="btn tiny" id="btnSongRandom" type="button">Load random song</button>
                   <div class="songRandomLabel" id="songRandomLabel">No song loaded</div>
                 </div>
+              </div>
+              <div class="control" style="grid-column: 1 / -1;">
+                <label>Miditar MIDI upload (.mid/.midi)</label>
+                <input class="fileInput" type="file" id="midiSongFile" accept=".mid,.midi,audio/midi,audio/x-midi" multiple>
+                <div class="msg">Marker events become chord cards; MIDI notes and timing play as authored.</div>
               </div>
               <div class="control" style="grid-column: 1 / -1;">
                 <label>BIAB upload (.mgu/.sgu/.mg1/.sg1...)</label>
@@ -1534,6 +1548,7 @@
   };
 
   function chordIntervals(ch){
+    if (ch?.markerOnly) return [];
     if (Array.isArray(ch?.intervals) && ch.intervals.length) return ch.intervals;
     const key = ch?.key;
     if (key && CHORDS[key]) return CHORDS[key];
@@ -1557,6 +1572,7 @@
   }
 
   function chordName(ch){
+    if (ch?.markerText) return String(ch.markerText);
     const base = `${noteName(ch.root)}${ch.symbol}`;
     return (ch.slash!=null) ? `${base}/${noteName(ch.slash)}` : base;
   }
@@ -2178,6 +2194,7 @@
     bars: 4,
     halfEnabled: false,
     halfDensity: 22,
+    progressionDensity: 2,
     progressionSource: "generate",
     exampleProgression: "nash_251_hold1",
     exampleMode: "ionian",
@@ -2225,6 +2242,7 @@
     midiInputId: "",
     playbackOrder: [],
     currentSongTitle: "",
+    songLibraryKind: "ireal",
     soundFontUrl: DEFAULT_SOUNDFONT_URL,
     soundFontEnabled: true
   };
@@ -2240,6 +2258,7 @@
     bars: DEFAULTS.bars,
     halfEnabled: DEFAULTS.halfEnabled,
     halfDensity: DEFAULTS.halfDensity,
+    progressionDensity: DEFAULTS.progressionDensity,
     progressionSource: DEFAULTS.progressionSource,
     exampleProgression: DEFAULTS.exampleProgression,
     exampleMode: DEFAULTS.exampleMode,
@@ -2283,6 +2302,7 @@
     midiInputId: DEFAULTS.midiInputId,
     playbackOrder: structuredClone(DEFAULTS.playbackOrder),
     currentSongTitle: DEFAULTS.currentSongTitle,
+    songLibraryKind: DEFAULTS.songLibraryKind,
     soundFontUrl: DEFAULTS.soundFontUrl,
     soundFontEnabled: DEFAULTS.soundFontEnabled,
     allowedCenters: [],
@@ -2334,6 +2354,7 @@
     masterTempoTopVal: document.getElementById("masterTempoTopVal"),
 
     btnEdit: document.getElementById("btnEdit"),
+    btnCardDensity: document.getElementById("btnCardDensity"),
     editHint: document.getElementById("editHint"),
 
     btnRandGen: document.getElementById("btnRandGen"),
@@ -2356,6 +2377,7 @@
     pianoBox: document.getElementById("pianoBox"),
     fretBox: document.getElementById("fretBox"),
     fretSvg: document.getElementById("fretSvg"),
+    miniFretPad: document.getElementById("miniFretPad"),
     pianoTop: document.getElementById("pianoTop"),
     pianoHint: document.getElementById("pianoHint"),
     markerStyle: document.getElementById("markerStyle"),
@@ -2371,10 +2393,12 @@
     songUrl: document.getElementById("songUrl"),
     btnSongFetch: document.getElementById("btnSongFetch"),
     songFile: document.getElementById("songFile"),
+    midiSongFile: document.getElementById("midiSongFile"),
     biabFile: document.getElementById("biabFile"),
     biabStatus: document.getElementById("biabStatus"),
     songSearch: document.getElementById("songSearch"),
     songSort: document.getElementById("songSort"),
+    songLibraryKind: document.getElementById("songLibraryKind"),
     btnSongRandom: document.getElementById("btnSongRandom"),
     songRandomLabel: document.getElementById("songRandomLabel"),
     songList: document.getElementById("songList"),
@@ -3349,6 +3373,7 @@
     const preset = NASHVILLE_EXAMPLES.find(p=>p.id===state.exampleProgression) || NASHVILLE_EXAMPLES[0];
     if (!preset) return;
     if (recordHistory) pushHistory();
+    deactivateMidiSong(true);
 
     const parentRoot = Number.isFinite(state.exampleParentRoot) ? pc(state.exampleParentRoot) : pc(state.keyRoot || 0);
     const keyRoot = modalTonicFromParent(parentRoot, mode);
@@ -3556,6 +3581,7 @@
   function startGameRound(recordHistory=true){
     if (!isGameMode()) return false;
     if (recordHistory) pushHistory();
+    deactivateMidiSong(true);
     const keyRoot = rint(0, 11);
     const modePool = gameModePoolForDifficulty(state.gameDifficulty);
     const mode = pick(modePool.length ? modePool : ["ionian"]);
@@ -3757,10 +3783,52 @@
 
 
 
-  /* ---------- Song Import removed ---------- */
-  let songLibrary = [];
+  /* ---------- Song libraries ---------- */
+  let irealSongLibrary = [];
+  let midiSongLibrary = [];
+  let midiSongIndexPromise = null;
+  let midiSongLoadToken = 0;
+  let activeMidiSong = null;
   let songQuery = "";
   let songSort = "playlist";
+
+  const MIDITAR_REPO = "santismo/miditar";
+  const MIDITAR_FOLDER = "example midi songs";
+  const MIDITAR_FLAT_URL = `https://data.jsdelivr.com/v1/package/gh/${MIDITAR_REPO}@main/flat?structure=flat`;
+  const MIDITAR_RAW_BASE = `https://cdn.jsdelivr.net/gh/${MIDITAR_REPO}@main`;
+  const MIDITAR_GITHUB_FALLBACKS = [
+    `https://api.github.com/repos/${MIDITAR_REPO}/contents/public/${encodeURIComponent(MIDITAR_FOLDER)}?ref=main`,
+    `https://api.github.com/repos/${MIDITAR_REPO}/contents/${encodeURIComponent(MIDITAR_FOLDER)}?ref=gh-pages`,
+    `https://api.github.com/repos/${MIDITAR_REPO}/contents/${encodeURIComponent(MIDITAR_FOLDER)}?ref=main`
+  ];
+
+  function normalizeSongLibraryKind(value){
+    return value === "midi" ? "midi" : "ireal";
+  }
+
+  function activeSongLibrary(){
+    return normalizeSongLibraryKind(state.songLibraryKind) === "midi" ? midiSongLibrary : irealSongLibrary;
+  }
+
+  function setMidiSamplePlayback(active){
+    try{ window.FakebotMiniSamples?.setMidiPlaybackActive(active === true); }catch{}
+  }
+
+  function deactivateMidiSong(stopTransport=false, invalidatePending=true){
+    if (invalidatePending) midiSongLoadToken += 1;
+    if (stopTransport && player.isOn()) player.stop();
+    activeMidiSong = null;
+    setMidiSamplePlayback(false);
+  }
+
+  function titleFromMidiFileName(name){
+    const leaf = String(name || "Untitled.mid").split("/").filter(Boolean).pop() || "Untitled.mid";
+    return leaf.replace(/\.(mid|midi)$/i, "").replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim() || leaf;
+  }
+
+  function encodeRemotePath(path){
+    return String(path || "").split("/").map(part=>encodeURIComponent(part)).join("/");
+  }
 
   function normalizeSoundFontUrl(url){
     let u = String(url || "").trim();
@@ -3894,6 +3962,359 @@
     const chord = makeChord(rootPc, meta);
     if (slashName && NOTE_TO_PC[slashName] != null) chord.slash = NOTE_TO_PC[slashName];
     return chord;
+  }
+
+  function miditarParserApi(){
+    const api = window.FakebotMiditarMidi;
+    if (!api || typeof api.parse !== "function"){
+      throw new Error("Miditar MIDI support is still loading. Try again in a moment.");
+    }
+    return api;
+  }
+
+  function normalizeMidiMarkerChordText(value){
+    return String(value || "")
+      .trim()
+      .replace(/\u266d/g, "b")
+      .replace(/\u266f/g, "#")
+      .replace(/[\u0394\u25b3](?=[79])/g, "maj")
+      .replace(/[\u0394\u25b3]/g, "maj7")
+      .replace(/[\u2212\u2013\u2014]/g, "-")
+      .replace(/^\s*(?:chord|marker)\s*[:=\-]\s*/i, "")
+      .replace(/^\s*[\[({]\s*/, "")
+      .replace(/\s*[\])}]\s*$/, "")
+      .replace(/\s+/g, "");
+  }
+
+  function parseMidiMarkerChordSymbol(value){
+    const clean = String(value || "").trim().replace(/6\/9/i, "6_9");
+    const match = clean.match(/^([A-G])([#b]?)([^/]*)(?:\/([A-G])([#b]?))?$/i);
+    if (!match) return null;
+    const rootName = match[1].toUpperCase() + (match[2] || "");
+    const root = NOTE_TO_PC[rootName];
+    if (root == null) return null;
+
+    const raw = String(match[3] || "").replace(/6_9/i, "6/9");
+    const quality = raw.toLowerCase().replace(/[()\s]/g, "");
+    const aliases = {
+      "":"maj", "maj":"maj",
+      "m":"m", "min":"m", "-":"m",
+      "dim":"dim", "o":"dim", "°":"dim",
+      "maj7":"maj7", "^":"maj7", "^7":"maj7",
+      "maj9":"maj9", "^9":"maj9",
+      "6":"6", "69":"6/9", "6/9":"6/9", "add9":"add9",
+      "m7":"m7", "min7":"m7", "-7":"m7",
+      "m9":"m9", "min9":"m9", "-9":"m9",
+      "m11":"m11", "min11":"m11", "-11":"m11",
+      "m6":"m6", "min6":"m6", "-6":"m6",
+      "mmaj7":"mMaj7", "minmaj7":"mMaj7", "-maj7":"mMaj7",
+      "7":"7", "9":"9", "11":"11", "13":"13",
+      "7b9":"7(b9)", "7#9":"7(#9)", "7b13":"7(b13)",
+      "sus":"sus", "sus4":"sus", "7sus":"7sus", "7sus4":"7sus",
+      "m7b5":"ø7", "ø":"ø7", "ø7":"ø7", "h":"ø7",
+      "dim7":"dim7", "o7":"dim7", "°7":"dim7"
+    };
+    const symbol = aliases[quality];
+    if (!symbol) return null;
+    const chord = makeChord(root, qualityMetaFromSymbol(symbol));
+    const slashName = match[4] ? match[4].toUpperCase() + (match[5] || "") : "";
+    if (slashName && NOTE_TO_PC[slashName] != null) chord.slash = NOTE_TO_PC[slashName];
+    return chord;
+  }
+
+  function chordFromMidiMarker(marker, fallbackRoot=0){
+    const markerText = String(marker?.text || "").trim() || "Marker";
+    const normalized = normalizeMidiMarkerChordText(markerText);
+    let chord = parseMidiMarkerChordSymbol(normalized);
+    if (!chord){
+      chord = {
+        root: pc(fallbackRoot),
+        symbol: "",
+        family: "marker",
+        key: null,
+        intervals: [],
+        scaleRoot: pc(fallbackRoot),
+        mode: "ionian",
+        markerOnly: true
+      };
+    }
+    chord.markerText = markerText;
+    chord.markerTick = Number(marker?.tick) || 0;
+    chord.markerTime = Math.max(0, Number(marker?.time) || 0);
+    return chord;
+  }
+
+  function keyFromMidiSignature(parsed, chords){
+    const signature = Array.isArray(parsed?.keySignatures) ? parsed.keySignatures[0] : null;
+    if (signature && Number.isFinite(signature.sf)){
+      const majorRoot = pc(Math.round(signature.sf) * 7);
+      return {
+        root: signature.minor ? pc(majorRoot + 9) : majorRoot,
+        mode: signature.minor ? "aeolian" : "ionian"
+      };
+    }
+    const firstChord = chords.find(ch=>ch && !ch.markerOnly);
+    return {
+      root: firstChord ? pc(firstChord.root) : 0,
+      mode: firstChord && (firstChord.family === "min" || firstChord.family === "minmaj") ? "aeolian" : "ionian"
+    };
+  }
+
+  function midiChartFromParsed(parsed){
+    const markers = (parsed?.markers || [])
+      .filter(marker=>marker?.type === "marker" && String(marker.text || "").trim())
+      .sort((a,b)=>(a.tick-b.tick) || (a.time-b.time));
+    if (!markers.length) throw new Error("This MIDI file has no marker events for chord cards.");
+
+    const chords = [];
+    let fallbackRoot = 0;
+    markers.forEach((marker)=>{
+      const chord = chordFromMidiMarker(marker, fallbackRoot);
+      chords.push(chord);
+      if (!chord.markerOnly) fallbackRoot = chord.root;
+    });
+
+    const key = keyFromMidiSignature(parsed, chords);
+    chords.forEach((chord,index)=>{
+      if (chord.markerOnly){
+        chord.root = index > 0 ? chords[index-1].root : key.root;
+        chord.scaleRoot = key.root;
+        chord.mode = key.mode;
+        return;
+      }
+      const previous = chords.slice(0,index).reverse().find(ch=>!ch.markerOnly) || null;
+      const next = chords.slice(index+1).find(ch=>!ch.markerOnly) || null;
+      chord.scaleRoot = chord.root;
+      chord.mode = chooseChordLocalMode(chord, previous, next);
+    });
+
+    const bars = chords.map((chord,index)=>({
+      split: false,
+      chords: [chord],
+      midiMarkerIndex: index,
+      midiMarkerTick: markers[index].tick,
+      midiMarkerTime: markers[index].time
+    }));
+    return { markers, chords, bars, key };
+  }
+
+  function collectMidiNotes(parsed){
+    return (parsed?.tracks || [])
+      .flatMap((track)=>{
+        const changes = Array.isArray(track?.programChanges) ? track.programChanges : [];
+        return (Array.isArray(track?.notes) ? track.notes : []).map((note)=>{
+          let program = 0;
+          for (const change of changes){
+            if (change.channel !== note.channel || change.tick > note.tick) continue;
+            program = Number(change.program) || 0;
+          }
+          if (!changes.some(change=>change.channel === note.channel) && Number.isFinite(track?.programs?.[note.channel])){
+            program = Number(track.programs[note.channel]);
+          }
+          const role = note.channel === 10 ? "drums" : (program >= 32 && program <= 39 ? "bass" : "keys");
+          return {...note,program,role};
+        });
+      })
+      .filter(note=>Number.isFinite(note?.midi) && Number.isFinite(note?.time))
+      .sort((a,b)=>(a.time-b.time) || (a.trackIndex-b.trackIndex) || (a.midi-b.midi));
+  }
+
+  function collectMidiProgramChanges(parsed){
+    return (parsed?.tracks || [])
+      .flatMap(track=>Array.isArray(track?.programChanges) ? track.programChanges : [])
+      .filter(change=>Number.isFinite(change?.time) && Number.isFinite(change?.channel) && Number.isFinite(change?.program))
+      .sort((a,b)=>(a.time-b.time) || (a.channel-b.channel));
+  }
+
+  function collectMidiPrograms(parsed){
+    const programs = new Map();
+    (parsed?.tracks || []).forEach((track)=>{
+      Object.entries(track?.programs || {}).forEach(([channel,program])=>{
+        const ch = Number(channel);
+        const prog = Number(program);
+        if (Number.isFinite(ch) && Number.isFinite(prog) && !programs.has(ch)) programs.set(ch, prog);
+      });
+    });
+    return programs;
+  }
+
+  async function parsedMidiForEntry(entry){
+    if (entry?.parsed) return entry.parsed;
+    if (!entry?.url) throw new Error("This MIDI song has no source URL.");
+    const response = await fetch(entry.url, { cache:"force-cache" });
+    if (!response.ok) throw new Error(`Could not load ${entry.title || "that MIDI song"}.`);
+    const buffer = await response.arrayBuffer();
+    const parsed = miditarParserApi().parse(buffer, entry.fileName || `${entry.title || "Untitled"}.mid`);
+    entry.parsed = parsed;
+    return parsed;
+  }
+
+  async function loadMidiSongToChart(entry){
+    if (!entry) return;
+    const loadToken = ++midiSongLoadToken;
+    if (player.isOn()) player.stop();
+    setSongStatus(`Loading MIDI: ${entry.title || "Untitled"}...`);
+    try{
+      const parsed = await parsedMidiForEntry(entry);
+      const chart = midiChartFromParsed(parsed);
+      const notes = collectMidiNotes(parsed);
+      if (!notes.length) throw new Error("This MIDI file has chord markers but no playable notes.");
+      if (loadToken !== midiSongLoadToken) return;
+
+      pushHistory();
+      deactivateMidiSong(false, false);
+      const title = String(entry.title || parsed.title || parsed.fileName || "Untitled").replace(/\.(mid|midi)$/i, "");
+      activeMidiSong = {
+        kind: "midi",
+        title,
+        source: entry.source || "hosted",
+        parsed,
+        markers: chart.markers,
+        notes,
+        programs: collectMidiPrograms(parsed),
+        programChanges: collectMidiProgramChanges(parsed),
+        duration: Math.max(Number(parsed.duration) || 0, ...notes.map(note=>note.time + Math.max(0.01, Number(note.duration) || 0.01))),
+        seekTime: 0
+      };
+
+      resetGameRuntime();
+      state.progressionSource = "generate";
+      state.chartBars = chart.bars;
+      state.playbackOrder = chart.bars.map((_,index)=>index);
+      state.bars = chart.bars.length;
+      state.halfEnabled = false;
+      state.activeBar = 0;
+      state.activeHalf = 0;
+      state.currentSongTitle = title;
+      state.keyRoot = chart.key.root;
+      state.keyMode = chart.key.mode;
+      state.editMode = false;
+      const firstTempo = parsed.tempos?.[0]?.bpm;
+      if (Number.isFinite(firstTempo)) setTempoState(Math.round(firstTempo));
+      player.setChart(state.chartBars, state.playbackOrder);
+      syncUIFromState();
+      renderAll();
+      saveAll();
+      setSongStatus(`Loaded MIDI: ${title} · ${chart.markers.length} markers · ${notes.length} notes`);
+    }catch(error){
+      if (loadToken !== midiSongLoadToken) return;
+      const detail = error?.message ? ` ${error.message}` : "";
+      setSongStatus(`Could not load MIDI.${detail}`);
+    }
+  }
+
+  async function miditarHostedEntries(){
+    const entries = [];
+    try{
+      const response = await fetch(MIDITAR_FLAT_URL, { cache:"no-cache" });
+      if (response.ok){
+        const value = await response.json();
+        const prefix = `/public/${MIDITAR_FOLDER}/`;
+        (Array.isArray(value?.files) ? value.files : []).forEach((item)=>{
+          const path = typeof item?.name === "string" ? item.name : "";
+          if (!path.startsWith(prefix) || !/\.(mid|midi)$/i.test(path)) return;
+          const fileName = path.split("/").filter(Boolean).pop() || path;
+          entries.push({
+            kind:"midi",
+            id:path,
+            title:titleFromMidiFileName(fileName),
+            fileName,
+            url:`${MIDITAR_RAW_BASE}${encodeRemotePath(path)}`,
+            size:Number.isFinite(item.size) ? item.size : undefined,
+            source:"hosted"
+          });
+        });
+      }
+    }catch{}
+
+    for (const url of MIDITAR_GITHUB_FALLBACKS){
+      const before = entries.length;
+      try{
+          const response = await fetch(url, { cache:"no-cache", headers:{Accept:"application/vnd.github+json"} });
+          if (!response.ok) continue;
+          const value = await response.json();
+          (Array.isArray(value) ? value : []).forEach((item)=>{
+            if (item?.type !== "file" || typeof item.name !== "string" || !/\.(mid|midi)$/i.test(item.name)) return;
+            if (typeof item.download_url !== "string") return;
+            entries.push({
+              kind:"midi",
+              id:item.path || item.download_url,
+              title:titleFromMidiFileName(item.name),
+              fileName:item.name,
+              url:item.download_url,
+              size:Number.isFinite(item.size) ? item.size : undefined,
+              source:"hosted"
+            });
+          });
+          if (entries.length > before) break;
+      }catch{}
+    }
+
+    const byTitle = new Map();
+    entries.forEach((entry)=>{
+      const key = entry.title.toLocaleLowerCase();
+      if (!byTitle.has(key)) byTitle.set(key, entry);
+    });
+    return [...byTitle.values()].sort((a,b)=>a.title.localeCompare(b.title, undefined, {sensitivity:"base"}));
+  }
+
+  async function loadMiditarSongIndex(force=false){
+    if (!force && midiSongLibrary.some(song=>song.source === "hosted")){
+      if (normalizeSongLibraryKind(state.songLibraryKind) === "midi") renderSongList();
+      return midiSongLibrary;
+    }
+    if (midiSongIndexPromise) return midiSongIndexPromise;
+    if (normalizeSongLibraryKind(state.songLibraryKind) === "midi"){
+      setSongStatus("Loading Miditar MIDI charts...");
+      if (E.btnSongRandom) E.btnSongRandom.disabled = true;
+    }
+    midiSongIndexPromise = (async()=>{
+      const hosted = await miditarHostedEntries();
+      const uploaded = midiSongLibrary.filter(song=>song.source === "upload");
+      midiSongLibrary = [...uploaded, ...hosted];
+      if (normalizeSongLibraryKind(state.songLibraryKind) === "midi") renderSongList();
+      return midiSongLibrary;
+    })().catch(()=>{
+      if (normalizeSongLibraryKind(state.songLibraryKind) === "midi") setSongStatus("Could not load the Miditar library. You can still upload a MIDI file.");
+      return midiSongLibrary;
+    }).finally(()=>{
+      midiSongIndexPromise = null;
+      if (E.btnSongRandom) E.btnSongRandom.disabled = false;
+    });
+    return midiSongIndexPromise;
+  }
+
+  async function importMidiSongFiles(fileList){
+    const files = Array.from(fileList || []).filter(file=>/\.(mid|midi)$/i.test(file?.name || ""));
+    if (!files.length) return;
+    const parser = miditarParserApi();
+    const imported = [];
+    for (const file of files){
+      try{
+        const parsed = parser.parse(await file.arrayBuffer(), file.name);
+        midiChartFromParsed(parsed);
+        imported.push({
+          kind:"midi",
+          id:`upload:${file.name}:${file.size}:${file.lastModified}`,
+          title:titleFromMidiFileName(file.name),
+          fileName:file.name,
+          size:file.size,
+          source:"upload",
+          parsed
+        });
+      }catch(error){
+        setSongStatus(`Could not import ${file.name}.${error?.message ? ` ${error.message}` : ""}`);
+      }
+    }
+    if (!imported.length) return;
+    const ids = new Set(imported.map(entry=>entry.id));
+    midiSongLibrary = [...imported, ...midiSongLibrary.filter(entry=>!ids.has(entry.id))];
+    state.songLibraryKind = "midi";
+    if (E.songLibraryKind) E.songLibraryKind.value = "midi";
+    renderSongList();
+    saveAll();
+    if (imported.length === 1) await loadMidiSongToChart(imported[0]);
+    else setSongStatus(`Imported ${imported.length} MIDI charts. Choose one to load.`);
   }
 
   function obfusc50(s){
@@ -4506,6 +4927,7 @@
         return;
       }
       pushHistory();
+      deactivateMidiSong(true);
       state.chartBars = parsed.bars;
       state.playbackOrder = parsed.bars.map((_, i)=>i);
       state.bars = parsed.bars.length;
@@ -4529,7 +4951,7 @@
   }
 
   function filteredSongs(){
-    let list = songLibrary.slice();
+    let list = activeSongLibrary().slice();
     if (songQuery){
       const q = songQuery.toLowerCase();
       list = list.filter(s =>
@@ -4561,13 +4983,23 @@
   function renderSongList(){
     if (!E.songList || !E.songStatus) return;
     E.songList.innerHTML = "";
-    if (!songLibrary.length){
-      setSongStatus("No songs loaded yet.");
+    const kind = normalizeSongLibraryKind(state.songLibraryKind);
+    const library = activeSongLibrary();
+    if (E.songLibraryKind) E.songLibraryKind.value = kind;
+    if (E.songSort){
+      const styleOption = E.songSort.querySelector('option[value="style"]');
+      if (styleOption) styleOption.disabled = kind === "midi";
+    }
+    if (!library.length){
+      setSongStatus(kind === "midi" ? "No Miditar MIDI charts loaded yet." : "No chord charts loaded yet.");
       return;
     }
     const list = filteredSongs();
-    setSongStatus(`Loaded ${songLibrary.length} song${songLibrary.length===1?"":"s"} · Showing ${list.length}`);
-    list.forEach((song)=>{
+    const visible = list.slice(0, 160);
+    const libraryLabel = kind === "midi" ? "Miditar MIDI" : "Chord charts";
+    const capLabel = visible.length < list.length ? ` · Showing first ${visible.length} of ${list.length}; search to narrow` : ` · Showing ${visible.length}`;
+    setSongStatus(`${libraryLabel}: ${library.length} song${library.length===1?"":"s"}${capLabel}`);
+    visible.forEach((song)=>{
       const row = document.createElement("div");
       row.className = "songRow";
 
@@ -4582,6 +5014,8 @@
       if (song.composer) parts.push(song.composer);
       if (song.style) parts.push(song.style);
       if (song.key) parts.push(song.key);
+      if (kind === "midi") parts.push(song.source === "upload" ? "Local MIDI" : "Miditar");
+      if (kind === "midi" && Number.isFinite(song.size)) parts.push(`${Math.max(1,Math.round(song.size/1024))} KB`);
       sub.textContent = parts.join(" · ");
       meta.appendChild(title);
       meta.appendChild(sub);
@@ -4590,7 +5024,11 @@
       btn.className = "btn small";
       btn.type = "button";
       btn.textContent = "Load";
-      btn.addEventListener("click", ()=> loadSongToChart(song));
+      btn.addEventListener("click", async ()=>{
+        btn.disabled = true;
+        try{ await loadLibrarySong(song); }
+        finally{ btn.disabled = false; }
+      });
 
       row.appendChild(meta);
       row.appendChild(btn);
@@ -4617,16 +5055,20 @@
         if (E.songList) E.songList.innerHTML = "";
         return;
       }
-      songLibrary = parsed;
-      if (!songLibrary.length){
-        setSongStatus("No songs found in playlist.");
-        if (E.songList) E.songList.innerHTML = "";
+      irealSongLibrary = parsed.map(song=>({...song,kind:"ireal"}));
+      if (!irealSongLibrary.length){
+        if (normalizeSongLibraryKind(state.songLibraryKind) === "ireal"){
+          setSongStatus("No songs found in playlist.");
+          if (E.songList) E.songList.innerHTML = "";
+        }
         return;
       }
-      renderSongList();
+      if (normalizeSongLibraryKind(state.songLibraryKind) === "ireal") renderSongList();
     } catch {
-      setSongStatus("Could not load playlist. Check your connection.");
-      if (E.songList) E.songList.innerHTML = "";
+      if (normalizeSongLibraryKind(state.songLibraryKind) === "ireal"){
+        setSongStatus("Could not load playlist. Check your connection.");
+        if (E.songList) E.songList.innerHTML = "";
+      }
     }
   }
 
@@ -4673,6 +5115,9 @@
   function loadSongToChart(song){
     if (!song || !Array.isArray(song.bars) || !song.bars.length) return;
     pushHistory();
+    deactivateMidiSong(true);
+    resetGameRuntime();
+    state.progressionSource = "generate";
     state.chartBars = structuredClone(song.bars);
     state.playbackOrder = Array.isArray(song.playbackOrder) && song.playbackOrder.length
       ? song.playbackOrder.slice()
@@ -4690,12 +5135,21 @@
     }
 
     assignChordModesWithLimit(state.chartBars);
+    player.setChart(state.chartBars, state.playbackOrder);
     renderAll();
     saveAll();
     if (E.msg){
       E.msg.textContent = `Loaded: ${song.title}`;
       setTimeout(()=>{ E.msg.textContent = " "; }, 1500);
     }
+  }
+
+  async function loadLibrarySong(song){
+    if (song?.kind === "midi" || normalizeSongLibraryKind(state.songLibraryKind) === "midi"){
+      await loadMidiSongToChart(song);
+      return;
+    }
+    loadSongToChart(song);
   }
 
   /* ---------- MIDI input ---------- */
@@ -5074,8 +5528,30 @@
     }
   }
 
+  const PROGRESSION_DENSITIES = [2, 4, 8];
+
+  function normalizeProgressionDensity(value){
+    const density = Number(value);
+    return PROGRESSION_DENSITIES.includes(density) ? density : DEFAULTS.progressionDensity;
+  }
+
+  function syncProgressionDensityUI(){
+    const density = normalizeProgressionDensity(state.progressionDensity);
+    state.progressionDensity = density;
+    if (E.sheet) E.sheet.dataset.density = String(density);
+    if (!E.btnCardDensity) return;
+    const next = PROGRESSION_DENSITIES[(PROGRESSION_DENSITIES.indexOf(density) + 1) % PROGRESSION_DENSITIES.length];
+    E.btnCardDensity.textContent = `${density}×`;
+    E.btnCardDensity.title = `Chord card density: ${density} per row. Tap for ${next}.`;
+    E.btnCardDensity.setAttribute("aria-label", `Show ${density} chord cards per row. Activate to show ${next}.`);
+  }
+
   function renderLeadSheet(){
+    syncProgressionDensityUI();
     E.sheet.innerHTML = "";
+    E.sheet.tabIndex = 0;
+    E.sheet.setAttribute("role", "region");
+    E.sheet.setAttribute("aria-label", "Chord progression. Scroll for more chord cards.");
     for (let b=0;b<state.chartBars.length;b++){
       const bar = state.chartBars[b];
       const el = document.createElement("div");
@@ -5108,6 +5584,7 @@
       const sym = document.createElement("div");
       sym.className = "sym";
       sym.textContent = c1 ? chordName(c1) : "—";
+      sym.title = sym.textContent;
       sym.dataset.keyCenter = c1Inside ? "inside" : "outside";
       if (c1) sym.dataset.scale = `${pc(c1.scaleRoot ?? c1.root)}:${c1.mode || "mixo"}`;
       sym.classList.toggle("outOfCenter", !c1Inside);
@@ -5120,6 +5597,7 @@
         sym2 = document.createElement("div");
         sym2.className = "sym sym2";
         sym2.textContent = chordName(c2);
+        sym2.title = sym2.textContent;
         sym2.dataset.keyCenter = c2Inside ? "inside" : "outside";
         sym2.dataset.scale = `${pc(c2.scaleRoot ?? c2.root)}:${c2.mode || "mixo"}`;
         sym2.classList.toggle("outOfCenter", !c2Inside);
@@ -5130,6 +5608,8 @@
         const top = document.createElement("button");
         const bot = document.createElement("button");
         top.type="button"; bot.type="button";
+        top.setAttribute("aria-label", `Bar ${b+1}, first chord: ${sym.textContent}`);
+        bot.setAttribute("aria-label", `Bar ${b+1}, second chord: ${sym2.textContent}`);
 
         top.addEventListener("click",(ev)=>{ ev.stopPropagation(); onBarTap(b,0,true); });
         bot.addEventListener("click",(ev)=>{ ev.stopPropagation(); onBarTap(b,1,true); });
@@ -5141,6 +5621,20 @@
       const centerState = c1Inside && c2Inside ? "inside" : (!c1Inside && (!c2 || !c2Inside) ? "outside" : "mixed");
       el.dataset.keyCenter = centerState;
       el.classList.toggle("hasOutOfCenter", centerState !== "inside");
+
+      if (bar?.split && c2){
+        el.setAttribute("role", "group");
+        el.setAttribute("aria-label", `Bar ${b+1}: ${sym.textContent}, ${sym2.textContent}`);
+      } else {
+        el.tabIndex = 0;
+        el.setAttribute("role", "button");
+        el.setAttribute("aria-label", `Bar ${b+1}: ${sym.textContent}`);
+        el.addEventListener("keydown", (event)=>{
+          if (event.key !== "Enter" && event.key !== " ") return;
+          event.preventDefault();
+          onBarTap(b,0,true);
+        });
+      }
 
       el.addEventListener("click", ()=> onBarTap(b,0,true));
       E.sheet.appendChild(el);
@@ -5447,10 +5941,12 @@
   function syncLeadSheetButton(){
     if (!E.btnEdit) return;
     E.btnEdit.textContent = "✏️";
-    E.btnEdit.title = "Edit chart";
+    E.btnEdit.disabled = !!activeMidiSong;
+    E.btnEdit.title = activeMidiSong ? "MIDI marker charts are read-only" : "Edit chart";
   }
 
   function applyEditVisuals(){
+    if (activeMidiSong) state.editMode = false;
     const nodes = E.sheet.querySelectorAll(".bar");
     nodes.forEach(n=>{
       n.classList.toggle("editing", !!state.editMode);
@@ -5462,6 +5958,7 @@
 
   function highlightActiveBar(){
     const bars = E.sheet.querySelectorAll(".bar");
+    let activeNode = null;
     bars.forEach(node=>{
       const b = Number(node.dataset.bar||0);
       const isActive = b===state.activeBar;
@@ -5469,13 +5966,31 @@
       node.classList.toggle("active", isActive);
       node.classList.toggle("activeHalf0", isActive && (!bar?.split || state.activeHalf===0));
       node.classList.toggle("activeHalf1", isActive && !!bar?.split && state.activeHalf===1);
+      if (node.getAttribute("role") === "button") node.setAttribute("aria-current", isActive ? "step" : "false");
+      if (isActive) activeNode = node;
     });
+    if (!IS_FAKEBOT_MINI || !activeNode || E.sheet.scrollHeight <= E.sheet.clientHeight) return;
+
+    const sheetRect = E.sheet.getBoundingClientRect();
+    const activeRect = activeNode.getBoundingClientRect();
+    const inset = 5;
+    let nextTop = E.sheet.scrollTop;
+    if (activeRect.top < sheetRect.top + inset){
+      nextTop -= (sheetRect.top + inset) - activeRect.top;
+    } else if (activeRect.bottom > sheetRect.bottom - inset){
+      nextTop += activeRect.bottom - (sheetRect.bottom - inset);
+    }
+    const maxTop = Math.max(0, E.sheet.scrollHeight - E.sheet.clientHeight);
+    E.sheet.scrollTop = clamp(nextTop, 0, maxTop);
   }
 
   function renderHeaderPills(){
     const totalBars = state.chartBars.length || 0;
     const slots = flatChartSlots();
-    if (isGameMode() && gameRuntime.active){
+    if (activeMidiSong){
+      const trackCount = (activeMidiSong.parsed?.tracks || []).filter(track=>track?.notes?.length).length;
+      E.pillLine.textContent = `${activeMidiSong.markers.length} markers · ${trackCount} track${trackCount===1?"":"s"}`;
+    } else if (isGameMode() && gameRuntime.active){
       const diffLabel = normalizeGameDifficulty(state.gameDifficulty);
       E.pillLine.textContent = `Game ${gameRuntime.index + 1}/8 · ${diffLabel} · Key ${noteName(gameRuntime.keyRoot)} ${gameRuntime.keyMode}`;
     } else {
@@ -5490,6 +6005,10 @@
   }
 
   function renderKeyLine(){
+    if (activeMidiSong){
+      E.leadKey.textContent = `MIDI · ${activeMidiSong.title}`;
+      return;
+    }
     if (!state.showKey){
       E.leadKey.textContent = "—";
       return;
@@ -5502,7 +6021,7 @@
     if (!E.songRandomLabel) return;
     const title = (state.currentSongTitle || "").trim();
     if (title){
-      E.songRandomLabel.textContent = `Loaded: ${title}`;
+      E.songRandomLabel.textContent = activeMidiSong ? `MIDI: ${title}` : `Loaded: ${title}`;
       E.songRandomLabel.classList.add("loaded");
     } else {
       E.songRandomLabel.textContent = "No song loaded";
@@ -5719,11 +6238,103 @@
     for (let p=0; p<12; p++) applyLiveMidiPcOutline(p);
   }
 
+  function renderMiniFretizerPads(ch, scaleSet, chordSet, melodyPcs){
+    const grid = E.miniFretPad;
+    if (!grid) return;
+    grid.innerHTML = "";
+    grid.setAttribute("aria-rowcount", "7");
+    grid.setAttribute("aria-colcount", "14");
+
+    const fragment = document.createDocumentFragment();
+    const headerRow = document.createElement("div");
+    headerRow.className = "miniFretPadRow";
+    headerRow.setAttribute("role", "row");
+    headerRow.setAttribute("aria-rowindex", "1");
+    const corner = document.createElement("div");
+    corner.className = "miniFretPadCorner";
+    corner.setAttribute("aria-hidden", "true");
+    headerRow.appendChild(corner);
+
+    for (let fret=0; fret<=12; fret++){
+      const header = document.createElement("div");
+      header.className = "miniFretPadFret";
+      header.setAttribute("role", "columnheader");
+      header.setAttribute("aria-colindex", String(fret + 2));
+      header.textContent = String(fret);
+      headerRow.appendChild(header);
+    }
+    fragment.appendChild(headerRow);
+
+    const baseStrings = [
+      { label:"e", name:"high E", open:4 },
+      { label:"B", name:"B", open:11 },
+      { label:"G", name:"G", open:7 },
+      { label:"D", name:"D", open:2 },
+      { label:"A", name:"A", open:9 },
+      { label:"E", name:"low E", open:4 }
+    ];
+    const strings = state.fretLefty ? [...baseStrings].reverse() : baseStrings;
+    const rootPc = pc(ch.root);
+
+    strings.forEach((string, stringIndex)=>{
+      const row = document.createElement("div");
+      row.className = "miniFretPadRow";
+      row.setAttribute("role", "row");
+      row.setAttribute("aria-rowindex", String(stringIndex + 2));
+      const rowHeader = document.createElement("div");
+      rowHeader.className = "miniFretPadString";
+      rowHeader.setAttribute("role", "rowheader");
+      rowHeader.setAttribute("aria-rowindex", String(stringIndex + 2));
+      rowHeader.title = `${string.name} string`;
+      rowHeader.textContent = string.label;
+      row.appendChild(rowHeader);
+
+      for (let fret=0; fret<=12; fret++){
+        const pitchClass = pc(string.open + fret);
+        const inScale = scaleSet.has(pitchClass);
+        const inChord = chordSet.has(pitchClass);
+        const isRoot = inChord && pitchClass === rootPc;
+        const inMelody = melodyPcs.has(pitchClass);
+        const semanticStates = [];
+        if (inScale) semanticStates.push("scale");
+        if (inChord) semanticStates.push("chord");
+        if (isRoot) semanticStates.push("root");
+        if (inMelody) semanticStates.push("melody");
+
+        const pad = document.createElement("div");
+        pad.className = `miniFretPadCell tone${(stringIndex + fret) % 2}`;
+        pad.classList.toggle("isScale", inScale);
+        pad.classList.toggle("isChord", inChord);
+        pad.classList.toggle("isRoot", isRoot);
+        pad.classList.toggle("isMelody", inMelody);
+        pad.setAttribute("role", "gridcell");
+        pad.setAttribute("aria-rowindex", String(stringIndex + 2));
+        pad.setAttribute("aria-colindex", String(fret + 2));
+        pad.dataset.state = semanticStates.join(" ") || "none";
+
+        const note = noteName(pitchClass);
+        const stateLabel = semanticStates.length ? `; ${semanticStates.join(", ")}` : "";
+        pad.setAttribute("aria-label", `${string.name} string, fret ${fret}, ${note}${stateLabel}`);
+        if (semanticStates.length){
+          const label = document.createElement("span");
+          label.className = "miniFretPadNote";
+          label.textContent = note;
+          pad.appendChild(label);
+        }
+        row.appendChild(pad);
+      }
+      fragment.appendChild(row);
+    });
+
+    grid.appendChild(fragment);
+  }
+
 
   function renderFretboardForActive(){
     const ch = activeChord();
     if (!ch){
       E.fretSvg.innerHTML = "";
+      if (E.miniFretPad) E.miniFretPad.innerHTML = "";
       E.pianoTop.textContent = "—";
       E.pianoHint.textContent = "—";
       return;
@@ -5748,10 +6359,16 @@
 
     E.pianoTop.textContent = chordName(ch);
     const gameTarget = (isGameMode() && gameRuntime.active) ? ` · Target: ${gameTargetNotesText(ch)}` : "";
-    E.pianoHint.textContent = `Fretboard: EADGBE · ${noteName(scaleRoot)} ${mode}${gameTarget}`;
+    E.pianoHint.textContent = IS_FAKEBOT_MINI
+      ? `Fretboard: compact 13 pads · ${noteName(scaleRoot)} ${mode}${gameTarget}`
+      : `Fretboard: EADGBE · ${noteName(scaleRoot)} ${mode}${gameTarget}`;
 
     const svg = E.fretSvg;
     svg.innerHTML = "";
+    if (IS_FAKEBOT_MINI){
+      renderMiniFretizerPads(ch, scaleSet, chordSet, melodyPcs);
+      return;
+    }
 
     const W = 1000;
     const H = 240;
@@ -5919,6 +6536,14 @@
     const showFret = state.viewMode === "fretboard";
     if (E.fretBox) E.fretBox.style.display = showFret ? "block" : "none";
     if (E.pianoBox) E.pianoBox.style.display = showFret ? "none" : "block";
+    if (E.miniFretPad){
+      E.miniFretPad.style.display = showFret && IS_FAKEBOT_MINI ? "grid" : "none";
+      E.miniFretPad.setAttribute("aria-hidden", showFret && IS_FAKEBOT_MINI ? "false" : "true");
+    }
+    if (E.fretSvg){
+      E.fretSvg.style.display = showFret && !IS_FAKEBOT_MINI ? "block" : "none";
+      E.fretSvg.setAttribute("aria-hidden", showFret && !IS_FAKEBOT_MINI ? "false" : "true");
+    }
     if (E.btnFretToggle){
       E.btnFretToggle.classList.toggle("on", showFret);
       E.btnFretToggle.setAttribute("aria-pressed", showFret ? "true" : "false");
@@ -6093,6 +6718,8 @@
     renderLeadSheet();
     renderMelodySheet();
     renderPianoForActive();
+    if (E.pianoTop) E.pianoTop.title = E.pianoTop.textContent || "";
+    if (E.leadKey) E.leadKey.title = E.leadKey.textContent || "";
   }
 
   /* ---------- SoundFont mappings ---------- */
@@ -6971,6 +7598,12 @@
     let atHalf = 0;
     let nextTickAt = 0;
     let uiTimer = null;
+    let midiScheduleTimer = null;
+    let midiPlayStartedAt = 0;
+    let midiPlayOffset = 0;
+    let midiNoteCursor = 0;
+    let midiProgramCursor = 0;
+    let midiMarkerCursor = 0;
 
     function setTempo(t, sw){
       tempo = clamp(Number(t)||120, 30, 320);
@@ -7059,7 +7692,94 @@
       highlightActiveBar();
       renderHeaderPills();
       renderPianoForActive();
+      if (E.pianoTop) E.pianoTop.title = E.pianoTop.textContent || "";
       updateMelodyPlayhead(dur);
+    }
+
+    function clearMidiTimers(){
+      if (midiScheduleTimer) window.clearTimeout(midiScheduleTimer);
+      midiScheduleTimer = null;
+    }
+
+    function scheduleMidiSong(){
+      const runtime = activeMidiSong;
+      if (!runtime || !runtime.notes.length) return false;
+      clearMidiTimers();
+      setMidiSamplePlayback(true);
+
+      let offset = Math.max(0, Number(runtime.seekTime) || 0);
+      if (offset >= runtime.duration - 0.02) offset = 0;
+      runtime.seekTime = offset;
+      midiPlayOffset = offset;
+      midiPlayStartedAt = AudioKit.now() + 0.08;
+      midiNoteCursor = 0;
+      while (midiNoteCursor < runtime.notes.length){
+        const note = runtime.notes[midiNoteCursor];
+        if (note.time + Math.max(0.01, Number(note.duration) || 0.01) > offset) break;
+        midiNoteCursor += 1;
+      }
+
+      const changes = Array.isArray(runtime.programChanges) ? runtime.programChanges : [];
+      const changingChannels = new Set(changes.map(change=>Number(change.channel)));
+      new Set(runtime.notes.map(note=>Number(note.channel))).forEach((channel)=>{
+        const initial = changingChannels.has(channel) ? 0 : (runtime.programs.get(channel) ?? 0);
+        AudioKit.setMidiProgram(Math.max(0, channel - 1), Number(initial));
+      });
+      midiProgramCursor = 0;
+      while (midiProgramCursor < changes.length && changes[midiProgramCursor].time <= offset + 0.001){
+        const change = changes[midiProgramCursor];
+        AudioKit.setMidiProgram(Math.max(0, change.channel - 1), change.program);
+        midiProgramCursor += 1;
+      }
+
+      midiMarkerCursor = 0;
+      runtime.markers.forEach((marker,index)=>{ if (marker.time <= offset + 0.001) midiMarkerCursor = index; });
+      applyUiFocus(midiMarkerCursor, 0, 0);
+
+      const refill = ()=>{
+        if (!isPlaying || activeMidiSong !== runtime) return;
+        const songTime = midiPlayOffset + Math.max(0, AudioKit.now() - midiPlayStartedAt);
+        runtime.seekTime = clamp(songTime, 0, runtime.duration);
+        if (songTime >= runtime.duration){
+          stop({resetMidi:true});
+          return;
+        }
+
+        while (midiProgramCursor < changes.length && changes[midiProgramCursor].time <= songTime + 0.03){
+          const change = changes[midiProgramCursor];
+          AudioKit.setMidiProgram(Math.max(0, change.channel - 1), change.program);
+          midiProgramCursor += 1;
+        }
+
+        while (midiMarkerCursor + 1 < runtime.markers.length && runtime.markers[midiMarkerCursor + 1].time <= songTime + 0.03){
+          midiMarkerCursor += 1;
+          applyUiFocus(midiMarkerCursor, 0, 0);
+        }
+
+        const horizon = songTime + 4;
+        while (midiNoteCursor < runtime.notes.length){
+          const note = runtime.notes[midiNoteCursor];
+          const noteStart = Math.max(0, Number(note.time) || 0);
+          if (noteStart > horizon) break;
+          midiNoteCursor += 1;
+          const noteDuration = Math.max(0.01, Number(note.duration) || 0.01);
+          const noteEnd = noteStart + noteDuration;
+          if (noteEnd <= songTime) continue;
+          const when = midiPlayStartedAt + Math.max(0, noteStart - midiPlayOffset);
+          const duration = noteStart < songTime ? Math.max(0.01, noteEnd - songTime) : noteDuration;
+          AudioKit.playMidiNote(
+            Math.round(note.midi),
+            Math.max(0, Math.round(Number(note.channel) || 1) - 1),
+            when,
+            duration,
+            clamp(Number(note.velocity) || 0.72, 0.04, 1),
+            note.role || "keys"
+          );
+        }
+        midiScheduleTimer = window.setTimeout(refill, 200);
+      };
+      refill();
+      return true;
     }
 
     function scheduleStep(targetStart){
@@ -7447,6 +8167,11 @@
       E.btnPlay.textContent = "⏸️";
       E.btnPlay.classList.add("primary");
 
+      if (activeMidiSong){
+        if (!scheduleMidiSong()) stop();
+        return;
+      }
+
       setTempo(state.tempo, state.swing);
       setChart(state.chartBars, state.playbackOrder);
       jumpTo(state.activeBar, state.activeHalf);
@@ -7467,15 +8192,29 @@
       tick();
     }
 
-    function stop(){
-      if (!isPlaying) return;
+    function stop(options={}){
+      const wasPlaying = isPlaying;
+      if (wasPlaying && activeMidiSong && !options.resetMidi && midiPlayStartedAt){
+        const elapsed = Math.max(0, AudioKit.now() - midiPlayStartedAt);
+        activeMidiSong.seekTime = clamp(midiPlayOffset + elapsed, 0, activeMidiSong.duration);
+      }
       isPlaying = false;
       if (timer) window.clearTimeout(timer);
       timer = null;
       if (uiTimer) window.clearTimeout(uiTimer);
       uiTimer = null;
+      clearMidiTimers();
       nextTickAt = 0;
-      AudioKit.hardStop();
+      if (wasPlaying) AudioKit.hardStop();
+      setMidiSamplePlayback(false);
+      if (options.resetMidi && activeMidiSong){
+        activeMidiSong.seekTime = 0;
+        state.activeBar = 0;
+        state.activeHalf = 0;
+        highlightActiveBar();
+      }
+      midiPlayStartedAt = 0;
+      midiPlayOffset = 0;
       E.btnPlay.textContent = "▶️";
       E.btnPlay.classList.remove("primary");
       // keep UI + chord preview working after pause (bug fix)
@@ -7511,6 +8250,7 @@
       bars: state.bars,
       halfEnabled: state.halfEnabled,
       halfDensity: state.halfDensity,
+      progressionDensity: state.progressionDensity,
       progressionSource: state.progressionSource,
       exampleProgression: state.exampleProgression,
       exampleMode: state.exampleMode,
@@ -7552,12 +8292,18 @@
       midiInEnabled: state.midiInEnabled,
       midiInputId: state.midiInputId,
       playbackOrder: structuredClone(state.playbackOrder),
-      currentSongTitle: state.currentSongTitle
+      currentSongTitle: state.currentSongTitle,
+      songLibraryKind: state.songLibraryKind,
+      midiSongRuntime: activeMidiSong ? {...activeMidiSong,seekTime:Number(activeMidiSong.seekTime)||0} : null
     };
   }
 
   function restoreSnap(s){
     if (!s) return;
+    midiSongLoadToken += 1;
+    if (player.isOn()) player.stop();
+    activeMidiSong = s.midiSongRuntime || null;
+    setMidiSamplePlayback(false);
     state.chartBars = structuredClone(s.chartBars||[]);
     state.activeBar = s.activeBar||0;
     state.activeHalf = s.activeHalf||0;
@@ -7566,6 +8312,7 @@
 
     Object.assign(state, {
       bars: s.bars, halfEnabled:s.halfEnabled, halfDensity:s.halfDensity,
+      progressionDensity: normalizeProgressionDensity(s.progressionDensity ?? state.progressionDensity),
       progressionSource: s.progressionSource ?? state.progressionSource,
       exampleProgression: s.exampleProgression ?? state.exampleProgression,
       exampleMode: s.exampleMode ?? state.exampleMode,
@@ -7589,7 +8336,8 @@
       midiInEnabled: s.midiInEnabled ?? state.midiInEnabled,
       midiInputId: s.midiInputId ?? state.midiInputId,
       playbackOrder: structuredClone(s.playbackOrder||[]),
-      currentSongTitle: s.currentSongTitle || ""
+      currentSongTitle: s.currentSongTitle || "",
+      songLibraryKind: normalizeSongLibraryKind(s.songLibraryKind ?? state.songLibraryKind)
     });
 
     // push to UI
@@ -7810,6 +8558,7 @@
     resetGameRuntime();
 
     pushHistory();
+    deactivateMidiSong(true);
 
     chooseKeyCenter();
 
@@ -7922,6 +8671,18 @@
 
   /* ---------- Tap behavior (focus + preview) ---------- */
   function onBarTap(b, h, preview){
+    if (activeMidiSong){
+      if (player.isOn()) player.stop();
+      state.activeBar = clamp(b, 0, Math.max(0, state.chartBars.length - 1));
+      state.activeHalf = 0;
+      activeMidiSong.seekTime = Math.max(0, Number(activeMidiSong.markers[state.activeBar]?.time) || 0);
+      highlightActiveBar();
+      renderHeaderPills();
+      renderPianoForActive();
+      updateMelodyPlayhead(0);
+      saveAll();
+      return;
+    }
     if (isGameMode() && !state.editMode){
       const barCount = Array.isArray(state.chartBars) ? state.chartBars.length : 0;
       const targetBar = clamp(Math.trunc(b), 0, Math.max(0, barCount - 1));
@@ -7981,6 +8742,13 @@
     const step = Number.isFinite(raw) ? Math.trunc(raw) : 0;
     if (!step) return;
     if (!Array.isArray(state.chartBars) || !state.chartBars.length) return;
+    if (activeMidiSong){
+      if (E.msg){
+        E.msg.textContent = "MIDI songs play as authored; transpose is disabled.";
+        window.setTimeout(()=>{ E.msg.textContent = " "; }, 1800);
+      }
+      return;
+    }
 
     pushHistory();
 
@@ -8542,7 +9310,7 @@
   function setTempoState(v){
     const fallback = Number.isFinite(state.tempo) ? state.tempo : DEFAULTS.tempo;
     const raw = Number(v);
-    const tempoVal = clamp(Number.isFinite(raw) ? raw : fallback, 30, 320);
+    const tempoVal = clamp(Math.round(Number.isFinite(raw) ? raw : fallback), 30, 320);
     state.tempo = tempoVal;
     if (E.tempo) E.tempo.value = String(tempoVal);
     if (E.tempoNum) E.tempoNum.value = String(tempoVal);
@@ -8677,6 +9445,8 @@
 
   function syncUIFromState(){
     syncTopProgressionControls();
+    syncProgressionDensityUI();
+    if (E.songLibraryKind) E.songLibraryKind.value = normalizeSongLibraryKind(state.songLibraryKind);
 
     E.bars.value = String(state.bars);
     E.barsNum.value = String(state.bars);
@@ -8844,16 +9614,18 @@
   const SAVE_ALL_DEBOUNCE_MS = 140;
 
   function buildSavePayload(){
+    const persistChart = !activeMidiSong;
     return {
-      chartBars: state.chartBars,
-      activeBar: state.activeBar,
-      activeHalf: state.activeHalf,
+      chartBars: persistChart ? state.chartBars : [],
+      activeBar: persistChart ? state.activeBar : 0,
+      activeHalf: persistChart ? state.activeHalf : 0,
       keyRoot: state.keyRoot,
       keyMode: state.keyMode,
 
       bars: state.bars,
       halfEnabled: state.halfEnabled,
       halfDensity: state.halfDensity,
+      progressionDensity: state.progressionDensity,
       progressionSource: state.progressionSource,
       exampleProgression: state.exampleProgression,
       exampleMode: state.exampleMode,
@@ -8895,8 +9667,9 @@
       kbOct: state.kbOct,
       midiInEnabled: state.midiInEnabled,
       midiInputId: state.midiInputId,
-      playbackOrder: state.playbackOrder,
-      currentSongTitle: state.currentSongTitle,
+      playbackOrder: persistChart ? state.playbackOrder : [],
+      currentSongTitle: persistChart ? state.currentSongTitle : "",
+      songLibraryKind: state.songLibraryKind,
       soundFontUrl: state.soundFontUrl,
       soundFontEnabled: state.soundFontEnabled,
 
@@ -8938,7 +9711,9 @@
     if (!saved) return false;
 
     // chart
-    state.chartBars = saved.chartBars || [];
+    state.chartBars = Array.isArray(saved.chartBars) && !saved.chartBars.some(bar=>Number.isFinite(bar?.midiMarkerTime))
+      ? saved.chartBars
+      : [];
     state.activeBar = saved.activeBar || 0;
     state.activeHalf = saved.activeHalf || 0;
     state.keyRoot = Number.isFinite(saved.keyRoot) ? pc(saved.keyRoot) : state.keyRoot;
@@ -8949,6 +9724,7 @@
       bars: saved.bars ?? state.bars,
       halfEnabled: saved.halfEnabled ?? state.halfEnabled,
       halfDensity: saved.halfDensity ?? state.halfDensity,
+      progressionDensity: normalizeProgressionDensity(saved.progressionDensity ?? state.progressionDensity),
       progressionSource: saved.progressionSource ?? state.progressionSource,
       exampleProgression: saved.exampleProgression ?? state.exampleProgression,
       exampleMode: saved.exampleMode ?? state.exampleMode,
@@ -8992,6 +9768,7 @@
       midiInputId: saved.midiInputId ?? state.midiInputId,
       playbackOrder: Array.isArray(saved.playbackOrder) ? saved.playbackOrder : [],
       currentSongTitle: saved.currentSongTitle ?? state.currentSongTitle,
+      songLibraryKind: normalizeSongLibraryKind(saved.songLibraryKind ?? state.songLibraryKind),
       soundFontUrl: saved.soundFontUrl ?? state.soundFontUrl,
       soundFontEnabled: saved.soundFontEnabled ?? state.soundFontEnabled
     });
@@ -9020,6 +9797,7 @@
   /* ---------- Defaults ---------- */
   function applyDefaults(){
     pushHistory();
+    deactivateMidiSong(true);
 
     Object.assign(state, structuredClone(DEFAULTS));
     resetGameRuntime();
@@ -9303,7 +10081,28 @@
 
     if (E.btnSongFetch){
       E.btnSongFetch.addEventListener("click", ()=>{
+        state.songLibraryKind = "ireal";
+        if (E.songLibraryKind) E.songLibraryKind.value = "ireal";
+        saveAll();
         loadPlaylistFromUrl(E.songUrl ? E.songUrl.value : "");
+      });
+    }
+    if (E.songLibraryKind){
+      E.songLibraryKind.addEventListener("change", async ()=>{
+        state.songLibraryKind = normalizeSongLibraryKind(E.songLibraryKind.value);
+        songQuery = "";
+        if (E.songSearch) E.songSearch.value = "";
+        if (state.songLibraryKind === "midi" && songSort === "style"){
+          songSort = "az";
+          if (E.songSort) E.songSort.value = "az";
+        }
+        renderSongList();
+        saveAll();
+        if (state.songLibraryKind === "midi"){
+          await loadMiditarSongIndex();
+        } else if (!irealSongLibrary.length){
+          await loadPlaylistFromUrl(E.songUrl ? E.songUrl.value : DEFAULT_PLAYLIST_URL);
+        }
       });
     }
     if (E.songSearch){
@@ -9319,13 +10118,15 @@
       });
     }
     if (E.btnSongRandom){
-      E.btnSongRandom.addEventListener("click", ()=>{
+      E.btnSongRandom.addEventListener("click", async ()=>{
         const list = filteredSongs();
         if (!list.length){
           setSongStatus("No songs to load.");
           return;
         }
-        loadSongToChart(pick(list));
+        E.btnSongRandom.disabled = true;
+        try{ await loadLibrarySong(pick(list)); }
+        finally{ E.btnSongRandom.disabled = false; }
       });
     }
     if (E.songFile){
@@ -9347,18 +10148,28 @@
             if (E.songList) E.songList.innerHTML = "";
             return;
           }
-          songLibrary = parsed;
-          if (!songLibrary.length){
+          irealSongLibrary = parsed.map(song=>({...song,kind:"ireal"}));
+          if (!irealSongLibrary.length){
             setSongStatus("No songs found in file.");
             if (E.songList) E.songList.innerHTML = "";
             return;
           }
+          state.songLibraryKind = "ireal";
+          if (E.songLibraryKind) E.songLibraryKind.value = "ireal";
           renderSongList();
+          saveAll();
         } catch {
           setSongStatus("Could not read file.");
         } finally {
           if (E.songFile) E.songFile.value = "";
         }
+      });
+    }
+    if (E.midiSongFile){
+      E.midiSongFile.addEventListener("change", async ()=>{
+        try{ await importMidiSongFiles(E.midiSongFile.files); }
+        catch(error){ setSongStatus(error?.message || "Could not import MIDI file."); }
+        finally{ E.midiSongFile.value = ""; }
       });
     }
     if (E.biabFile){
@@ -9554,7 +10365,17 @@
     });
 
     // edit mode toggle
+    if (E.btnCardDensity){
+      E.btnCardDensity.addEventListener("click", ()=>{
+        const current = normalizeProgressionDensity(state.progressionDensity);
+        const nextIndex = (PROGRESSION_DENSITIES.indexOf(current) + 1) % PROGRESSION_DENSITIES.length;
+        state.progressionDensity = PROGRESSION_DENSITIES[nextIndex];
+        renderLeadSheet();
+        saveAll();
+      });
+    }
     E.btnEdit.addEventListener("click", ()=>{
+      if (activeMidiSong) return;
       state.editMode = !state.editMode;
       applyEditVisuals();
       saveAll();
@@ -9606,6 +10427,11 @@
       state.kbOct = 2;
       state.morphBg = false;
       state.soundFontEnabled = false;
+    } else {
+      state.songLibraryKind = "ireal";
+      E.songLibraryKind?.querySelector('option[value="midi"]')?.remove();
+      const midiUploadControl = E.midiSongFile?.closest(".control");
+      if (midiUploadControl) midiUploadControl.style.display = "none";
     }
     // defaults for “all menus collapsed”: details are collapsed by default in markup
     // set theme
@@ -9637,7 +10463,11 @@
     if (E.songUrl && !String(E.songUrl.value || "").trim()){
       E.songUrl.value = DEFAULT_PLAYLIST_URL;
     }
-    loadPlaylistFromUrl(E.songUrl ? E.songUrl.value : DEFAULT_PLAYLIST_URL);
+    if (normalizeSongLibraryKind(state.songLibraryKind) === "midi"){
+      loadMiditarSongIndex();
+    } else {
+      loadPlaylistFromUrl(E.songUrl ? E.songUrl.value : DEFAULT_PLAYLIST_URL);
+    }
     initMidiSystem();
     if (isGameMode()){
       startGameRound(false);

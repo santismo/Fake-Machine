@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const UI_VERSION = "20260710o";
+  const UI_VERSION = "20260710s";
 
   const byId = (id)=>document.getElementById(id);
   const make = (tag, className, text)=>{

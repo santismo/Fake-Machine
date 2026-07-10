@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const VERSION = "1.1.0";
+  const VERSION = "1.2.0";
   const STORE_KEY = "fakebot-mini.samples.v1";
   const MODULE_URL = "https://unpkg.com/smplr@1.0.0/dist/index.mjs";
 
@@ -129,6 +129,12 @@
     statusElement:null,
     preparePromise:null,
     randomizePromise:null,
+    midiPlaybackActive:false,
+
+    setMidiPlaybackActive(active){
+      this.midiPlaybackActive = active === true;
+      return this.midiPlaybackActive;
+    },
 
     report(message,state="loading"){
       if (this.statusElement){
@@ -435,8 +441,13 @@
     audio.playNote = (midi,preset,time,duration,velocity=.7)=>Engine.play("keys",midi,time,duration,velocity);
     audio.noteOn = (midi,preset,velocity=.7)=>Engine.noteOn(midi,velocity);
     audio.noteOff = (midi)=>Engine.noteOff(midi);
-    audio.playMidiNote = (midi,channel,time,duration,velocity=.7)=>{
+    audio.playMidiNote = (midi,channel,time,duration,velocity=.7,roleHint="")=>{
       const resolved = Number.isFinite(channel) ? Math.round(channel) : 0;
+      if (Engine.midiPlaybackActive){
+        if (resolved === 9 || roleHint === "drums") return Engine.drum(drumKindFromMidi(midi),time,velocity);
+        if (roleHint === "bass") return Engine.play("bass",midi,time,duration,velocity);
+        return Engine.play("keys",midi,time,duration,velocity);
+      }
       if (resolved === 9) return Engine.drum(drumKindFromMidi(midi),time,velocity);
       if (resolved === 1) return Engine.play("bass",midi,time,duration,velocity);
       return Engine.play("keys",midi,time,duration,velocity);
@@ -476,7 +487,7 @@
     if (mount.dataset.ready) return;
     mount.dataset.ready = "true";
     mount.innerHTML = `<div class="miniSoundGrid">
-      <label>Keys and chords<select id="miniSampleKeys">${options(VOICES.filter(item=>item.role==="keys"),settings.keys)}</select></label>
+      <label>Keys, chords &amp; MIDI<select id="miniSampleKeys">${options(VOICES.filter(item=>item.role==="keys"),settings.keys)}</select></label>
       <label>Bass<select id="miniSampleBass">${options(VOICES.filter(item=>item.role==="bass"),settings.bass)}</select></label>
       <label>Drums<select id="miniSampleDrums">${options(DRUMS,settings.drums)}</select></label>
       <div class="miniSampleActions"><label>Sample mix<input id="miniSampleMix" type="range" min="0" max="1.1" step="0.01" value="${settings.mix}"></label><button id="miniSampleRandom" type="button">Randomize sounds</button><button id="miniSampleRetry" type="button">Retry</button></div>
@@ -508,7 +519,8 @@
         version:VERSION,
         ready:async()=>{ await Engine.resume(); await Engine.prepare(); },
         randomize:()=>Engine.randomizeSounds(),
-        stop:()=>Engine.stopAll()
+        stop:()=>Engine.stopAll(),
+        setMidiPlaybackActive:(active)=>Engine.setMidiPlaybackActive(active)
       });
     }catch(error){
       Engine.report("Samples unavailable — playback is silent","error");

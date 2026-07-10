@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const VERSION = "20260710q";
+  const VERSION = "20260710s";
   const frame = document.getElementById("miniFrame");
   const loading = document.getElementById("miniLoading");
   const audioStatus = document.getElementById("miniAudioStatus");
@@ -93,6 +93,7 @@
     showStatus("Building Fakebot Mini…", 1800);
     try{
       injectStyle(doc, "fakebotMiniFrameStyle", "mini-frame.css");
+      await injectScript(doc, "fakebotMiditarMidi", "miditar-midi.js");
       await injectScript(doc, "fakebotMiniUi", "mini-ui.js");
       await injectScript(doc, "fakebotMiniSamples", "sample-engine.js");
       watchPlayback();
