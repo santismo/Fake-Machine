@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const VERSION = "20260712a";
+  const VERSION = "20260712b";
   const frame = document.getElementById("miniFrame");
   const loading = document.getElementById("miniLoading");
   const audioStatus = document.getElementById("miniAudioStatus");
@@ -197,6 +197,10 @@
   document.addEventListener("pointerup", cancelGenerateHold, {passive:true});
   document.addEventListener("pointercancel", cancelGenerateHold, {passive:true});
   generateButton?.addEventListener("contextmenu", event=>event.preventDefault());
+  document.addEventListener("selectstart", event=>{
+    if (event.target.closest?.(".miniDock, .miniLoading, .miniAudioState")) event.preventDefault();
+  });
+  generateButton?.addEventListener("dragstart", event=>event.preventDefault());
 
   window.addEventListener("message", (event)=>{
     if (event.source !== frameWindow() || !event.data || event.data.source !== "fakebot-mini") return;
