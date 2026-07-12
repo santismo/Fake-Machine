@@ -1,10 +1,11 @@
 (() => {
   "use strict";
-  const VERSION = "20260710z";
+  const VERSION = "20260712a";
   const frame = document.getElementById("miniFrame");
   const loading = document.getElementById("miniLoading");
   const audioStatus = document.getElementById("miniAudioStatus");
   const playButton = document.getElementById("miniPlay");
+  const generateButton = document.querySelector("[data-mini-action='generate']");
   const settingsButton = document.getElementById("miniSettings");
   const dock = document.querySelector(".miniDock");
   const shell = document.querySelector(".miniShell");
@@ -12,6 +13,8 @@
   let bootedDocument = null;
   let playPending = false;
   let stateSyncTimer = 0;
+  let generateHoldTimer = 0;
+  let suppressGenerateClick = false;
 
   function showStatus(message, hold=1400){
     if (!loading) return;
@@ -113,14 +116,19 @@
       window.setTimeout(syncSettingsState, 30);
       return;
     }
-    if (action === "generate"){
+    if (action === "generate" || action === "generate-anchored"){
       const source = doc.getElementById("progSourceTop");
       if (source && source.value !== "generate"){
         source.value = "generate";
         source.dispatchEvent(new Event("change", {bubbles:true}));
       }
-      doc.getElementById("btnGenerate")?.click();
-      showStatus("New progression generated", 900);
+      if (action === "generate-anchored" && typeof win.FakebotGenerateFromActiveChord === "function"){
+        win.FakebotGenerateFromActiveChord();
+        showStatus("New progression starts with selected chord", 1200);
+      } else {
+        doc.getElementById("btnGenerate")?.click();
+        showStatus("New progression generated", 900);
+      }
       return;
     }
     if (action === "play"){
@@ -158,14 +166,37 @@
     const button = event.target.closest("[data-mini-action]");
     if (!button) return;
     event.preventDefault();
+    if (button === generateButton && suppressGenerateClick) return;
     runAction(button.dataset.miniAction);
   });
 
   document.addEventListener("pointerdown",(event)=>{
-    const button = event.target.closest("[data-mini-action='play']");
+    const button = event.target.closest("[data-mini-action]");
     if (!button) return;
-    frameWindow()?.FakebotAudioKit?.resume?.().catch(()=>{});
+    if (button.dataset.miniAction === "play"){
+      frameWindow()?.FakebotAudioKit?.resume?.().catch(()=>{});
+    }
+    if (button === generateButton){
+      window.clearTimeout(generateHoldTimer);
+      suppressGenerateClick = false;
+      generateHoldTimer = window.setTimeout(()=>{
+        suppressGenerateClick = true;
+        runAction("generate-anchored");
+        if (navigator.vibrate) navigator.vibrate(20);
+      }, 550);
+    }
   },{passive:true});
+
+  const cancelGenerateHold = ()=>{
+    window.clearTimeout(generateHoldTimer);
+    generateHoldTimer = 0;
+    if (suppressGenerateClick){
+      window.setTimeout(()=>{ suppressGenerateClick = false; }, 0);
+    }
+  };
+  document.addEventListener("pointerup", cancelGenerateHold, {passive:true});
+  document.addEventListener("pointercancel", cancelGenerateHold, {passive:true});
+  generateButton?.addEventListener("contextmenu", event=>event.preventDefault());
 
   window.addEventListener("message", (event)=>{
     if (event.source !== frameWindow() || !event.data || event.data.source !== "fakebot-mini") return;
