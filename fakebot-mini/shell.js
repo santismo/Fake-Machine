@@ -1,11 +1,10 @@
 (() => {
   "use strict";
-  const VERSION = "20260712b";
+  const VERSION = "20260712c";
   const frame = document.getElementById("miniFrame");
   const loading = document.getElementById("miniLoading");
   const audioStatus = document.getElementById("miniAudioStatus");
   const playButton = document.getElementById("miniPlay");
-  const generateButton = document.querySelector("[data-mini-action='generate']");
   const settingsButton = document.getElementById("miniSettings");
   const dock = document.querySelector(".miniDock");
   const shell = document.querySelector(".miniShell");
@@ -13,8 +12,6 @@
   let bootedDocument = null;
   let playPending = false;
   let stateSyncTimer = 0;
-  let generateHoldTimer = 0;
-  let suppressGenerateClick = false;
 
   function showStatus(message, hold=1400){
     if (!loading) return;
@@ -166,7 +163,6 @@
     const button = event.target.closest("[data-mini-action]");
     if (!button) return;
     event.preventDefault();
-    if (button === generateButton && suppressGenerateClick) return;
     runAction(button.dataset.miniAction);
   });
 
@@ -176,31 +172,7 @@
     if (button.dataset.miniAction === "play"){
       frameWindow()?.FakebotAudioKit?.resume?.().catch(()=>{});
     }
-    if (button === generateButton){
-      window.clearTimeout(generateHoldTimer);
-      suppressGenerateClick = false;
-      generateHoldTimer = window.setTimeout(()=>{
-        suppressGenerateClick = true;
-        runAction("generate-anchored");
-        if (navigator.vibrate) navigator.vibrate(20);
-      }, 550);
-    }
   },{passive:true});
-
-  const cancelGenerateHold = ()=>{
-    window.clearTimeout(generateHoldTimer);
-    generateHoldTimer = 0;
-    if (suppressGenerateClick){
-      window.setTimeout(()=>{ suppressGenerateClick = false; }, 0);
-    }
-  };
-  document.addEventListener("pointerup", cancelGenerateHold, {passive:true});
-  document.addEventListener("pointercancel", cancelGenerateHold, {passive:true});
-  generateButton?.addEventListener("contextmenu", event=>event.preventDefault());
-  document.addEventListener("selectstart", event=>{
-    if (event.target.closest?.(".miniDock, .miniLoading, .miniAudioState")) event.preventDefault();
-  });
-  generateButton?.addEventListener("dragstart", event=>event.preventDefault());
 
   window.addEventListener("message", (event)=>{
     if (event.source !== frameWindow() || !event.data || event.data.source !== "fakebot-mini") return;
