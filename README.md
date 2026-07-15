@@ -11,6 +11,10 @@ Fakebot Mini — streamlined sample-based chord generator:
 
 https://santismo.github.io/fakebot/fakebot-mini/
 
+Fakebot Mini Offline — zero-download synthesized edition for SPCK and offline use:
+
+https://santismo.github.io/fakebot/fakebot-mini-offline/
+
 hotkeys
 
 Space: Play / Pause

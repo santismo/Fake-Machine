@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Fakebot Offline">
+  <meta name="theme-color" content="#0b0c0e">
+  <meta name="description" content="A fully local, offline-ready edition of Fakebot Mini.">
+  <title>Fakebot Mini Offline</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" sizes="180x180" href="fakebot-mini-offline-icon-180.png">
+  <link rel="icon" type="image/svg+xml" href="fakebot-mini-offline-icon.svg">
+  <link rel="stylesheet" href="shell.css?v=20260714a">
+</head>
+<body>
+  <div class="miniShell">
+    <main class="miniFrameWrap">
+      <div class="miniAudioState" id="miniAudioStatus" data-state="ready" role="status">Offline synth ready</div>
+      <iframe id="miniFrame" src="app.html?variant=mini-offline&amp;v=20260714a" title="Fakebot Mini Offline chord generator" allow="autoplay"></iframe>
+      <div class="miniLoading" id="miniLoading" role="status">Loading Fakebot Mini Offline…</div>
+    </main>
+
+    <nav class="miniDock" aria-label="Primary actions">
+      <button type="button" data-mini-action="play" id="miniPlay" aria-label="Play" title="Play">
+        <svg class="miniIcon miniIconPlay" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5 19 12 8 18.5Z"/></svg>
+        <svg class="miniIcon miniIconPause" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>
+      </button>
+      <button type="button" data-mini-action="generate" class="miniGenerate" aria-label="Generate new progression" title="Generate new progression">
+        <svg class="miniIcon miniIconStroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h3.2c2.5 0 3.5 2 4.8 5s2.3 5 4.8 5H20m-3-3 3 3-3 3M4 17h3.2c1.4 0 2.3-.6 3-1.5m3.6-7C14.5 7.6 15.4 7 16.8 7H20m-3-3 3 3-3 3"/></svg>
+      </button>
+      <button type="button" data-mini-action="generate-anchored" class="miniGenerateAnchored" aria-label="Generate from selected chord" title="Generate from selected chord">
+        <svg class="miniIcon miniIconStroke" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="12" r="2.5"/><path d="M8.5 12H13m0 0-2.5-2.5M13 12l-2.5 2.5M15 7h5m-2.5-2.5L20 7l-2.5 2.5M15 17h5m-2.5-2.5L20 17l-2.5 2.5"/></svg>
+      </button>
+      <button type="button" data-mini-action="settings" id="miniSettings" aria-label="Open settings" aria-expanded="false" title="Open settings">
+        <svg class="miniIcon miniIconStroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h8m4 0h4M4 17h4m4 0h8M12 4v6M8 14v6"/><circle cx="12" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>
+      </button>
+    </nav>
+  </div>
+  <script src="shell.js?v=20260714a"></script>
+  <script>
+    if ("serviceWorker" in navigator){
+      window.addEventListener("load", ()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}), {once:true});
+    }
+  </script>
+</body>
+</html>
