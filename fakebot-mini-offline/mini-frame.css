@@ -1,0 +1,185 @@
+html.fakebot-mini-frame{
+  --pageBg:#0b0c0e!important;
+  --pageInk:#f4f4f2!important;
+  --pageMuted:#92969d!important;
+  --pageLine:#2b2d31!important;
+  --pagePanel:#141517!important;
+  --pagePanel2:#1b1c1f!important;
+  --accent:#7897b3!important;
+  --good:#55c797!important;
+  --chord:#d8b566!important;
+  --melody:#d76e6e!important;
+  --keyWhite:#f3efe6!important;
+  --keyBlack:#15171a!important;
+  --keyBorder:#bdb7aa!important;
+  --keyBlackBorder:#050506!important;
+  --keyBorderStrong:#8d8a83!important;
+  --scaleStrokeAlpha:.90!important;
+  --scaleStrokeWidth:2.4!important;
+  background:#0b0c0e!important;
+}
+html.fakebot-mini-frame,html.fakebot-mini-frame body{min-height:100%;scroll-behavior:smooth;overscroll-behavior-y:contain;background:#0b0c0e!important}
+html.fakebot-mini-frame body{margin:0;color:var(--pageInk);touch-action:pan-y manipulation}
+html.fakebot-mini-frame body::before,html.fakebot-mini-frame body::after{display:none!important;content:none!important;animation:none!important;background:none!important}
+html.fakebot-mini-frame *{box-sizing:border-box}
+html.fakebot-mini-frame button,html.fakebot-mini-frame select,html.fakebot-mini-frame input{font:inherit}
+html.fakebot-mini-frame button{min-height:44px}
+html.fakebot-mini-frame .app{width:min(100%,680px)!important;max-width:680px!important;margin:0 auto!important;padding:10px 9px 118px!important}
+html.fakebot-mini-frame #cardHeader,html.fakebot-mini-frame #advBack,html.fakebot-mini-frame .gameStepBtn,html.fakebot-mini-frame #grpSounds{display:none!important}
+html.fakebot-mini-frame #miniContent{display:grid;gap:10px}
+html.fakebot-mini-frame .miniCard,html.fakebot-mini-frame #cardPiano,html.fakebot-mini-frame #cardLead{margin:0!important;border:1px solid var(--pageLine)!important;border-radius:18px!important;background:var(--pagePanel)!important;box-shadow:none!important;overflow:hidden!important}
+html.fakebot-mini-frame .miniOverview{padding:14px;display:grid;gap:12px}
+html.fakebot-mini-frame .miniEyebrow{margin:0;color:var(--pageMuted);font-size:10px;line-height:1;text-transform:uppercase;letter-spacing:.13em;font-weight:800}
+html.fakebot-mini-frame .miniStats{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap}
+html.fakebot-mini-frame .miniStat{min-height:34px;padding:7px 10px;border:1px solid var(--pageLine)!important;border-radius:999px!important;background:var(--pagePanel2)!important;color:var(--pageMuted);font-size:11px;display:inline-flex;align-items:center;gap:5px;white-space:normal!important}
+html.fakebot-mini-frame .miniStat strong{color:var(--pageInk)}
+html.fakebot-mini-frame .miniQuickControls{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+html.fakebot-mini-frame .miniQuickControls .headSlider,html.fakebot-mini-frame .miniQuickControls .transposeGroup{min-width:0!important;width:100%!important;min-height:48px!important;margin:0!important;padding:7px 9px!important;border:1px solid var(--pageLine)!important;border-radius:13px!important;background:var(--pagePanel2)!important}
+html.fakebot-mini-frame .miniQuickControls .headSlider{display:grid!important;grid-template-columns:auto minmax(0,1fr) auto!important;align-items:center;gap:7px!important}
+html.fakebot-mini-frame .miniQuickControls .headSlider label{font-size:10px!important;color:var(--pageMuted)!important}
+html.fakebot-mini-frame .miniQuickControls .headSlider input[type=range]{min-width:0!important;width:100%!important;accent-color:var(--chord)}
+html.fakebot-mini-frame .miniQuickControls .headSlider .val{font-size:11px!important;color:var(--pageInk)!important;text-align:right}
+html.fakebot-mini-frame .miniQuickControls .transposeGroup{display:grid!important;grid-template-columns:1fr 1fr!important;gap:7px!important}
+html.fakebot-mini-frame .miniQuickControls .transposeBtn{min-width:0!important;width:100%!important;border:0!important;border-radius:9px!important;background:#24262a!important;color:var(--pageInk)!important;font-size:14px!important;font-weight:800}
+html.fakebot-mini-frame #msg{min-height:0!important;margin:0!important;color:var(--pageMuted)!important;font-size:11px!important;text-align:center}
+
+html.fakebot-mini-frame #cardPiano .cardHead,html.fakebot-mini-frame #cardLead .cardHead{padding:11px!important;border-bottom:1px solid var(--pageLine)!important;background:var(--pagePanel)!important}
+html.fakebot-mini-frame #cardPiano .cardHead{position:relative!important;display:flex!important;align-items:center!important;justify-content:center!important;min-height:54px!important}
+html.fakebot-mini-frame #cardPiano .cardHead>.row:first-child{position:absolute!important;left:10px!important;top:50%!important;transform:translateY(-50%)!important;display:flex!important;gap:5px!important;z-index:2}
+html.fakebot-mini-frame #btnPianoToggle,html.fakebot-mini-frame #btnFretToggle{min-height:36px!important;height:36px!important;padding:0 9px!important;border:1px solid var(--pageLine)!important;border-radius:10px!important;background:var(--pagePanel2)!important;color:var(--pageMuted)!important;font-size:10px!important;font-weight:800}
+html.fakebot-mini-frame #btnPianoToggle.on,html.fakebot-mini-frame #btnFretToggle.on{border-color:#59616d!important;color:var(--pageInk)!important;background:#26292e!important}
+html.fakebot-mini-frame #pianoTop{width:100%!important;min-width:0!important;margin:0!important;padding:4px 10px 4px 138px!important;overflow:hidden!important;border:0!important;border-radius:0!important;background:none!important;color:var(--pageInk)!important;text-align:center!important;text-overflow:ellipsis!important;text-shadow:none!important;white-space:nowrap!important;font-size:clamp(24px,7vw,32px)!important;line-height:1!important;letter-spacing:-.045em!important;font-weight:850!important}
+html.fakebot-mini-frame #cardPiano .cardBody{padding:9px!important}
+html.fakebot-mini-frame .legend{justify-content:center!important;gap:9px!important;margin:0 0 6px!important;color:var(--pageMuted)!important;font-size:10px!important}
+html.fakebot-mini-frame .dotLegend{gap:4px!important}
+html.fakebot-mini-frame .sw{width:8px!important;height:8px!important;border:0!important}
+html.fakebot-mini-frame .sw.scale{background:var(--accent)!important}
+html.fakebot-mini-frame .sw.root{background:var(--good)!important}
+html.fakebot-mini-frame .sw.chord{background:var(--chord)!important}
+html.fakebot-mini-frame .sw.melody{background:var(--melody)!important}
+html.fakebot-mini-frame .pianoBox,html.fakebot-mini-frame .fretBox{border:1px solid #36383c!important;border-radius:15px!important;background:#090a0c!important;overflow:hidden!important;padding:5px!important}
+html.fakebot-mini-frame #pianoSvg{display:block!important;width:100%!important;height:clamp(126px,38vw,152px)!important;min-height:126px!important;background:#090a0c!important;border-radius:10px!important;overflow:hidden!important}
+html.fakebot-mini-frame #fretSvg{display:none!important}
+html.fakebot-mini-frame .miniFretPad{width:100%;display:grid!important;grid-template-columns:22px repeat(13,minmax(0,1fr));grid-template-rows:13px repeat(6,clamp(18px,5vw,22px));gap:2px;padding:4px;border-radius:10px;background:#090a0c;overflow:hidden}
+html.fakebot-mini-frame .miniFretPadRow{display:contents}
+html.fakebot-mini-frame .miniFretPadCorner,html.fakebot-mini-frame .miniFretPadFret,html.fakebot-mini-frame .miniFretPadString{display:flex;align-items:center;justify-content:center;min-width:0;color:#8f949c;font-weight:800;line-height:1;user-select:none}
+html.fakebot-mini-frame .miniFretPadFret{font-size:8px;font-variant-numeric:tabular-nums}
+html.fakebot-mini-frame .miniFretPadString{font-size:10px;color:#c7cad0}
+html.fakebot-mini-frame .miniFretPadCell{position:relative;min-width:0;display:flex;align-items:center;justify-content:center;border:1px solid rgba(132,139,149,.22);border-radius:clamp(4px,1.4vw,7px);background:#17191c;color:#f7f8fa;box-shadow:0 1px 0 rgba(255,255,255,.025) inset;overflow:hidden}
+html.fakebot-mini-frame .miniFretPadCell.tone1{background:#1c1e22}
+html.fakebot-mini-frame .miniFretPadCell.isScale{border-color:rgba(120,151,179,.76);background:#415467}
+html.fakebot-mini-frame .miniFretPadCell.isChord{border-color:rgba(225,196,126,.78);background:#90743d}
+html.fakebot-mini-frame .miniFretPadCell.isRoot{border-color:rgba(195,242,220,.88);background:#397b5e;box-shadow:0 0 0 1px rgba(221,255,239,.38) inset,0 0 10px rgba(85,199,151,.22)}
+html.fakebot-mini-frame .miniFretPadCell.isMelody{border-color:rgba(255,215,215,.94)!important;background:#b73543!important;box-shadow:0 0 0 2px rgba(255,146,146,.72) inset,0 0 9px rgba(255,75,75,.36)!important}
+html.fakebot-mini-frame .miniFretPadCell.isRoot.isMelody{background:#b73543!important;box-shadow:0 0 0 2px rgba(255,220,220,.8) inset,0 0 10px rgba(255,75,75,.42)!important}
+html.fakebot-mini-frame .miniFretPadNote{max-width:100%;padding:0 1px;overflow:hidden;color:#fbfcfd;font-size:clamp(7px,2.2vw,10px);font-weight:900;line-height:1;letter-spacing:-.055em;text-overflow:clip;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.48);pointer-events:none}
+html.fakebot-mini-frame .miniFretPadNote .miniLeadTranspose{position:relative;top:-.34em;margin-left:1px;font-size:.68em;letter-spacing:0}
+html.fakebot-mini-frame #pianoSvg rect[fill="var(--accent)"]{fill:#7897b3!important;vector-effect:non-scaling-stroke}
+html.fakebot-mini-frame #pianoSvg rect[fill="var(--keyWhite)"]{fill:#f3efe6!important}
+html.fakebot-mini-frame #pianoSvg rect[fill="var(--keyBlack)"]{fill:#15171a!important}
+html.fakebot-mini-frame #pianoSvg rect.midiMelodyKey{fill:var(--melody)!important;stroke:rgba(255,236,236,.98)!important;filter:drop-shadow(0 0 5px rgba(255,75,75,.48))}
+html.fakebot-mini-frame #pianoSvg .miniPianoNote{fill:#161719!important;font-size:28px!important;font-weight:900!important;letter-spacing:-1px!important}
+html.fakebot-mini-frame #pianoSvg .miniPianoNote.isLiveMelodyNote{fill:#fff!important;filter:drop-shadow(0 1px 2px rgba(0,0,0,.75))}
+html.fakebot-mini-frame #pianoSvg .miniLeadTranspose{fill:#fff!important;font-size:14px!important;font-weight:900!important}
+html.fakebot-mini-frame #pianoHint{margin:6px 2px 0!important;color:var(--pageMuted)!important;font-size:10px!important;text-align:center!important}
+
+html.fakebot-mini-frame #cardLead .cardHead{display:grid!important;grid-template-columns:auto 1fr auto!important;align-items:center!important;gap:8px!important}
+html.fakebot-mini-frame #cardLead .cardHead .title:first-child{color:var(--pageMuted)!important;font-size:11px!important;text-transform:uppercase!important;letter-spacing:.1em!important;font-weight:800!important}
+html.fakebot-mini-frame #leadKey{min-width:0!important;overflow:hidden!important;text-align:center!important;text-overflow:ellipsis!important;white-space:nowrap!important;color:var(--pageMuted)!important;font-size:11px!important}
+html.fakebot-mini-frame #btnEdit{min-height:36px!important;padding:0 11px!important;border:1px solid var(--pageLine)!important;border-radius:10px!important;background:var(--pagePanel2)!important;color:var(--pageInk)!important;font-size:11px!important}
+html.fakebot-mini-frame #btnCardDensity{display:inline-flex!important;align-items:center!important;justify-content:center!important;width:44px!important;min-width:44px!important;min-height:44px!important;height:44px!important;padding:0 5px!important;border:1px solid var(--pageLine)!important;border-radius:11px!important;background:var(--pagePanel2)!important;color:var(--pageInk)!important;font-size:10px!important;font-weight:900!important;font-variant-numeric:tabular-nums}
+html.fakebot-mini-frame #cardLead .cardBody{padding:12px!important}
+html.fakebot-mini-frame .sheet{position:relative;width:min(100%,580px)!important;max-height:clamp(150px,32dvh,300px)!important;margin:0 auto!important;padding:6px!important;display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;align-content:start!important;gap:8px!important;overflow-x:hidden!important;overflow-y:auto!important;border:1px solid #292c31!important;border-radius:13px!important;background:#0b0c0e!important;overscroll-behavior:contain!important;scrollbar-gutter:stable;-webkit-overflow-scrolling:touch}
+html.fakebot-mini-frame .sheet[data-density="2"]{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+html.fakebot-mini-frame .sheet[data-density="4"]{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:5px!important}
+html.fakebot-mini-frame .sheet[data-density="8"]{grid-template-columns:repeat(8,minmax(0,1fr))!important;gap:3px!important}
+html.fakebot-mini-frame .sheet::-webkit-scrollbar{width:6px}
+html.fakebot-mini-frame .sheet::-webkit-scrollbar-track{background:transparent}
+html.fakebot-mini-frame .sheet::-webkit-scrollbar-thumb{border-radius:999px;background:#3d4148}
+html.fakebot-mini-frame .bar{min-height:88px!important;padding:12px 10px!important;border:1px solid var(--pageLine)!important;border-radius:14px!important;background:var(--pagePanel2)!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;text-align:center!important;box-shadow:none!important}
+html.fakebot-mini-frame .bar.hasOutOfCenter{border-color:rgba(135,164,195,.52)!important;background:linear-gradient(135deg,rgba(59,128,150,.30),rgba(105,73,160,.25) 44%,rgba(167,76,121,.22) 72%,rgba(53,130,119,.24))!important}
+html.fakebot-mini-frame .bar.active{border-color:#8d9eae!important;box-shadow:0 0 0 1px rgba(167,190,211,.62) inset,0 0 22px rgba(116,154,190,.34)!important}
+html.fakebot-mini-frame .bar.activeHalf0>.sym:not(.sym2),html.fakebot-mini-frame .bar.activeHalf1>.sym2{color:#f8fbff!important;text-shadow:0 0 7px rgba(218,238,255,.9),0 0 18px rgba(109,165,215,.72)!important}
+html.fakebot-mini-frame .bar.hasOutOfCenter .sym.outOfCenter{color:#f7f3ff!important;text-shadow:0 0 12px rgba(183,150,235,.34)}
+html.fakebot-mini-frame .bar:focus-visible{outline:2px solid #9cb4c9!important;outline-offset:1px!important}
+html.fakebot-mini-frame .bar .sym{width:100%!important;padding:0 18px!important;overflow:hidden!important;font-size:clamp(18px,5.8vw,25px)!important;line-height:1.05!important;text-align:center!important;letter-spacing:-.035em!important;text-overflow:ellipsis!important;white-space:nowrap!important}
+html.fakebot-mini-frame .bar .sym2{width:100%!important;margin-top:7px!important;padding:7px 0 0!important;font-size:15px!important;text-align:center!important}
+html.fakebot-mini-frame .bar .num{top:8px!important;right:9px!important;color:#676b72!important;font-size:9px!important}
+html.fakebot-mini-frame .sheet[data-density="4"] .bar{min-height:68px!important;padding:9px 5px!important;border-radius:11px!important}
+html.fakebot-mini-frame .sheet[data-density="4"] .bar .sym{padding:0 11px!important;font-size:clamp(11px,3.1vw,17px)!important;letter-spacing:-.045em!important}
+html.fakebot-mini-frame .sheet[data-density="4"] .bar .sym2{margin-top:4px!important;padding-top:4px!important;font-size:clamp(9px,2.6vw,13px)!important}
+html.fakebot-mini-frame .sheet[data-density="4"] .bar .num{top:5px!important;right:5px!important;font-size:7px!important}
+html.fakebot-mini-frame .sheet[data-density="8"] .bar{min-height:52px!important;padding:6px 1px!important;border-radius:8px!important}
+html.fakebot-mini-frame .sheet[data-density="8"] .bar .sym{padding:0 5px!important;font-size:clamp(8px,1.85vw,11px)!important;letter-spacing:-.06em!important}
+html.fakebot-mini-frame .sheet[data-density="8"] .bar .sym2{margin-top:3px!important;padding:3px 0 0!important;font-size:clamp(7px,1.55vw,9px)!important}
+html.fakebot-mini-frame .sheet[data-density="8"] .bar .num{top:3px!important;right:3px!important;font-size:6px!important;gap:1px!important}
+html.fakebot-mini-frame .sheet[data-density="8"] .repeatGlyph{font-size:6px!important}
+
+html.fakebot-mini-frame .miniSettingsBackdrop{position:fixed;inset:0;z-index:19990;background:rgba(0,0,0,.62);opacity:0;visibility:hidden;transition:opacity .18s ease,visibility .18s ease}
+html.fakebot-mini-frame #miniSettingsPanel{position:fixed;z-index:20000;left:50%;bottom:0;width:min(100%,680px);height:min(92dvh,900px);display:flex;flex-direction:column;transform:translate(-50%,102%);visibility:hidden;transition:transform .22s ease,visibility 0s linear .22s;border:1px solid var(--pageLine);border-bottom:0;border-radius:22px 22px 0 0;background:#101113;box-shadow:none;overflow:hidden}
+html.fakebot-mini-frame body.mini-settings-open{overflow:hidden!important}
+html.fakebot-mini-frame body.mini-settings-open .miniSettingsBackdrop{opacity:1;visibility:visible}
+html.fakebot-mini-frame body.mini-settings-open #miniSettingsPanel{transform:translate(-50%,0);visibility:visible;transition:transform .22s ease,visibility 0s;box-shadow:0 -18px 50px rgba(0,0,0,.42)}
+html.fakebot-mini-frame .miniSettingsHeader{min-height:62px;padding:10px 12px;display:grid;grid-template-columns:1fr auto;align-items:center;gap:10px;border-bottom:1px solid var(--pageLine);background:#141517}
+html.fakebot-mini-frame .miniSettingsHeader strong{font-size:18px;letter-spacing:-.025em}
+html.fakebot-mini-frame .miniSettingsHeader span{display:block;margin-top:2px;color:var(--pageMuted);font-size:10px;font-weight:600}
+html.fakebot-mini-frame .miniSettingsHeader button{min-height:40px;padding:0 14px;border:1px solid var(--pageLine);border-radius:11px;background:#202226;color:var(--pageInk);font-weight:800}
+html.fakebot-mini-frame .miniSettingsHeaderActions{display:flex;align-items:center;justify-content:flex-end;gap:6px}
+html.fakebot-mini-frame .miniSettingsHeaderActions #btnDefaults{min-width:0!important;padding-inline:11px!important;background:#18191c!important;font-size:11px!important}
+html.fakebot-mini-frame .miniSettingsBody{min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:10px 10px calc(18px + env(safe-area-inset-bottom));display:grid;grid-auto-rows:max-content;align-content:start;gap:10px}
+html.fakebot-mini-frame .miniSettingsSection{min-height:max-content;border:1px solid var(--pageLine);border-radius:16px;background:var(--pagePanel);overflow:hidden}
+html.fakebot-mini-frame .miniSettingsSection>h2{margin:0;padding:12px;border-bottom:1px solid var(--pageLine);color:var(--pageInk);font-size:12px;line-height:1;text-transform:uppercase;letter-spacing:.1em}
+html.fakebot-mini-frame .miniSettingsSectionBody{padding:10px;display:grid;gap:8px}
+html.fakebot-mini-frame .miniModeGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+html.fakebot-mini-frame .miniModeGrid .headSelect{min-width:0!important;width:100%!important;min-height:0!important;padding:8px!important;display:grid!important;gap:5px!important;border:1px solid var(--pageLine)!important;border-radius:12px!important;background:var(--pagePanel2)!important}
+html.fakebot-mini-frame .miniModeGrid .headSelect:first-child{grid-column:1/-1}
+html.fakebot-mini-frame .miniModeGrid .headSelect:has(select:disabled){display:none!important}
+html.fakebot-mini-frame .miniModeGrid .headSelect label,html.fakebot-mini-frame .miniSoundGrid label,html.fakebot-mini-frame .miniUtilityField label{color:var(--pageMuted)!important;font-size:10px!important;text-transform:uppercase;letter-spacing:.08em;font-weight:800}
+html.fakebot-mini-frame .miniModeGrid select,html.fakebot-mini-frame .miniSoundGrid select{width:100%!important;min-width:0!important;max-width:none!important;min-height:42px!important;border:1px solid #383a3f!important;border-radius:10px!important;background:#202226!important;color:var(--pageInk)!important}
+html.fakebot-mini-frame #cardControls,html.fakebot-mini-frame #cardLimiters{margin:0!important;border:0!important;border-radius:0!important;background:none!important;box-shadow:none!important;overflow:visible!important}
+html.fakebot-mini-frame #cardControls>.cardHead,html.fakebot-mini-frame #cardLimiters>.cardHead{display:none!important}
+html.fakebot-mini-frame #cardControls>.cardBody,html.fakebot-mini-frame #cardLimiters>.cardBody{padding:0!important}
+html.fakebot-mini-frame details.group{margin:0 0 8px!important;border:1px solid var(--pageLine)!important;border-radius:13px!important;background:var(--pagePanel2)!important;overflow:hidden!important}
+html.fakebot-mini-frame details.group:last-child{margin-bottom:0!important}
+html.fakebot-mini-frame details.group>summary{min-height:50px!important;padding:9px 10px!important;background:#1b1c1f!important}
+html.fakebot-mini-frame .sumTitle{font-size:13px!important}
+html.fakebot-mini-frame .sumSub{display:none!important}
+html.fakebot-mini-frame .groupBody{padding:9px!important}
+html.fakebot-mini-frame .controls{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}
+html.fakebot-mini-frame .control,html.fakebot-mini-frame .miniCtl{min-width:0!important;padding:9px!important;border:1px solid var(--pageLine)!important;border-radius:12px!important;background:#161719!important}
+html.fakebot-mini-frame .control label{color:var(--pageMuted)!important;font-size:10px!important}
+html.fakebot-mini-frame select,html.fakebot-mini-frame input[type=number],html.fakebot-mini-frame input[type=text],html.fakebot-mini-frame input[type=file]{min-height:42px!important;border:1px solid #393b40!important;border-radius:10px!important;background:#202226!important;color:var(--pageInk)!important}
+html.fakebot-mini-frame input[type=range]{accent-color:var(--chord)}
+html.fakebot-mini-frame .chip{min-height:42px!important;border-color:var(--pageLine)!important;border-radius:11px!important;background:#1d1f22!important}
+html.fakebot-mini-frame .btn,html.fakebot-mini-frame .gearBtn,html.fakebot-mini-frame .iconBtn,html.fakebot-mini-frame .lockMini{min-height:42px!important;border:1px solid #3a3c42!important;border-radius:10px!important;background:#23252a!important;color:var(--pageInk)!important;box-shadow:none!important}
+html.fakebot-mini-frame .btn.primary{background:var(--chord)!important;border-color:var(--chord)!important;color:#17130d!important}
+html.fakebot-mini-frame .lockMini{min-width:52px!important;font-size:0!important}
+html.fakebot-mini-frame .lockMini::after{content:"Lock";font-size:10px;font-weight:800;color:var(--pageMuted)}
+html.fakebot-mini-frame .lockMini.on::after{content:"Locked";color:var(--pageInk)}
+html.fakebot-mini-frame .miniToolsGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+html.fakebot-mini-frame .miniToolsGrid .btn{width:100%!important;min-width:0!important;font-size:11px!important}
+html.fakebot-mini-frame .miniUtilityField{padding:9px;border:1px solid var(--pageLine);border-radius:12px;background:var(--pagePanel2);display:grid;gap:7px}
+html.fakebot-mini-frame #rowMidiInput{display:grid!important;grid-template-columns:1fr 1.4fr!important;width:100%!important;gap:7px!important}
+html.fakebot-mini-frame .miniSoundGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+html.fakebot-mini-frame .miniSoundGrid>.control{display:grid!important;grid-column:auto!important;gap:5px!important;min-width:0!important;margin:0!important;padding:0!important}
+html.fakebot-mini-frame .miniSoundGrid>.control:first-child{grid-column:1/-1!important}
+html.fakebot-mini-frame .miniSoundGrid label{display:grid;gap:5px}
+html.fakebot-mini-frame .miniSoundGrid label:first-child{grid-column:1/-1}
+html.fakebot-mini-frame .miniTrackMutes{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+html.fakebot-mini-frame .miniTrackMutes button{min-height:42px;padding:0 10px;border:1px solid #4b4e54;border-radius:10px;background:#25272b;color:var(--pageInk);font-size:11px;font-weight:800}
+html.fakebot-mini-frame .miniTrackMutes button.isMuted{border-color:rgba(255,91,91,.72);background:#4a2428;color:#ffd9d9}
+html.fakebot-mini-frame .miniTrackMutes button:disabled{opacity:.48}
+html.fakebot-mini-frame .miniSampleStatus{grid-column:1/-1;min-height:34px;padding:8px 10px;border:1px solid var(--pageLine);border-radius:10px;background:#1b1c1f;color:var(--pageMuted);font-size:10px;line-height:1.3}
+html.fakebot-mini-frame .miniSampleActions{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:center}
+html.fakebot-mini-frame .miniSampleActions label{grid-column:1/-1!important}
+html.fakebot-mini-frame .miniSampleActions input{width:100%}
+html.fakebot-mini-frame .miniSampleActions button{min-height:42px;padding:0 10px;border:1px solid #4b4e54;border-radius:10px;background:#25272b;color:var(--pageInk);font-size:11px;font-weight:800}
+html.fakebot-mini-frame .mini-hidden{display:none!important}
+html.fakebot-mini-frame .editModalBack{padding:8px!important;background:rgba(0,0,0,.72)!important}
+html.fakebot-mini-frame .editModal{width:min(100%,620px)!important;max-height:92dvh!important;border:1px solid var(--pageLine)!important;border-radius:18px!important;background:#141517!important}
+html.fakebot-mini-frame .editHead,html.fakebot-mini-frame .editBody{background:#141517!important}
+
+@media(min-width:681px){html.fakebot-mini-frame .bar{min-height:94px!important}html.fakebot-mini-frame #pianoSvg{height:152px!important}}
+@media(max-width:410px){html.fakebot-mini-frame .app{padding-left:6px!important;padding-right:6px!important}html.fakebot-mini-frame .miniQuickControls{grid-template-columns:1fr 1fr!important}html.fakebot-mini-frame .miniQuickControls .transposeGroup{grid-column:1/-1}html.fakebot-mini-frame #pianoTop{padding-left:126px!important;font-size:27px!important}html.fakebot-mini-frame .controls{grid-template-columns:1fr!important}html.fakebot-mini-frame .miniModeGrid,html.fakebot-mini-frame .miniSoundGrid{grid-template-columns:1fr!important}html.fakebot-mini-frame .miniModeGrid .headSelect:first-child,html.fakebot-mini-frame .miniSoundGrid label:first-child{grid-column:auto}html.fakebot-mini-frame .bar{min-height:82px!important}}
+@media(max-width:410px) and (max-height:700px){html.fakebot-mini-frame .miniOverview{padding:10px!important;gap:8px!important}html.fakebot-mini-frame .miniEyebrow{display:none}html.fakebot-mini-frame .miniStats{gap:6px!important}html.fakebot-mini-frame .miniQuickControls{grid-template-columns:1fr 1fr .85fr!important;gap:6px!important}html.fakebot-mini-frame .miniQuickControls .transposeGroup{grid-column:auto!important}html.fakebot-mini-frame .miniQuickControls .headSlider,html.fakebot-mini-frame .miniQuickControls .transposeGroup{min-height:44px!important;padding:5px!important;gap:4px!important}html.fakebot-mini-frame #cardPiano .cardHead{min-height:50px!important;padding:7px!important}html.fakebot-mini-frame #cardPiano .cardBody{padding:7px!important}html.fakebot-mini-frame .legend{margin-bottom:4px!important}html.fakebot-mini-frame #pianoSvg{height:120px!important;min-height:120px!important}html.fakebot-mini-frame .miniFretPad{grid-template-rows:13px repeat(6,20px)!important}html.fakebot-mini-frame .sheet{max-height:clamp(140px,29dvh,205px)!important}html.fakebot-mini-frame #cardLead .cardHead{padding:7px!important}}
+@media(orientation:landscape) and (max-height:520px){html.fakebot-mini-frame .app{padding-bottom:90px!important}html.fakebot-mini-frame #pianoSvg{height:116px!important;min-height:116px!important}html.fakebot-mini-frame .miniFretPad{grid-template-rows:12px repeat(6,16px)!important;gap:1px!important;padding:3px!important}html.fakebot-mini-frame .miniFretPadNote{font-size:7px!important}html.fakebot-mini-frame .sheet{max-height:112px!important}html.fakebot-mini-frame #miniSettingsPanel{height:100dvh;border-radius:0}}
