@@ -1,4 +1,4 @@
-const CACHE_NAME = "fakebot-mini-offline-20260728-infinite";
+const CACHE_NAME = "fakebot-mini-offline-20260728-playstyles";
 const APP_FILES = [
   "./",
   "./index.html",

@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const VERSION = "20260728-infinite";
+  const VERSION = "20260728-playstyles";
   const frame = document.getElementById("miniFrame");
   const loading = document.getElementById("miniLoading");
   const audioStatus = document.getElementById("miniAudioStatus");

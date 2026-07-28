@@ -2202,25 +2202,26 @@
     exampleParentRoot: 0,
     gameDifficulty: "medium",
     masterVolume: 85,
-    tempo: 140,
-    swing: 58,
-    chaos: 35,
+    tempo: 86,
+    swing: 56,
+    chaos: 30,
     complexity: 45,
+    rakeAmount: 72,
     rootMode: "keyed",
-    progressionLogic: "jazzFunctional",
-    genrePreset: "modernJazz",
-    grooveStyle: "swing",
-    compStyle: "twoStabs",
+    progressionLogic: "neoSoulLogic",
+    genrePreset: "lofiJazz",
+    grooveStyle: "boomBap",
+    compStyle: "lofiRake",
     bassPreset: "upright",
     keysPreset: "ep",
-    drumsPreset: "jazz",
-    drumsLevel: 55,
-    keysComplex: 55,
-    keysFill: 30,
-    bassComplex: 55,
-    bassFill: 25,
-    drumsComplex: 65,
-    drumsFill: 40,
+    drumsPreset: "lofi",
+    drumsLevel: 58,
+    keysComplex: 58,
+    keysFill: 42,
+    bassComplex: 48,
+    bassFill: 28,
+    drumsComplex: 58,
+    drumsFill: 36,
     scalesUsed: 2,
     scaleLimitEnabled: true,
     limiter: {
@@ -2274,6 +2275,7 @@
     swing: DEFAULTS.swing,
     chaos: DEFAULTS.chaos,
     complexity: DEFAULTS.complexity,
+    rakeAmount: DEFAULTS.rakeAmount,
     rootMode: DEFAULTS.rootMode,
     progressionLogic: DEFAULTS.progressionLogic,
     genrePreset: DEFAULTS.genrePreset,
@@ -2510,6 +2512,7 @@
   ];
 
   const COMP_STYLES = [
+    {id:"lofiRake", name:"Lo-fi jazz rakes"},
     {id:"twoStabs", name:"2 stabs"},
     {id:"fourComp", name:"4-to-the-bar"},
     {id:"charleston", name:"Charleston"},
@@ -2544,13 +2547,15 @@
   const GENRE_BASE = {
     tempo:[120,180], swing:[55,60], groove:"swing", comp:"twoStabs",
     bass:"upright", keys:"piano", drums:"jazz",
-    kC:60,kF:30,bC:60,bF:20,dC:70,dF:40, halfOn:true, halfDen:[18,38],
+    kC:60,kF:30,bC:60,bF:20,dC:70,dF:40,rake:28, halfOn:true, halfDen:[18,38],
     logic:"jazzFunctional"
   };
   const GP = (cfg)=>({...GENRE_BASE, ...cfg});
 
   /* ---------- Genre Presets (expanded + old-ish coverage) ---------- */
   const GENRE_PRESETS = {
+    lofiJazz: { name:"Lo-fi jazz", tempo:[76,96], swing:[54,59], groove:"boomBap", comp:"lofiRake", bass:"upright", keys:"ep", drums:"lofi",
+      kC:58,kF:42,bC:48,bF:28,dC:58,dF:36,rake:72, halfOn:true, halfDen:[16,32], logic:"neoSoulLogic" },
     modernJazz: { name:"Modern jazz", tempo:[120,190], swing:[56,62], groove:"swing", comp:"twoStabs", bass:"upright", keys:"ep", drums:"jazz",
       kC:60,kF:30,bC:60,bF:22,dC:70,dF:40, halfOn:true, halfDen:[18,38], logic:"jazzFunctional" },
     bebop: { name:"Bebop", tempo:[160,240], swing:[58,64], groove:"swing", comp:"charleston", bass:"upright", keys:"piano", drums:"jazz",
@@ -7854,6 +7859,7 @@
     let midiNoteCursor = 0;
     let midiProgramCursor = 0;
     let midiMarkerCursor = 0;
+    let lastKeysVoicing = [];
 
     function setTempo(t, sw){
       tempo = clamp(Number(t)||120, 30, 320);
@@ -7915,6 +7921,85 @@
         }
       }
       return ch;
+    }
+
+    function upcomingChord(){
+      if (!order.length) return null;
+      const nextIndex = (atStep + 1) % order.length;
+      return chart[order[nextIndex]]?.chords?.[0] || null;
+    }
+
+    function smartKeysVoicing(ch, preset){
+      const base = (AudioKit.chordVoicingForPreset(ch, preset) || []).slice().sort((a,b)=>a-b);
+      if (!base.length) return base;
+      if (!lastKeysVoicing.length){
+        lastKeysVoicing = base;
+        return base;
+      }
+
+      const candidates = [];
+      for (let rotation=0; rotation<base.length; rotation++){
+        const rotated = base.slice(rotation).concat(base.slice(0, rotation).map(note=>note+12));
+        for (const octave of [-24,-12,0,12,24]){
+          const notes = rotated.map(note=>note+octave);
+          if (notes[0] < 42 || notes[notes.length-1] > 88) continue;
+          candidates.push(notes);
+        }
+      }
+      const distance = (notes)=>notes.reduce((total,note)=>{
+        const nearest = Math.min(...lastKeysVoicing.map(previous=>Math.abs(previous-note)));
+        return total + nearest;
+      }, 0) + Math.abs((notes[0]+notes[notes.length-1]) - (lastKeysVoicing[0]+lastKeysVoicing[lastKeysVoicing.length-1])) * 0.14;
+      const voiced = (candidates.length ? candidates : [base]).sort((a,b)=>distance(a)-distance(b))[0];
+      lastKeysVoicing = voiced;
+      return voiced;
+    }
+
+    function compOffsets(comp, dur, count){
+      const patterns = {
+        lofiRake:[0.12,0.52,0.82],
+        charleston:[0,0.375],
+        anticipations:[0,0.25,0.75],
+        pushPull:[0,0.50,0.875],
+        sparse:[0.18],
+        arpeggio:[0,0.25,0.50],
+        sustain:[0],
+        montuno:[0,0.375,0.50,0.75],
+        clav:[0.125,0.375,0.625,0.875],
+        rockChugs:[0,0.25,0.50,0.75],
+        discoChop:[0.25,0.50,0.75],
+        neoSoulPush:[0,0.46,0.79],
+        edmStab:[0,0.50]
+      };
+      const pattern = patterns[comp];
+      if (pattern) return pattern.slice(0, Math.max(1,count)).map(ratio=>dur*ratio);
+      return Array.from({length:Math.max(1,count)}, (_,index)=>dur*(index/Math.max(1,count)));
+    }
+
+    function compRakeChance(comp){
+      const styleWeight = {
+        lofiRake:0.96,
+        neoSoulPush:0.70,
+        sustain:0.44,
+        pushPull:0.40,
+        montuno:0.24,
+        charleston:0.18,
+        arpeggio:0.12
+      }[comp] ?? 0.10;
+      return clamp(state.rakeAmount/100, 0, 1) * styleWeight;
+    }
+
+    function playSmartChord(notes, preset, time, duration, velocity, rake){
+      if (!notes?.length) return;
+      const spread = rake
+        ? Math.min(0.008 + (state.rakeAmount/100)*0.047, Math.max(0.004, duration*0.34/notes.length))
+        : 0;
+      notes.forEach((midi,index)=>{
+        const noteTime = time + (rake ? index*spread : 0);
+        const noteDuration = Math.max(0.035, duration - (rake ? index*spread*0.45 : 0));
+        const noteVelocity = velocity * (index === 0 ? 0.82 : Math.min(1.08, 0.90 + index*0.035));
+        AudioKit.playNote(midi, preset, noteTime, noteDuration, noteVelocity);
+      });
     }
 
     function nextStep(){
@@ -8114,6 +8199,7 @@
       const kFill = clamp(state.keysFill/100,0,1) * density;
 
       let stabCount = (() => {
+        if (comp==="lofiRake") return 3;
         if (comp==="twoStabs") return 2;
         if (comp==="fourComp") return 4;
         if (comp==="charleston") return 2;
@@ -8133,23 +8219,7 @@
       if (isSplit) stabCount = Math.max(1, Math.round(stabCount * 0.6));
       if (isSecondHalf) stabCount = Math.max(1, Math.round(stabCount * 0.85));
 
-      const offsets = [];
-      if (stabCount===1){
-        offsets.push(0);
-      } else if (comp==="charleston"){
-        offsets.push(0);
-        offsets.push(dur*0.375);
-      } else if (comp==="anticipations"){
-        offsets.push(0);
-        offsets.push(dur*0.25);
-        offsets.push(dur*0.75);
-      } else if (comp==="pushPull"){
-        offsets.push(0);
-        offsets.push(dur*0.50);
-        offsets.push(dur*0.875);
-      } else {
-        for (let i=0;i<stabCount;i++) offsets.push((dur*(i/stabCount)));
-      }
+      const offsets = compOffsets(comp, dur, stabCount);
       if (isSplit && offsets.length > 1){
         const keep = Math.max(1, Math.round(offsets.length * 0.6));
         offsets.length = keep;
@@ -8158,30 +8228,36 @@
       // add a tiny randomized humanization
       const human = (amt)=> (Math.random()*2-1)*amt;
 
-      // sustain style: long pad
-      if (comp==="sustain"){
-        AudioKit.playChord(ch, state.keysPreset, startAt, dur*0.95, 0.65);
-      } else {
-        offsets.forEach((off, i)=>{
-          const v = 0.55 + 0.25*kBusy + 0.08*Math.sin(i*1.3);
-          const len = dur * (comp==="rockChugs"||comp==="discoChop"||comp==="clav" ? 0.18 : 0.22);
-          AudioKit.playChord(ch, state.keysPreset, startAt + off + human(0.008), Math.min(len, dur-off), v);
-        });
+      const voicedChord = smartKeysVoicing(ch, state.keysPreset);
+      offsets.forEach((off, i)=>{
+        const v = comp==="sustain"
+          ? 0.62 + 0.16*kBusy
+          : 0.52 + 0.25*kBusy + 0.08*Math.sin(i*1.3);
+        const shortStyle = comp==="rockChugs" || comp==="discoChop" || comp==="clav";
+        const len = comp==="sustain"
+          ? dur*0.94
+          : dur * (shortStyle ? 0.18 : (comp==="lofiRake" ? 0.34 : 0.25));
+        const rake = chance(compRakeChance(comp) * (i === 0 ? 1 : 0.72));
+        playSmartChord(voicedChord, state.keysPreset, startAt + off + human(0.008), Math.min(len, dur-off), v, rake);
+      });
 
-        // fills: extra little stab near end
-        if (chance(kFill*0.55)){
-          const off = dur*(0.82 + 0.12*Math.random());
-          const len = dur*0.14;
-          AudioKit.playChord(ch, state.keysPreset, startAt + off + human(0.010), Math.min(len, dur-off), 0.55);
-        }
+      // fills inherit the selected voicing, so the comp feels connected rather than reset each hit.
+      if (comp!=="sustain" && chance(kFill*0.55)){
+        const off = dur*(0.82 + 0.12*Math.random());
+        const len = dur*0.14;
+        playSmartChord(voicedChord, state.keysPreset, startAt + off + human(0.010), Math.min(len, dur-off), 0.52, chance(compRakeChance(comp)*0.5));
       }
 
       // --- Bass ---
       const bBusy = clamp(state.bassComplex/100,0,1) * density;
       const bFill = clamp(state.bassFill/100,0,1) * density;
       const bassNotes = [];
+      const nextChord = upcomingChord();
+      const targetRoot = nextChord ? pc(nextChord.root) : pc(ch.root);
+      const approachRoot = pc(targetRoot + (pc(targetRoot - ch.root) <= 6 ? -1 : 1));
+      const jazzBass = state.grooveStyle === "swing" || state.grooveStyle === "brushBallad" || comp === "lofiRake" || comp === "neoSoulPush";
 
-      // basic walking: 1, 5, approach tones
+      // Use the incoming harmony for a real approach note instead of a random last-beat nudge.
       bassNotes.push({t:0, pc: pc(ch.root), len: dur*0.48, v: 0.75});
       const addFifth = !isSplit || !isSecondHalf;
       if (addFifth){
@@ -8194,8 +8270,13 @@
       if (chance(bBusy*0.55)){
         bassNotes.push({t:dur*0.25, pc: pc(ch.root+12), len: dur*0.20, v: 0.60});
       }
+      if (jazzBass && dur > halfSeconds()*0.99 && bBusy > 0.28){
+        const third = ch.family === "min" || ch.family === "hdim" || ch.family === "minmaj" ? 3 : 4;
+        bassNotes.push({t:dur*0.25, pc:pc(ch.root + third), len:dur*0.19, v:0.58});
+        bassNotes.push({t:dur*0.75, pc:approachRoot, len:dur*0.18, v:0.60});
+      }
       if (chance(bFill*0.50)){
-        bassNotes.push({t:dur*0.86, pc: pc(ch.root + (chance(0.5)? 1 : -1)), len: dur*0.12, v: 0.55});
+        bassNotes.push({t:dur*0.88, pc: approachRoot, len: dur*0.10, v: 0.56});
       }
 
       bassNotes.forEach(n=>{
@@ -8448,6 +8529,7 @@
     function start(){
       if (isPlaying) return;
       isPlaying = true;
+      lastKeysVoicing = [];
       E.btnPlay.textContent = "⏸️";
       E.btnPlay.classList.add("primary");
 
@@ -8492,6 +8574,7 @@
       uiTimer = null;
       clearMidiTimers();
       nextTickAt = 0;
+      lastKeysVoicing = [];
       if (wasPlaying){ try{ AudioKit.hardStop(); }catch{} }
       setMidiSamplePlayback(false);
       if (options.resetMidi && activeMidiSong){
@@ -8590,6 +8673,7 @@
       swing: state.swing,
       chaos: state.chaos,
       complexity: state.complexity,
+      rakeAmount: state.rakeAmount,
       rootMode: state.rootMode,
       progressionLogic: state.progressionLogic,
       genrePreset: state.genrePreset,
@@ -8649,6 +8733,7 @@
       gameDifficulty: s.gameDifficulty ?? state.gameDifficulty,
       masterVolume: s.masterVolume ?? state.masterVolume,
       tempo:s.tempo, swing:s.swing, chaos:s.chaos, complexity: s.complexity ?? state.complexity,
+      rakeAmount: clamp(s.rakeAmount ?? state.rakeAmount, 0, 100),
       rootMode:s.rootMode, progressionLogic:s.progressionLogic, genrePreset:s.genrePreset,
       grooveStyle:s.grooveStyle, compStyle:s.compStyle,
       bassPreset:s.bassPreset, keysPreset:s.keysPreset, drumsPreset:s.drumsPreset,
@@ -9205,6 +9290,30 @@
     }
   });
 
+  window.FakebotPlayStyle = Object.freeze({
+    getState:()=>({
+      genrePreset: state.genrePreset,
+      compStyle: state.compStyle,
+      grooveStyle: state.grooveStyle,
+      rakeAmount: clamp(state.rakeAmount, 0, 100),
+      compComplexity: clamp(state.keysComplex, 0, 100)
+    }),
+    configure:(values={})=>{
+      if (values.rakeAmount != null) state.rakeAmount = clamp(Number(values.rakeAmount), 0, 100);
+      if (values.compComplexity != null){
+        const complexity = clamp(Number(values.compComplexity), 0, 100);
+        state.keysComplex = complexity;
+        state.keysFill = clamp(Math.round(complexity * 0.68), 0, 100);
+        state.bassComplex = clamp(Math.round(complexity * 0.88), 0, 100);
+        state.drumsComplex = clamp(Math.round(complexity * 0.94), 0, 100);
+      }
+      syncUIFromState();
+      notifyPlayStyle();
+      saveAll();
+      return window.FakebotPlayStyle.getState();
+    }
+  });
+
   /* ---------- Tap behavior (focus + preview) ---------- */
   function onBarTap(b, h, preview){
     if (activeMidiSong){
@@ -9570,9 +9679,24 @@
       state.bassFill = clamp(g.bF,0,100);
       state.drumsComplex = clamp(g.dC,0,100);
       state.drumsFill = clamp(g.dF,0,100);
+      const defaultRake = g.comp === "lofiRake" ? 72 : (g.comp === "neoSoulPush" ? 56 : (g.comp === "sustain" ? 34 : 24));
+      state.rakeAmount = clamp(g.rake ?? defaultRake, 0, 100);
     }
 
     AudioKit.updateSoundFontPrograms();
+    notifyPlayStyle();
+  }
+
+  function notifyPlayStyle(){
+    const detail = {
+      genrePreset: state.genrePreset,
+      compStyle: state.compStyle,
+      grooveStyle: state.grooveStyle,
+      rakeAmount: clamp(state.rakeAmount, 0, 100),
+      compComplexity: clamp(state.keysComplex, 0, 100)
+    };
+    window.dispatchEvent(new CustomEvent("fakebot-play-style", {detail}));
+    window.parent?.postMessage?.({source:"fakebot-mini", type:"play-style", ...detail}, "*");
   }
 
   function randomizeGeneratorOnly(){
@@ -9853,6 +9977,7 @@
     if (E.tempoNum) E.tempoNum.value = String(tempoVal);
     if (E.masterTempoTop) E.masterTempoTop.value = String(tempoVal);
     if (E.masterTempoTopVal) E.masterTempoTopVal.textContent = String(tempoVal);
+    E.masterTempoTop?.dispatchEvent(new Event("fakebot-sync"));
     player.setTempo(state.tempo, state.swing);
   }
 
@@ -9863,6 +9988,7 @@
     state.masterVolume = vol;
     if (E.masterVolTop) E.masterVolTop.value = String(vol);
     if (E.masterVolTopVal) E.masterVolTopVal.textContent = `${vol}%`;
+    E.masterVolTop?.dispatchEvent(new Event("fakebot-sync"));
     AudioKit.setMasterVolume(vol / 100);
   }
 
@@ -10174,6 +10300,7 @@
       swing: state.swing,
       chaos: state.chaos,
       complexity: state.complexity,
+      rakeAmount: state.rakeAmount,
       rootMode: state.rootMode,
       progressionLogic: state.progressionLogic,
       genrePreset: state.genrePreset,
@@ -10277,6 +10404,7 @@
       swing: saved.swing ?? state.swing,
       chaos: saved.chaos ?? state.chaos,
       complexity: saved.complexity ?? state.complexity,
+      rakeAmount: clamp(saved.rakeAmount ?? state.rakeAmount, 0, 100),
       rootMode: saved.rootMode ?? state.rootMode,
       progressionLogic: saved.progressionLogic ?? state.progressionLogic,
       genrePreset: saved.genrePreset ?? state.genrePreset,
