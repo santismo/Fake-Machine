@@ -10,13 +10,13 @@
   <title>Fakebot Mini</title>
   <link rel="apple-touch-icon" sizes="180x180" href="fakebot-mini-icon-180.png">
   <link rel="icon" type="image/svg+xml" href="fakebot-mini-icon.svg">
-  <link rel="stylesheet" href="shell.css?v=20260712c">
+  <link rel="stylesheet" href="shell.css?v=20260728-infinite">
 </head>
 <body>
   <div class="miniShell">
     <main class="miniFrameWrap">
       <div class="miniAudioState" id="miniAudioStatus" data-state="loading" role="status">Preparing samples</div>
-      <iframe id="miniFrame" src="../index.html?variant=mini&amp;v=20260712c" title="Fakebot Mini chord generator" allow="autoplay"></iframe>
+      <iframe id="miniFrame" src="../index.html?variant=mini&amp;v=20260728-infinite" title="Fakebot Mini chord generator" allow="autoplay"></iframe>
       <div class="miniLoading" id="miniLoading" role="status">Loading Fakebot Mini…</div>
     </main>
 
@@ -27,6 +27,8 @@
       </button>
       <button type="button" data-mini-action="generate" class="miniGenerate" aria-label="Generate new progression" title="Generate new progression">
         <svg class="miniIcon miniIconStroke" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h3.2c2.5 0 3.5 2 4.8 5s2.3 5 4.8 5H20m-3-3 3 3-3 3M4 17h3.2c1.4 0 2.3-.6 3-1.5m3.6-7C14.5 7.6 15.4 7 16.8 7H20m-3-3 3 3-3 3"/></svg>
+        <svg class="miniIcon miniIconStroke miniIconInfinite" viewBox="0 0 24 24" aria-hidden="true"><path d="M7.2 8.2c2.5 0 3.1 7.6 5.6 7.6 2.3 0 3.2-7.6 5.4-7.6 2.2 0 3.2 7.6 5.4 7.6M7.2 15.8c2.5 0 3.1-7.6 5.6-7.6 2.3 0 3.2 7.6 5.4 7.6 2.2 0 3.2-7.6 5.4-7.6" transform="translate(-4 0) scale(.82)"/></svg>
+        <span class="miniInfinityGlyph" aria-hidden="true">∞</span>
       </button>
       <button type="button" data-mini-action="generate-anchored" class="miniGenerateAnchored" aria-label="Generate from selected chord" title="Generate from selected chord">
         <svg class="miniIcon miniIconStroke" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="12" r="2.5"/><path d="M8.5 12H13m0 0-2.5-2.5M13 12l-2.5 2.5M15 7h5m-2.5-2.5L20 7l-2.5 2.5M15 17h5m-2.5-2.5L20 17l-2.5 2.5"/></svg>
@@ -36,6 +38,6 @@
       </button>
     </nav>
   </div>
-  <script src="shell.js?v=20260712c"></script>
+  <script src="shell.js?v=20260728-infinite"></script>
 </body>
 </html>

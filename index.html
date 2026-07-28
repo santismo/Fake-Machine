@@ -2244,7 +2244,11 @@
     currentSongTitle: "",
     songLibraryKind: "ireal",
     soundFontUrl: DEFAULT_SOUNDFONT_URL,
-    soundFontEnabled: true
+    soundFontEnabled: true,
+    infiniteEnabled: false,
+    infiniteVisibleChords: 4,
+    infiniteFeelEvery: 0,
+    infiniteStyleEvery: 0
   };
 
   const state = {
@@ -2305,6 +2309,10 @@
     songLibraryKind: DEFAULTS.songLibraryKind,
     soundFontUrl: DEFAULTS.soundFontUrl,
     soundFontEnabled: DEFAULTS.soundFontEnabled,
+    infiniteEnabled: DEFAULTS.infiniteEnabled,
+    infiniteVisibleChords: DEFAULTS.infiniteVisibleChords,
+    infiniteFeelEvery: DEFAULTS.infiniteFeelEvery,
+    infiniteStyleEvery: DEFAULTS.infiniteStyleEvery,
     allowedCenters: [],
 
     weights: null,
@@ -5597,6 +5605,9 @@
 
   function renderLeadSheet(){
     syncProgressionDensityUI();
+    const infiniteQueue = isInfiniteLoopActive();
+    E.sheet.classList.toggle("infiniteQueue", infiniteQueue);
+    document.body.classList.toggle("fakebot-infinite-active", infiniteQueue);
     E.sheet.innerHTML = "";
     E.sheet.tabIndex = 0;
     E.sheet.setAttribute("role", "region");
@@ -7908,6 +7919,12 @@
 
     function nextStep(){
       if (syncGameLoopPosition()) return;
+      if (isInfiniteLoopActive()){
+        infiniteRuntime.pendingAdvance = true;
+        atStep = 0;
+        atHalf = 0;
+        return;
+      }
       const barIdx = order[atStep] ?? atStep;
       const bar = chart[barIdx];
       if (!bar) return;
@@ -8047,6 +8064,10 @@
 
     function scheduleStep(targetStart){
       if (!isPlaying) return { dur: 0, startAt: AudioKit.now() };
+      if (isInfiniteLoopActive() && infiniteRuntime.pendingAdvance){
+        infiniteRuntime.pendingAdvance = false;
+        advanceInfiniteQueue();
+      }
       const now = AudioKit.now();
       const startAt = Math.max(now + 0.002, Number.isFinite(targetStart) ? targetStart : (now + 0.01));
       syncGameLoopPosition();
@@ -8436,6 +8457,9 @@
       }
 
       setTempo(state.tempo, state.swing);
+      if (isInfiniteLoopActive() && !infiniteRuntime.initialized){
+        createInfiniteQueue({keepKeyCenter:true});
+      }
       setChart(state.chartBars, state.playbackOrder);
       jumpTo(state.activeBar, state.activeHalf);
       syncGameLoopPosition();
@@ -8857,14 +8881,15 @@
     };
   }
 
-  function generateChart(anchorChord = null){
-    if (state.lockProg) return;
-    resetGameRuntime();
+  function generateChart(anchorChord = null, options = {}){
+    const silent = !!options.silent;
+    if (state.lockProg && !silent) return;
+    if (!silent) resetGameRuntime();
 
-    pushHistory();
-    deactivateMidiSong(true);
+    if (!silent) pushHistory();
+    if (!silent) deactivateMidiSong(true);
 
-    chooseKeyCenter();
+    if (!options.keepKeyCenter) chooseKeyCenter();
 
     const scaleLimiterOn = state.scaleLimitEnabled ?? true;
     const singleScale = (scaleLimiterOn && Number(state.scalesUsed)===1 && SCALES[state.keyMode])
@@ -8888,7 +8913,7 @@
     w = logic.apply(w, state.chaos);
     state.weights = w;
 
-    const barsTarget = clamp(Number(state.bars)||8, 2, 32);
+    const barsTarget = clamp(Number(options.bars ?? state.bars)||8, 2, 32);
 
     const limit = state.limiter;
     const cadencePlan = buildCadencePlan(barsTarget, state.keyRoot, state.keyMode, w);
@@ -8903,7 +8928,7 @@
     let lastDriftAt = -999;
 
     for (let b=0;b<barsTarget;b++){
-      const split = state.halfEnabled && chance(clamp(state.halfDensity,0,100)/100);
+      const split = !options.forceWholeBars && state.halfEnabled && chance(clamp(state.halfDensity,0,100)/100);
 
       const chordCount = split ? 2 : 1;
       const chordArr = [];
@@ -8974,6 +8999,8 @@
 
     assignChordModesWithLimit(bars);
 
+    if (silent) return bars;
+
     state.chartBars = bars;
     state.playbackOrder = state.chartBars.map((_, i)=>i);
     state.currentSongTitle = "";
@@ -8988,6 +9015,195 @@
     const selected = activeChord();
     generateChart(selected ? structuredClone(selected) : null);
   };
+
+  /* ---------- Mini Infinite Progression ---------- */
+  const INFINITE_VISIBLE_CHOICES = [2, 3, 4, 5, 6, 8];
+  const INFINITE_CHANGE_CHOICES = [0, 4, 8, 12, 16, 24];
+  const infiniteRuntime = {
+    initialized: false,
+    pendingAdvance: false,
+    steps: 0,
+    animationTimer: 0
+  };
+
+  function normalizeInfiniteVisible(value){
+    const parsed = Math.trunc(Number(value));
+    return INFINITE_VISIBLE_CHOICES.includes(parsed) ? parsed : DEFAULTS.infiniteVisibleChords;
+  }
+
+  function normalizeInfiniteChangeEvery(value){
+    const parsed = Math.trunc(Number(value));
+    return INFINITE_CHANGE_CHOICES.includes(parsed) ? parsed : 0;
+  }
+
+  function isInfiniteLoopActive(){
+    return IS_FAKEBOT_MINI && !!state.infiniteEnabled && !activeMidiSong && !isGameMode();
+  }
+
+  function notifyInfiniteState(){
+    const detail = {
+      enabled: !!state.infiniteEnabled,
+      visibleChords: normalizeInfiniteVisible(state.infiniteVisibleChords),
+      feelEvery: normalizeInfiniteChangeEvery(state.infiniteFeelEvery),
+      styleEvery: normalizeInfiniteChangeEvery(state.infiniteStyleEvery)
+    };
+    window.dispatchEvent(new CustomEvent("fakebot-infinite-state", {detail}));
+    window.parent?.postMessage?.({source:"fakebot-mini", type:"infinite-state", ...detail}, "*");
+  }
+
+  function queueInfiniteShiftAnimation(){
+    if (!E.sheet) return;
+    E.sheet.classList.remove("infiniteQueueShift");
+    void E.sheet.offsetWidth;
+    E.sheet.classList.add("infiniteQueueShift");
+    if (infiniteRuntime.animationTimer) window.clearTimeout(infiniteRuntime.animationTimer);
+    infiniteRuntime.animationTimer = window.setTimeout(()=>{
+      E.sheet?.classList.remove("infiniteQueueShift");
+      infiniteRuntime.animationTimer = 0;
+    }, 280);
+  }
+
+  function updateInfinitePlayOrder(){
+    state.playbackOrder = state.chartBars.map((_, index)=>index);
+    state.activeBar = 0;
+    state.activeHalf = 0;
+    player.setChart(state.chartBars, state.playbackOrder);
+    player.jumpTo(0, 0);
+  }
+
+  function infiniteCardDensity(visible){
+    return visible <= 2 ? 2 : (visible <= 4 ? 4 : 8);
+  }
+
+  function createInfiniteQueue({keepKeyCenter=false} = {}){
+    const visible = normalizeInfiniteVisible(state.infiniteVisibleChords);
+    state.infiniteVisibleChords = visible;
+    state.progressionDensity = infiniteCardDensity(visible);
+    const bars = generateChart(null, {
+      silent:true,
+      bars:visible,
+      forceWholeBars:true,
+      keepKeyCenter
+    });
+    if (!Array.isArray(bars) || !bars.length) return false;
+    state.chartBars = bars;
+    state.currentSongTitle = "";
+    infiniteRuntime.initialized = true;
+    infiniteRuntime.pendingAdvance = false;
+    infiniteRuntime.steps = 0;
+    updateInfinitePlayOrder();
+    syncUIFromState();
+    renderAll();
+    saveAll();
+    return true;
+  }
+
+  function setInfiniteProgressionLogic(){
+    if (state.lockStyle) return;
+    state.chaos = randBetween(0, 100);
+    state.rootMode = pick(["keyed","drifting","orbiting","freefall"]);
+    state.grooveStyle = pick(GROOVES).id;
+    state.compStyle = pick(COMP_STYLES).id;
+    if (state.grooveStyle==="bossa" || state.grooveStyle==="afroCuban") state.progressionLogic = "latinTurns";
+    if (state.grooveStyle==="rock" || state.grooveStyle==="halfTime") state.progressionLogic = "rockLogic";
+    if (state.grooveStyle==="disco") state.progressionLogic = "discoLogic";
+    if (state.grooveStyle==="house" || state.grooveStyle==="techno" || state.grooveStyle==="trap") state.progressionLogic = "edmLogic";
+    if (state.grooveStyle==="boomBap" || state.grooveStyle==="afrobeat") state.progressionLogic = "grooveFunk";
+    if (state.grooveStyle==="reggae") state.progressionLogic = "dubReggae";
+    if (state.grooveStyle==="swing") state.progressionLogic = "jazzFunctional";
+  }
+
+  function rollInfiniteChanges(){
+    infiniteRuntime.steps += 1;
+    const feelEvery = normalizeInfiniteChangeEvery(state.infiniteFeelEvery);
+    const styleEvery = normalizeInfiniteChangeEvery(state.infiniteStyleEvery);
+    if (feelEvery && infiniteRuntime.steps % feelEvery === 0) setInfiniteProgressionLogic();
+    if (styleEvery && infiniteRuntime.steps % styleEvery === 0 && (!state.lockStyle || !state.lockTime || !state.lockSounds)){
+      state.genrePreset = pick(Object.keys(GENRE_PRESETS));
+      applyGenrePreset(state.genrePreset);
+      if (!state.lockSounds){
+        Promise.resolve(window.FakebotMiniSamples?.randomize?.()).catch(()=>{});
+      }
+    }
+  }
+
+  function advanceInfiniteQueue(){
+    if (!isInfiniteLoopActive()) return false;
+    const visible = normalizeInfiniteVisible(state.infiniteVisibleChords);
+    if (state.chartBars.length !== visible || !state.chartBars.length) return createInfiniteQueue({keepKeyCenter:true});
+
+    rollInfiniteChanges();
+    const anchor = state.chartBars[state.chartBars.length - 1]?.chords?.slice(-1)[0] || activeChord();
+    const continuation = generateChart(anchor ? structuredClone(anchor) : null, {
+      silent:true,
+      bars:2,
+      forceWholeBars:true,
+      keepKeyCenter:true
+    });
+    const nextBar = continuation?.[1] || continuation?.[0];
+    if (!nextBar?.chords?.[0]) return false;
+
+    state.chartBars.shift();
+    state.chartBars.push(nextBar);
+    updateInfinitePlayOrder();
+    syncUIFromState();
+    renderAll();
+    queueInfiniteShiftAnimation();
+    saveAll();
+    return true;
+  }
+
+  function setInfiniteEnabled(enabled){
+    if (!IS_FAKEBOT_MINI) return false;
+    const next = !!enabled;
+    if (next === !!state.infiniteEnabled){
+      notifyInfiniteState();
+      return next;
+    }
+    if (player.isOn()) player.stop();
+    state.infiniteEnabled = next;
+    infiniteRuntime.initialized = false;
+    infiniteRuntime.pendingAdvance = false;
+    if (next){
+      state.progressionSource = "generate";
+      resetGameRuntime();
+      syncTopProgressionControls();
+      createInfiniteQueue();
+    } else {
+      renderAll();
+    }
+    notifyInfiniteState();
+    saveAll();
+    return next;
+  }
+
+  window.FakebotInfinite = Object.freeze({
+    getState:()=>({
+      enabled:!!state.infiniteEnabled,
+      visibleChords:normalizeInfiniteVisible(state.infiniteVisibleChords),
+      feelEvery:normalizeInfiniteChangeEvery(state.infiniteFeelEvery),
+      styleEvery:normalizeInfiniteChangeEvery(state.infiniteStyleEvery)
+    }),
+    setEnabled:(enabled)=>setInfiniteEnabled(enabled),
+    configure:(values={})=>{
+      const wasPlaying = player.isOn();
+      if (wasPlaying) player.stop();
+      if (values.visibleChords != null) state.infiniteVisibleChords = normalizeInfiniteVisible(values.visibleChords);
+      if (values.feelEvery != null) state.infiniteFeelEvery = normalizeInfiniteChangeEvery(values.feelEvery);
+      if (values.styleEvery != null) state.infiniteStyleEvery = normalizeInfiniteChangeEvery(values.styleEvery);
+      if (state.infiniteEnabled) createInfiniteQueue({keepKeyCenter:true});
+      notifyInfiniteState();
+      saveAll();
+      return window.FakebotInfinite.getState();
+    },
+    generate:()=>{
+      if (!state.infiniteEnabled) return false;
+      if (player.isOn()) player.stop();
+      const result = createInfiniteQueue();
+      notifyInfiniteState();
+      return result;
+    }
+  });
 
   /* ---------- Tap behavior (focus + preview) ---------- */
   function onBarTap(b, h, preview){
@@ -9367,7 +9583,8 @@
     state.progressionLogic = pick(Object.keys(PROGRESSION_LOGICS));
     state.scalesUsed = randBetween(1, 32);
 
-    generateChart();
+    if (state.infiniteEnabled) createInfiniteQueue();
+    else generateChart();
     syncUIFromState();
     saveAll();
   }
@@ -9509,7 +9726,8 @@
     if (!state.lockProg){
       // pick logic some
       state.progressionLogic = pick(Object.keys(PROGRESSION_LOGICS));
-      generateChart();
+      if (state.infiniteEnabled) createInfiniteQueue();
+      else generateChart();
     }
 
     syncUIFromState();
@@ -9991,6 +10209,10 @@
       songLibraryKind: state.songLibraryKind,
       soundFontUrl: state.soundFontUrl,
       soundFontEnabled: state.soundFontEnabled,
+      infiniteEnabled: state.infiniteEnabled,
+      infiniteVisibleChords: state.infiniteVisibleChords,
+      infiniteFeelEvery: state.infiniteFeelEvery,
+      infiniteStyleEvery: state.infiniteStyleEvery,
 
       locks: {
         lockProg: state.lockProg,
@@ -10089,7 +10311,11 @@
       currentSongTitle: saved.currentSongTitle ?? state.currentSongTitle,
       songLibraryKind: normalizeSongLibraryKind(saved.songLibraryKind ?? state.songLibraryKind),
       soundFontUrl: saved.soundFontUrl ?? state.soundFontUrl,
-      soundFontEnabled: saved.soundFontEnabled ?? state.soundFontEnabled
+      soundFontEnabled: saved.soundFontEnabled ?? state.soundFontEnabled,
+      infiniteEnabled: IS_FAKEBOT_MINI && !!saved.infiniteEnabled,
+      infiniteVisibleChords: normalizeInfiniteVisible(saved.infiniteVisibleChords ?? state.infiniteVisibleChords),
+      infiniteFeelEvery: normalizeInfiniteChangeEvery(saved.infiniteFeelEvery ?? state.infiniteFeelEvery),
+      infiniteStyleEvery: normalizeInfiniteChangeEvery(saved.infiniteStyleEvery ?? state.infiniteStyleEvery)
     });
 
     if (!Array.isArray(state.playbackOrder) || !state.playbackOrder.length){
@@ -10155,6 +10381,7 @@
 
     syncUIFromState();
     renderAll();
+    if (IS_FAKEBOT_MINI) notifyInfiniteState();
     saveAll();
   }
 
@@ -10241,6 +10468,7 @@
         const nextSource = (E.progSourceTop.value === "example" || E.progSourceTop.value === "game")
           ? E.progSourceTop.value
           : "generate";
+        if (nextSource !== "generate" && state.infiniteEnabled) setInfiniteEnabled(false);
         state.progressionSource = nextSource;
         if (state.progressionSource === "example"){
           state.exampleParentRoot = Number.isFinite(state.keyRoot) ? pc(state.keyRoot) : 0;
@@ -10596,7 +10824,8 @@
 
     E.btnGenerate.addEventListener("click", async ()=>{
       await AudioKit.resume();
-      generateChart();
+      if (state.infiniteEnabled) window.FakebotInfinite.generate();
+      else generateChart();
     });
 
     E.btnRandomAll.addEventListener("click", async ()=>{
@@ -10712,8 +10941,10 @@
 
     // advanced modal open/close
     E.btnGear.addEventListener("click", ()=>{
-      E.advBack.style.display = "flex";
-      renderOrderList();
+      const isOpen = E.advBack.style.display === "flex";
+      E.advBack.style.display = isOpen ? "none" : "flex";
+      if (!isOpen) renderOrderList();
+      else saveAll();
     });
     E.btnCloseAdv.addEventListener("click", ()=>{
       E.advBack.style.display = "none";
@@ -10749,6 +10980,9 @@
       state.soundFontEnabled = false;
       state.midiInEnabled = false;
       state.midiInputId = "";
+      state.infiniteVisibleChords = normalizeInfiniteVisible(state.infiniteVisibleChords);
+      state.infiniteFeelEvery = normalizeInfiniteChangeEvery(state.infiniteFeelEvery);
+      state.infiniteStyleEvery = normalizeInfiniteChangeEvery(state.infiniteStyleEvery);
       if (E.rowMidiInput) E.rowMidiInput.style.display = "none";
     } else {
       state.songLibraryKind = "ireal";
@@ -10781,6 +11015,11 @@
       console.error(err);
       if (E.msg) E.msg.textContent = `Init error: ${err && err.message ? err.message : err}`;
     }
+
+    if (IS_FAKEBOT_MINI && state.infiniteEnabled){
+      createInfiniteQueue({keepKeyCenter:true});
+    }
+    if (IS_FAKEBOT_MINI) notifyInfiniteState();
 
     renderSongList();
     if (E.songUrl && !String(E.songUrl.value || "").trim()){

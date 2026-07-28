@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const VERSION = "20260712c";
+  const VERSION = "20260728-infinite";
   const frame = document.getElementById("miniFrame");
   const loading = document.getElementById("miniLoading");
   const audioStatus = document.getElementById("miniAudioStatus");
@@ -74,6 +74,17 @@
     settingsButton.title = open ? "Close settings" : "Open settings";
   }
 
+  function syncInfiniteState(nextState=null){
+    const state = nextState || frameWindow()?.FakebotInfinite?.getState?.();
+    const enabled = !!state?.enabled;
+    dock?.classList.toggle("infinite-mode", enabled);
+    const generate = dock?.querySelector(".miniGenerate");
+    if (generate){
+      generate.setAttribute("aria-label", enabled ? "Generate a new infinite queue" : "Generate new progression");
+      generate.title = enabled ? "Generate a new infinite queue" : "Generate new progression";
+    }
+  }
+
   function watchPlayback(){
     const source = frameDocument()?.getElementById("btnPlay");
     if (!source) return;
@@ -83,6 +94,7 @@
     stateSyncTimer = window.setInterval(()=>{
       syncPlayLabel();
       syncSettingsState();
+      syncInfiniteState();
     }, 250);
   }
 
@@ -114,6 +126,12 @@
       return;
     }
     if (action === "generate" || action === "generate-anchored"){
+      if (action === "generate" && win.FakebotInfinite?.getState?.().enabled){
+        win.FakebotInfinite.generate?.();
+        showStatus("New infinite queue generated", 1000);
+        window.setTimeout(syncInfiniteState, 30);
+        return;
+      }
       const source = doc.getElementById("progSourceTop");
       if (source && source.value !== "generate"){
         source.value = "generate";
@@ -184,9 +202,8 @@
     if (event.data.type === "settings-state"){
       const open = !!event.data.open;
       shell?.classList.toggle("has-open-settings", open);
-      if (open){ dock?.setAttribute("inert", ""); dock?.setAttribute("aria-hidden", "true"); }
-      else{ dock?.removeAttribute("inert"); dock?.removeAttribute("aria-hidden"); }
     }
+    if (event.data.type === "infinite-state") syncInfiniteState(event.data);
     if (event.data.type === "settings-closed") settingsButton?.focus();
   });
 
