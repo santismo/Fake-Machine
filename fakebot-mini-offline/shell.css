@@ -26,6 +26,14 @@ button{color:inherit;cursor:pointer}
 .miniDock button{min-height:52px;border:1px solid var(--shell-line);border-radius:12px;background:var(--shell-raised);color:var(--shell-text);display:flex;align-items:center;justify-content:center;padding:0}
 .miniDock .miniGenerate{background:var(--shell-raised);border-color:#45484f;color:var(--shell-text)}
 .miniDock .miniGenerateAnchored{background:linear-gradient(180deg,rgba(80,135,112,.22),var(--shell-raised));border-color:#47725f;color:#d9f4e7}
+.miniIconInfinite{display:none}
+.miniInfinityGlyph{display:none;font-size:32px;font-weight:500;line-height:1}
+.miniDock.infinite-mode{grid-template-columns:.75fr 1.6fr .75fr}
+.miniDock.infinite-mode .miniGenerateAnchored{display:none}
+.miniDock.infinite-mode .miniGenerate{background:linear-gradient(180deg,rgba(106,119,184,.28),var(--shell-raised));border-color:#6674b1;color:#edf0ff}
+.miniDock.infinite-mode .miniGenerate>.miniIconStroke:not(.miniIconInfinite){display:none}
+.miniDock.infinite-mode .miniGenerate>.miniIconInfinite{display:none}
+.miniDock.infinite-mode .miniGenerate>.miniInfinityGlyph{display:block}
 .miniIcon{width:25px;height:25px;display:block;fill:currentColor}
 .miniIconStroke{fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .miniIconPause{display:none}

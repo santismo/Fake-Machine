@@ -29,18 +29,23 @@ html.fakebot-mini-frame #cardHeader,html.fakebot-mini-frame #advBack,html.fakebo
 html.fakebot-mini-frame #miniContent{display:grid;gap:10px}
 html.fakebot-mini-frame .miniCard,html.fakebot-mini-frame #cardPiano,html.fakebot-mini-frame #cardLead{margin:0!important;border:1px solid var(--pageLine)!important;border-radius:18px!important;background:var(--pagePanel)!important;box-shadow:none!important;overflow:hidden!important}
 html.fakebot-mini-frame .miniOverview{padding:14px;display:grid;gap:12px}
+html.fakebot-mini-frame .miniQuickOverview{padding:8px!important}
 html.fakebot-mini-frame .miniEyebrow{margin:0;color:var(--pageMuted);font-size:10px;line-height:1;text-transform:uppercase;letter-spacing:.13em;font-weight:800}
 html.fakebot-mini-frame .miniStats{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap}
 html.fakebot-mini-frame .miniStat{min-height:34px;padding:7px 10px;border:1px solid var(--pageLine)!important;border-radius:999px!important;background:var(--pagePanel2)!important;color:var(--pageMuted);font-size:11px;display:inline-flex;align-items:center;gap:5px;white-space:normal!important}
 html.fakebot-mini-frame .miniStat strong{color:var(--pageInk)}
-html.fakebot-mini-frame .miniQuickControls{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-html.fakebot-mini-frame .miniQuickControls .headSlider,html.fakebot-mini-frame .miniQuickControls .transposeGroup{min-width:0!important;width:100%!important;min-height:48px!important;margin:0!important;padding:7px 9px!important;border:1px solid var(--pageLine)!important;border-radius:13px!important;background:var(--pagePanel2)!important}
-html.fakebot-mini-frame .miniQuickControls .headSlider{display:grid!important;grid-template-columns:auto minmax(0,1fr) auto!important;align-items:center;gap:7px!important}
-html.fakebot-mini-frame .miniQuickControls .headSlider label{font-size:10px!important;color:var(--pageMuted)!important}
-html.fakebot-mini-frame .miniQuickControls .headSlider input[type=range]{min-width:0!important;width:100%!important;accent-color:var(--chord)}
-html.fakebot-mini-frame .miniQuickControls .headSlider .val{font-size:11px!important;color:var(--pageInk)!important;text-align:right}
-html.fakebot-mini-frame .miniQuickControls .transposeGroup{display:grid!important;grid-template-columns:1fr 1fr!important;gap:7px!important}
-html.fakebot-mini-frame .miniQuickControls .transposeBtn{min-width:0!important;width:100%!important;border:0!important;border-radius:9px!important;background:#24262a!important;color:var(--pageInk)!important;font-size:14px!important;font-weight:800}
+html.fakebot-mini-frame .miniQuickControls{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:stretch}
+html.fakebot-mini-frame .miniQuickControls .headSlider,html.fakebot-mini-frame .miniQuickControls .transposeGroup{min-width:0!important;width:100%!important;margin:0!important;padding:7px 9px!important;border:1px solid var(--pageLine)!important;border-radius:13px!important;background:var(--pagePanel2)!important}
+html.fakebot-mini-frame .miniQuickControls .miniKnobControl{min-height:76px!important;display:grid!important;grid-template-columns:28px 1fr auto!important;align-items:center;gap:7px!important}
+html.fakebot-mini-frame .miniQuickControls .miniKnobControl label{font-size:17px!important;color:var(--pageInk)!important;line-height:1!important}
+html.fakebot-mini-frame .miniKnob{--mini-knob-angle:-135deg;position:relative;width:54px;height:54px;min-width:54px;padding:0!important;border:0!important;border-radius:50%!important;background:conic-gradient(from -135deg,var(--chord) 0deg 270deg,#303238 270deg 360deg)!important;box-shadow:0 0 0 1px rgba(255,255,255,.08) inset!important;touch-action:none!important}
+html.fakebot-mini-frame .miniKnob::before{content:"";position:absolute;inset:5px;border-radius:50%;background:#17191d;border:1px solid #45474c;box-shadow:0 2px 6px rgba(0,0,0,.35)}
+html.fakebot-mini-frame .miniKnob::after{content:"";position:absolute;left:50%;top:8px;width:3px;height:14px;border-radius:99px;background:#f5e8b5;transform-origin:50% 19px;transform:translateX(-50%) rotate(var(--mini-knob-angle));box-shadow:0 0 5px rgba(216,181,102,.85)}
+html.fakebot-mini-frame .miniKnob:focus-visible{outline:2px solid #bfcce2;outline-offset:2px}
+html.fakebot-mini-frame .miniKnobInput{position:absolute!important;width:1px!important;height:1px!important;opacity:0!important;pointer-events:none!important}
+html.fakebot-mini-frame .miniQuickControls .headSlider .val{font-size:12px!important;color:var(--pageInk)!important;text-align:right;font-variant-numeric:tabular-nums}
+html.fakebot-mini-frame .miniQuickControls .transposeGroup{display:grid!important;grid-template-columns:repeat(2,34px)!important;align-items:center!important;gap:5px!important;padding:5px!important}
+html.fakebot-mini-frame .miniQuickControls .transposeBtn{min-width:34px!important;width:34px!important;min-height:34px!important;height:34px!important;padding:0!important;border:0!important;border-radius:9px!important;background:#24262a!important;color:var(--pageInk)!important;font-size:11px!important;font-weight:800}
 html.fakebot-mini-frame #msg{min-height:0!important;margin:0!important;color:var(--pageMuted)!important;font-size:11px!important;text-align:center}
 
 html.fakebot-mini-frame #cardPiano .cardHead,html.fakebot-mini-frame #cardLead .cardHead{padding:11px!important;border-bottom:1px solid var(--pageLine)!important;background:var(--pagePanel)!important}
@@ -88,6 +93,7 @@ html.fakebot-mini-frame #cardLead .cardHead .title:first-child{color:var(--pageM
 html.fakebot-mini-frame #leadKey{min-width:0!important;overflow:hidden!important;text-align:center!important;text-overflow:ellipsis!important;white-space:nowrap!important;color:var(--pageMuted)!important;font-size:11px!important}
 html.fakebot-mini-frame #btnEdit{min-height:36px!important;padding:0 11px!important;border:1px solid var(--pageLine)!important;border-radius:10px!important;background:var(--pagePanel2)!important;color:var(--pageInk)!important;font-size:11px!important}
 html.fakebot-mini-frame #btnCardDensity{display:inline-flex!important;align-items:center!important;justify-content:center!important;width:44px!important;min-width:44px!important;min-height:44px!important;height:44px!important;padding:0 5px!important;border:1px solid var(--pageLine)!important;border-radius:11px!important;background:var(--pagePanel2)!important;color:var(--pageInk)!important;font-size:10px!important;font-weight:900!important;font-variant-numeric:tabular-nums}
+html.fakebot-mini-frame body.fakebot-infinite-active #btnCardDensity{display:none!important}
 html.fakebot-mini-frame #cardLead .cardBody{padding:12px!important}
 html.fakebot-mini-frame .sheet{position:relative;width:min(100%,580px)!important;max-height:clamp(150px,32dvh,300px)!important;margin:0 auto!important;padding:6px!important;display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;align-content:start!important;gap:8px!important;overflow-x:hidden!important;overflow-y:auto!important;border:1px solid #292c31!important;border-radius:13px!important;background:#0b0c0e!important;overscroll-behavior:contain!important;scrollbar-gutter:stable;-webkit-overflow-scrolling:touch}
 html.fakebot-mini-frame .sheet[data-density="2"]{grid-template-columns:repeat(2,minmax(0,1fr))!important}
@@ -114,6 +120,10 @@ html.fakebot-mini-frame .sheet[data-density="8"] .bar .sym{padding:0 5px!importa
 html.fakebot-mini-frame .sheet[data-density="8"] .bar .sym2{margin-top:3px!important;padding:3px 0 0!important;font-size:clamp(7px,1.55vw,9px)!important}
 html.fakebot-mini-frame .sheet[data-density="8"] .bar .num{top:3px!important;right:3px!important;font-size:6px!important;gap:1px!important}
 html.fakebot-mini-frame .sheet[data-density="8"] .repeatGlyph{font-size:6px!important}
+html.fakebot-mini-frame .sheet.infiniteQueue{overflow:hidden!important;scroll-behavior:auto!important}
+html.fakebot-mini-frame .sheet.infiniteQueue .bar{will-change:transform,opacity}
+html.fakebot-mini-frame .sheet.infiniteQueueShift .bar{animation:miniInfiniteSlide .26s cubic-bezier(.2,.7,.2,1)}
+@keyframes miniInfiniteSlide{from{transform:translateX(18px);opacity:.48}to{transform:translateX(0);opacity:1}}
 
 html.fakebot-mini-frame .miniSettingsBackdrop{position:fixed;inset:0;z-index:19990;background:rgba(0,0,0,.62);opacity:0;visibility:hidden;transition:opacity .18s ease,visibility .18s ease}
 html.fakebot-mini-frame #miniSettingsPanel{position:fixed;z-index:20000;left:50%;bottom:0;width:min(100%,680px);height:min(92dvh,900px);display:flex;flex-direction:column;transform:translate(-50%,102%);visibility:hidden;transition:transform .22s ease,visibility 0s linear .22s;border:1px solid var(--pageLine);border-bottom:0;border-radius:22px 22px 0 0;background:#101113;box-shadow:none;overflow:hidden}
@@ -130,6 +140,16 @@ html.fakebot-mini-frame .miniSettingsBody{min-height:0;overflow-y:auto;-webkit-o
 html.fakebot-mini-frame .miniSettingsSection{min-height:max-content;border:1px solid var(--pageLine);border-radius:16px;background:var(--pagePanel);overflow:hidden}
 html.fakebot-mini-frame .miniSettingsSection>h2{margin:0;padding:12px;border-bottom:1px solid var(--pageLine);color:var(--pageInk);font-size:12px;line-height:1;text-transform:uppercase;letter-spacing:.1em}
 html.fakebot-mini-frame .miniSettingsSectionBody{padding:10px;display:grid;gap:8px}
+html.fakebot-mini-frame .miniInfiniteSettings{gap:10px!important}
+html.fakebot-mini-frame .miniInfiniteToggle{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:center;padding:10px;border:1px solid var(--pageLine);border-radius:12px;background:var(--pagePanel2);cursor:pointer}
+html.fakebot-mini-frame .miniInfiniteToggle input{width:20px;height:20px;margin:0;accent-color:var(--chord)}
+html.fakebot-mini-frame .miniInfiniteToggle strong{display:block;font-size:13px;color:var(--pageInk)}
+html.fakebot-mini-frame .miniInfiniteToggle small{display:block;margin-top:3px;color:var(--pageMuted);font-size:10px;line-height:1.25}
+html.fakebot-mini-frame .miniInfiniteGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+html.fakebot-mini-frame .miniInfiniteGrid label{display:grid;gap:5px;color:var(--pageMuted);font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em}
+html.fakebot-mini-frame .miniInfiniteGrid select{width:100%!important;min-width:0!important;min-height:40px!important;border:1px solid #383a3f!important;border-radius:10px!important;background:#202226!important;color:var(--pageInk)!important}
+html.fakebot-mini-frame .miniInfiniteHint{margin:0;color:var(--pageMuted);font-size:10px;line-height:1.35}
+html.fakebot-mini-frame .miniInfiniteSettings:not(.isEnabled) .miniInfiniteGrid,html.fakebot-mini-frame .miniInfiniteSettings:not(.isEnabled) .miniInfiniteHint{opacity:.52}
 html.fakebot-mini-frame .miniModeGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 html.fakebot-mini-frame .miniModeGrid .headSelect{min-width:0!important;width:100%!important;min-height:0!important;padding:8px!important;display:grid!important;gap:5px!important;border:1px solid var(--pageLine)!important;border-radius:12px!important;background:var(--pagePanel2)!important}
 html.fakebot-mini-frame .miniModeGrid .headSelect:first-child{grid-column:1/-1}
@@ -178,6 +198,6 @@ html.fakebot-mini-frame .editModal{width:min(100%,620px)!important;max-height:92
 html.fakebot-mini-frame .editHead,html.fakebot-mini-frame .editBody{background:#141517!important}
 
 @media(min-width:681px){html.fakebot-mini-frame .bar{min-height:94px!important}html.fakebot-mini-frame #pianoSvg{height:152px!important}}
-@media(max-width:410px){html.fakebot-mini-frame .app{padding-left:6px!important;padding-right:6px!important}html.fakebot-mini-frame .miniQuickControls{grid-template-columns:1fr 1fr!important}html.fakebot-mini-frame .miniQuickControls .transposeGroup{grid-column:1/-1}html.fakebot-mini-frame #pianoTop{padding-left:126px!important;font-size:27px!important}html.fakebot-mini-frame .controls{grid-template-columns:1fr!important}html.fakebot-mini-frame .miniModeGrid,html.fakebot-mini-frame .miniSoundGrid{grid-template-columns:1fr!important}html.fakebot-mini-frame .miniModeGrid .headSelect:first-child,html.fakebot-mini-frame .miniSoundGrid label:first-child{grid-column:auto}html.fakebot-mini-frame .bar{min-height:82px!important}}
+@media(max-width:410px){html.fakebot-mini-frame .app{padding-left:6px!important;padding-right:6px!important}html.fakebot-mini-frame .miniQuickControls{grid-template-columns:1fr 1fr auto!important}.miniQuickControls .transposeGroup{grid-column:auto!important}html.fakebot-mini-frame #pianoTop{padding-left:126px!important;font-size:27px!important}html.fakebot-mini-frame .controls{grid-template-columns:1fr!important}html.fakebot-mini-frame .miniModeGrid,html.fakebot-mini-frame .miniSoundGrid{grid-template-columns:1fr!important}html.fakebot-mini-frame .miniModeGrid .headSelect:first-child,html.fakebot-mini-frame .miniSoundGrid label:first-child{grid-column:auto}html.fakebot-mini-frame .bar{min-height:82px!important}html.fakebot-mini-frame .miniInfiniteGrid{grid-template-columns:1fr!important}}
 @media(max-width:410px) and (max-height:700px){html.fakebot-mini-frame .miniOverview{padding:10px!important;gap:8px!important}html.fakebot-mini-frame .miniEyebrow{display:none}html.fakebot-mini-frame .miniStats{gap:6px!important}html.fakebot-mini-frame .miniQuickControls{grid-template-columns:1fr 1fr .85fr!important;gap:6px!important}html.fakebot-mini-frame .miniQuickControls .transposeGroup{grid-column:auto!important}html.fakebot-mini-frame .miniQuickControls .headSlider,html.fakebot-mini-frame .miniQuickControls .transposeGroup{min-height:44px!important;padding:5px!important;gap:4px!important}html.fakebot-mini-frame #cardPiano .cardHead{min-height:50px!important;padding:7px!important}html.fakebot-mini-frame #cardPiano .cardBody{padding:7px!important}html.fakebot-mini-frame .legend{margin-bottom:4px!important}html.fakebot-mini-frame #pianoSvg{height:120px!important;min-height:120px!important}html.fakebot-mini-frame .miniFretPad{grid-template-rows:13px repeat(6,20px)!important}html.fakebot-mini-frame .sheet{max-height:clamp(140px,29dvh,205px)!important}html.fakebot-mini-frame #cardLead .cardHead{padding:7px!important}}
 @media(orientation:landscape) and (max-height:520px){html.fakebot-mini-frame .app{padding-bottom:90px!important}html.fakebot-mini-frame #pianoSvg{height:116px!important;min-height:116px!important}html.fakebot-mini-frame .miniFretPad{grid-template-rows:12px repeat(6,16px)!important;gap:1px!important;padding:3px!important}html.fakebot-mini-frame .miniFretPadNote{font-size:7px!important}html.fakebot-mini-frame .sheet{max-height:112px!important}html.fakebot-mini-frame #miniSettingsPanel{height:100dvh;border-radius:0}}

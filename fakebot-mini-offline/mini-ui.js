@@ -27,6 +27,132 @@
     if (control) control.classList.add("mini-hidden");
   }
 
+  function setInputValue(input, value){
+    if (!input) return;
+    input.value = String(value);
+    input.dispatchEvent(new Event("input", {bubbles:true}));
+  }
+
+  function makeRotaryKnob(id, symbol, label){
+    const input = byId(id);
+    const host = input?.closest(".headSlider");
+    if (!input || !host || host.dataset.miniKnobReady) return host;
+    host.dataset.miniKnobReady = "true";
+    host.classList.add("miniKnobControl");
+    const textLabel = host.querySelector("label");
+    if (textLabel){
+      textLabel.textContent = symbol;
+      textLabel.title = label;
+      textLabel.setAttribute("aria-label", label);
+    }
+    const knob = make("button", "miniKnob");
+    knob.type = "button";
+    knob.setAttribute("role", "slider");
+    knob.setAttribute("aria-label", label);
+    knob.setAttribute("aria-valuemin", input.min);
+    knob.setAttribute("aria-valuemax", input.max);
+    knob.title = `${label}: drag up or down`;
+    const sync = ()=>{
+      const min = Number(input.min);
+      const max = Number(input.max);
+      const value = Number(input.value);
+      const ratio = (value - min) / Math.max(1, max - min);
+      knob.style.setProperty("--mini-knob-angle", `${-135 + ratio * 270}deg`);
+      knob.setAttribute("aria-valuenow", String(value));
+      knob.setAttribute("aria-valuetext", `${value}${id === "masterVolTop" ? "%" : " BPM"}`);
+    };
+    input.classList.add("miniKnobInput");
+    host.insertBefore(knob, input);
+    input.addEventListener("input", sync);
+    sync();
+    let startY = 0;
+    let startValue = 0;
+    let moved = false;
+    knob.addEventListener("pointerdown", (event)=>{
+      event.preventDefault();
+      knob.setPointerCapture?.(event.pointerId);
+      startY = event.clientY;
+      startValue = Number(input.value);
+      moved = false;
+    });
+    knob.addEventListener("pointermove", (event)=>{
+      if (!knob.hasPointerCapture?.(event.pointerId)) return;
+      const min = Number(input.min);
+      const max = Number(input.max);
+      const delta = startY - event.clientY;
+      if (Math.abs(delta) > 3) moved = true;
+      const next = Math.round(Math.max(min, Math.min(max, startValue + delta * ((max-min) / 360))));
+      if (next !== Number(input.value)) setInputValue(input, next);
+    });
+    knob.addEventListener("pointerup", (event)=>{
+      if (knob.hasPointerCapture?.(event.pointerId)) knob.releasePointerCapture?.(event.pointerId);
+      if (!moved) knob.focus();
+    });
+    knob.addEventListener("keydown", (event)=>{
+      const min = Number(input.min);
+      const max = Number(input.max);
+      const base = Number(input.value);
+      const step = id === "masterTempoTop" ? 2 : 1;
+      let next = base;
+      if (event.key === "ArrowUp" || event.key === "ArrowRight") next += step;
+      else if (event.key === "ArrowDown" || event.key === "ArrowLeft") next -= step;
+      else if (event.key === "Home") next = min;
+      else if (event.key === "End") next = max;
+      else return;
+      event.preventDefault();
+      setInputValue(input, Math.max(min, Math.min(max, next)));
+    });
+    return host;
+  }
+
+  function makeInfiniteSettings(){
+    const sectionBody = make("div", "miniSettingsSectionBody miniInfiniteSettings");
+    const api = ()=>window.FakebotInfinite;
+    const current = ()=>api()?.getState?.() || {enabled:false,visibleChords:4,feelEvery:0,styleEvery:0};
+    const toggle = make("label", "miniInfiniteToggle");
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.id = "miniInfiniteEnabled";
+    const copy = make("span", "");
+    copy.append(make("strong", "", "Infinite progression"), make("small", "", "Play a rolling chord queue that never ends."));
+    toggle.append(checkbox, copy);
+    const fields = make("div", "miniInfiniteGrid");
+    const makeSelect = (label, id, choices)=>{
+      const field = make("label", "");
+      field.append(make("span", "", label));
+      const select = document.createElement("select");
+      select.id = id;
+      choices.forEach(([value,text])=>{
+        const option = document.createElement("option");
+        option.value = String(value);
+        option.textContent = text;
+        select.appendChild(option);
+      });
+      field.appendChild(select);
+      fields.appendChild(field);
+      return select;
+    };
+    const visible = makeSelect("Visible chords", "miniInfiniteVisible", [[2,"2"],[3,"3"],[4,"4"],[5,"5"],[6,"6"],[8,"8"]]);
+    const changes = [[0,"Never"],[4,"Every 4"],[8,"Every 8"],[12,"Every 12"],[16,"Every 16"],[24,"Every 24"]];
+    const feel = makeSelect("Feel changes", "miniInfiniteFeel", changes);
+    const style = makeSelect("Style changes", "miniInfiniteStyle", changes);
+    const hint = make("p", "miniInfiniteHint", "The leftmost card plays next; each new chord enters from the right.");
+    sectionBody.append(toggle, fields, hint);
+    const sync = (next=current())=>{
+      checkbox.checked = !!next.enabled;
+      visible.value = String(next.visibleChords ?? 4);
+      feel.value = String(next.feelEvery ?? 0);
+      style.value = String(next.styleEvery ?? 0);
+      sectionBody.classList.toggle("isEnabled", !!next.enabled);
+    };
+    const configure = ()=>api()?.configure?.({visibleChords:Number(visible.value),feelEvery:Number(feel.value),styleEvery:Number(style.value)});
+    checkbox.addEventListener("change", ()=>api()?.setEnabled?.(checkbox.checked));
+    [visible, feel, style].forEach((select)=>select.addEventListener("change", configure));
+    window.addEventListener("fakebot-infinite-state", (event)=>sync(event.detail));
+    sync();
+    return settingsSection("Infinite loop", sectionBody);
+  }
+
   function renameControls(){
     const names = {
       btnPianoToggle:"Piano",
@@ -77,17 +203,11 @@
   }
 
   function buildOverview(){
-    const overview = make("section", "miniCard miniOverview");
-    overview.append(make("p", "miniEyebrow", "Current progression"));
-
-    const stats = make("div", "miniStats");
-    moveIfPresent(stats, byId("pillLine"));
-    moveIfPresent(stats, byId("focusLine")?.closest(".miniStat"));
-    overview.appendChild(stats);
+    const overview = make("section", "miniCard miniOverview miniQuickOverview");
 
     const quick = make("div", "miniQuickControls");
-    moveIfPresent(quick, byId("masterVolTop")?.closest(".headSlider"));
-    moveIfPresent(quick, byId("masterTempoTop")?.closest(".headSlider"));
+    moveIfPresent(quick, makeRotaryKnob("masterVolTop", "🔊", "Master volume"));
+    moveIfPresent(quick, makeRotaryKnob("masterTempoTop", "♩", "Tempo"));
     moveIfPresent(quick, byId("btnTransposeDown")?.closest(".transposeGroup"));
     overview.appendChild(quick);
     moveIfPresent(overview, byId("msg"));
@@ -138,6 +258,8 @@
       moveIfPresent(modeBody, byId(id)?.closest(".headSelect"));
     });
     body.appendChild(settingsSection("Modes", modeBody));
+
+    body.appendChild(makeInfiniteSettings());
 
     const generationBody = make("div", "miniSettingsSectionBody");
     moveIfPresent(generationBody, byId("cardControls"));
