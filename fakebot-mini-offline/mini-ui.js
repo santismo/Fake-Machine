@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const UI_VERSION = "20260714a-offline";
+  const UI_VERSION = "20260728-playstyles";
 
   const byId = (id)=>document.getElementById(id);
   const make = (tag, className, text)=>{
@@ -52,6 +52,10 @@
     knob.setAttribute("aria-valuemin", input.min);
     knob.setAttribute("aria-valuemax", input.max);
     knob.title = `${label}: drag up or down`;
+    const readout = make("span", "miniKnobValue");
+    knob.appendChild(readout);
+    const externalReadout = host.querySelector(".val");
+    if (externalReadout) externalReadout.setAttribute("aria-hidden", "true");
     const sync = ()=>{
       const min = Number(input.min);
       const max = Number(input.max);
@@ -60,10 +64,12 @@
       knob.style.setProperty("--mini-knob-angle", `${-135 + ratio * 270}deg`);
       knob.setAttribute("aria-valuenow", String(value));
       knob.setAttribute("aria-valuetext", `${value}${id === "masterVolTop" ? "%" : " BPM"}`);
+      readout.textContent = `${value}${id === "masterVolTop" ? "%" : ""}`;
     };
     input.classList.add("miniKnobInput");
     host.insertBefore(knob, input);
     input.addEventListener("input", sync);
+    input.addEventListener("fakebot-sync", sync);
     sync();
     let startY = 0;
     let startValue = 0;
@@ -81,7 +87,8 @@
       const max = Number(input.max);
       const delta = startY - event.clientY;
       if (Math.abs(delta) > 3) moved = true;
-      const next = Math.round(Math.max(min, Math.min(max, startValue + delta * ((max-min) / 360))));
+      const travel = id === "masterTempoTop" ? 520 : 440;
+      const next = Math.round(Math.max(min, Math.min(max, startValue + delta * ((max-min) / travel))));
       if (next !== Number(input.value)) setInputValue(input, next);
     });
     knob.addEventListener("pointerup", (event)=>{
@@ -103,6 +110,71 @@
       setInputValue(input, Math.max(min, Math.min(max, next)));
     });
     return host;
+  }
+
+  function makeQuickStyle(){
+    const source = byId("genrePreset");
+    const field = make("label", "miniQuickStyle");
+    field.append(make("span", "", "Play style"));
+    const select = document.createElement("select");
+    select.id = "miniQuickStyle";
+    select.setAttribute("aria-label", "Quick play style");
+    const preferred = ["lofiJazz","modernJazz","bebop","jazzBallad","neoSoulJazz","bossa","funk","jazzRockFusion","ambient"];
+    preferred.forEach((id)=>{
+      const original = source?.querySelector(`option[value="${id}"]`);
+      if (!original) return;
+      const option = document.createElement("option");
+      option.value = id;
+      option.textContent = original.textContent;
+      select.appendChild(option);
+    });
+    const sync = (next)=>{
+      const value = next?.genrePreset || source?.value || "lofiJazz";
+      if (select.querySelector(`option[value="${value}"]`)) select.value = value;
+    };
+    source?.addEventListener("change", ()=>sync());
+    window.addEventListener("fakebot-play-style", (event)=>sync(event.detail));
+    select.addEventListener("change", ()=>{
+      if (!source) return;
+      source.value = select.value;
+      source.dispatchEvent(new Event("change", {bubbles:true}));
+    });
+    sync();
+    field.appendChild(select);
+    return field;
+  }
+
+  function makePerformanceSettings(){
+    const body = make("div", "miniSettingsSectionBody miniPerformanceGrid");
+    const api = ()=>window.FakebotPlayStyle;
+    const current = ()=>api()?.getState?.() || {rakeAmount:72, compComplexity:58};
+    const makeRange = (label, key)=>{
+      const field = make("label", "miniPerformanceField");
+      const heading = make("span", "", label);
+      const output = make("output", "", "");
+      const input = document.createElement("input");
+      input.type = "range";
+      input.min = "0";
+      input.max = "100";
+      input.step = "1";
+      input.setAttribute("aria-label", label);
+      const sync = (next=current())=>{
+        const value = Math.round(Number(next[key]) || 0);
+        input.value = String(value);
+        output.textContent = String(value);
+      };
+      input.addEventListener("input", ()=>api()?.configure?.({[key]:Number(input.value)}));
+      field.append(heading, output, input);
+      sync();
+      return {field,sync};
+    };
+    const density = makeRange("Comp density", "compComplexity");
+    const rake = makeRange("Chord rake", "rakeAmount");
+    const hint = make("p", "miniPerformanceHint", "Density shapes the band; rake spreads chord tones from low to high.");
+    const sync = (next)=>{ density.sync(next); rake.sync(next); };
+    window.addEventListener("fakebot-play-style", (event)=>sync(event.detail));
+    body.append(density.field, rake.field, hint);
+    return settingsSection("Performance", body);
   }
 
   function makeInfiniteSettings(){
@@ -209,7 +281,7 @@
     moveIfPresent(quick, makeRotaryKnob("masterVolTop", "🔊", "Master volume"));
     moveIfPresent(quick, makeRotaryKnob("masterTempoTop", "♩", "Tempo"));
     moveIfPresent(quick, byId("btnTransposeDown")?.closest(".transposeGroup"));
-    overview.appendChild(quick);
+    overview.append(makeQuickStyle(), quick);
     moveIfPresent(overview, byId("msg"));
     return overview;
   }
@@ -260,6 +332,7 @@
     body.appendChild(settingsSection("Modes", modeBody));
 
     body.appendChild(makeInfiniteSettings());
+    body.appendChild(makePerformanceSettings());
 
     const generationBody = make("div", "miniSettingsSectionBody");
     moveIfPresent(generationBody, byId("cardControls"));
