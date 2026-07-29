@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const UI_VERSION = "20260728-playstyles";
+  const UI_VERSION = "20260728-lofi-infinite";
 
   const byId = (id)=>document.getElementById(id);
   const make = (tag, className, text)=>{
@@ -114,7 +114,7 @@
 
   function makeQuickStyle(){
     const source = byId("genrePreset");
-    const field = make("label", "miniQuickStyle");
+    const field = make("div", "miniQuickStyle");
     field.append(make("span", "", "Play style"));
     const select = document.createElement("select");
     select.id = "miniQuickStyle";
@@ -139,8 +139,21 @@
       source.value = select.value;
       source.dispatchEvent(new Event("change", {bubbles:true}));
     });
+    const randomInstruments = make("button", "miniQuickInstrumentRandom", "↻");
+    randomInstruments.type = "button";
+    randomInstruments.title = "Choose instruments that fit this play style";
+    randomInstruments.setAttribute("aria-label", "Randomize instruments for this play style");
+    randomInstruments.addEventListener("click", async()=>{
+      randomInstruments.disabled = true;
+      const style = select.value || "lofiJazz";
+      try{
+        window.FakebotPlayStyle?.randomizeInstruments?.(style);
+        await window.FakebotMiniSamples?.randomizeForStyle?.(style);
+      }catch{}
+      finally{ randomInstruments.disabled = false; }
+    });
     sync();
-    field.appendChild(select);
+    field.append(select, randomInstruments);
     return field;
   }
 
