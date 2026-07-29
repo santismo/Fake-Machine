@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const VERSION = "1.3.0";
+  const VERSION = "1.4.0";
   const STORE_KEY = "fakebot-mini.samples.v1";
   const MODULE_URL = "https://unpkg.com/smplr@1.0.0/dist/index.mjs";
 
@@ -103,7 +103,7 @@
     {id:"abuse:yamaha-rx-5",instrument:"yamaha-rx-5",engine:"abuse",label:"Yamaha RX-5",group:"More drum machines"},
     {id:"abuse:simmons-sds-5",instrument:"simmons-sds-5",engine:"abuse",label:"Simmons SDS-5",group:"More drum machines"}
   ];
-  const DEFAULTS = {keys:"electric_piano_1",bass:"electric_bass_finger",drums:"LM-2",mix:.9,muteMelody:false,muteSolo:false};
+  const DEFAULTS = {keys:"ep:WurlitzerEP200",bass:"acoustic_bass",drums:"abuse:emu-sp-12",mix:.9,muteMelody:false,muteSolo:false};
   const wait = (milliseconds)=>new Promise(resolve=>window.setTimeout(resolve,milliseconds));
 
   function readSettings(){
@@ -135,6 +135,7 @@
     trackAvailability:{melody:false,solo:false},
     midiScheduleEpoch:0,
     midiScheduledStops:new Set(),
+    lastDrumSamples:new Map(),
 
     cancelMidiSchedules(){
       this.midiScheduleEpoch += 1;
@@ -372,15 +373,31 @@
       return ({kick:36,snare:38,clap:39,hat:42,ride:51,crash:49,tom:45})[kind] || 38;
     },
 
+    drumNote(kind,instance){
+      const group = this.drumName(kind,instance);
+      const names = typeof instance?.getSampleNamesForGroup === "function"
+        ? instance.getSampleNamesForGroup(group)
+        : [];
+      if (!Array.isArray(names) || !names.length) return group;
+      const last = this.lastDrumSamples.get(kind);
+      const candidates = names.filter(name=>name !== last);
+      const note = (candidates.length ? candidates : names)[Math.floor(Math.random()*(candidates.length || names.length))];
+      this.lastDrumSamples.set(kind,note);
+      return note;
+    },
+
     async drum(kind,time,velocity,midiEpoch=null){
       try{
         if (midiEpoch !== null && !this.isCurrentMidiSchedule(midiEpoch)) return;
         const instance = await this.load("drums",settings.drums);
         if (midiEpoch !== null && !this.isCurrentMidiSchedule(midiEpoch)) return;
+        const lofi = window.FakebotPlayStyle?.getState?.().genrePreset === "lofiJazz";
+        const humanizedVelocity = clamp((Number(velocity)||.8) * (lofi ? (0.90 + Math.random()*0.16) : 1),.04,1);
+        const humanizedTime = Math.max(this.context.currentTime+.006,Number(time)||this.context.currentTime+.006) + (lofi ? (Math.random()*0.004-0.002) : 0);
         const stop = instance.start({
-          note:this.drumName(kind,instance),
-          time:Math.max(this.context.currentTime+.006,Number(time)||this.context.currentTime+.006),
-          velocity:Math.round(clamp(Number(velocity)||.8,.04,1)*127)
+          note:this.drumNote(kind,instance),
+          time:humanizedTime,
+          velocity:Math.round(humanizedVelocity*127)
         });
         if (midiEpoch !== null) this.trackMidiSchedule(stop,midiEpoch);
       }catch{
@@ -435,7 +452,29 @@
       }
     },
 
-    async randomizeSounds(){
+    async randomizeForStyle(styleId="lofiJazz"){
+      const lofi = styleId === "lofiJazz";
+      const styleSets = {
+        modernJazz:{keys:["electric_piano_1","electric_piano_2","acoustic_grand_piano","vibraphone"],bass:["acoustic_bass","fretless_bass"],drums:["abuse:yamaha-rx-5","abuse:emu-sp-12","LM-2"]},
+        bebop:{keys:["acoustic_grand_piano","electric_piano_1","vibraphone"],bass:["acoustic_bass","smolken:Pizzicato"],drums:["abuse:yamaha-rx-5","abuse:linn-lm-1","LM-2"]},
+        jazzBallad:{keys:["acoustic_grand_piano","ep:WurlitzerEP200","vibraphone","mellotron:MKII VIBES"],bass:["acoustic_bass","fretless_bass"],drums:["abuse:emu-sp-12","abuse:yamaha-rx-5","LM-2"]},
+        neoSoulJazz:{keys:["ep:WurlitzerEP200","ep:PianetT","electric_piano_1","electric_guitar_jazz"],bass:["fretless_bass","electric_bass_finger","smolken:Pizzicato"],drums:["abuse:emu-sp-12","abuse:linn-9000","LM-2"]},
+        bossa:{keys:["acoustic_guitar_nylon","acoustic_grand_piano","electric_piano_1"],bass:["acoustic_bass","electric_bass_finger"],drums:["abuse:yamaha-rx-5","Roland CR-8000","LM-2"]},
+        funk:{keys:["clavinet","ep:PianetT","electric_piano_1"],bass:["electric_bass_finger","electric_bass_pick","fretless_bass"],drums:["abuse:linn-9000","abuse:emu-sp-12","LM-2"]},
+        jazzRockFusion:{keys:["ep:CP80","electric_piano_2","electric_guitar_clean"],bass:["electric_bass_finger","fretless_bass"],drums:["abuse:yamaha-rx-5","abuse:linn-9000","LM-2"]},
+        ambient:{keys:["mellotron:MIXED STRGS","mellotron:MKII VIBES","pad_2_warm","vibraphone"],bass:["fretless_bass","acoustic_bass"],drums:["abuse:emu-sp-12","Roland CR-8000","LM-2"]}
+      };
+      const set = styleSets[styleId] || {};
+      return this.randomizeSounds({
+        keys:lofi ? ["electric_piano_1","electric_piano_2","ep:WurlitzerEP200","ep:PianetT","ep:CP80","vibraphone","mellotron:MKII VIBES","electric_guitar_jazz"] : set.keys,
+        bass:lofi ? ["acoustic_bass","fretless_bass","electric_bass_finger","smolken:Pizzicato"] : set.bass,
+        drums:lofi ? ["abuse:emu-sp-12","abuse:linn-lm-1","abuse:linn-9000","abuse:yamaha-rx-5","LM-2"] : set.drums,
+        loadingLabel:lofi ? "Loading a lo-fi jazz sound set…" : "Loading a new sound set…",
+        readyLabel:lofi ? "Lo-fi jazz sound set ready" : "New sounds ready"
+      });
+    },
+
+    async randomizeSounds(pools={}){
       if (this.randomizePromise) return this.randomizePromise;
       const randomButton = document.getElementById("miniSampleRandom");
       if (randomButton) randomButton.disabled = true;
@@ -445,15 +484,21 @@
         const choices = items.filter(item=>item.id !== current);
         return (choices[Math.floor(Math.random()*choices.length)] || items[0]).id;
       };
-      settings.keys = pickDifferent(VOICES.filter(item=>item.role === "keys"),settings.keys);
-      settings.bass = pickDifferent(VOICES.filter(item=>item.role === "bass"),settings.bass);
-      settings.drums = pickDifferent(DRUMS,settings.drums);
+      const resolvePool = (items,ids)=>Array.isArray(ids) && ids.length
+        ? items.filter(item=>ids.includes(item.id))
+        : items;
+      const keyPool = resolvePool(VOICES.filter(item=>item.role === "keys"),pools.keys);
+      const bassPool = resolvePool(VOICES.filter(item=>item.role === "bass"),pools.bass);
+      const drumPool = resolvePool(DRUMS,pools.drums);
+      settings.keys = pickDifferent(keyPool.length ? keyPool : VOICES.filter(item=>item.role === "keys"),settings.keys);
+      settings.bass = pickDifferent(bassPool.length ? bassPool : VOICES.filter(item=>item.role === "bass"),settings.bass);
+      settings.drums = pickDifferent(drumPool.length ? drumPool : DRUMS,settings.drums);
       saveSettings();
       const values = {miniSampleKeys:settings.keys,miniSampleBass:settings.bass,miniSampleDrums:settings.drums};
       Object.entries(values).forEach(([id,value])=>{ const select = document.getElementById(id); if (select) select.value = value; });
       this.stopAll();
       this.preparePromise = null;
-      this.report("Loading a new sound set…");
+      this.report(pools.loadingLabel || "Loading a new sound set…");
       try{
         await Promise.all([
           this.load("keys",settings.keys),
@@ -462,7 +507,7 @@
         ]);
         this.cleanupUnused();
         this.preparePromise = Promise.resolve();
-        this.report("New sounds ready","ready");
+        this.report(pools.readyLabel || "New sounds ready","ready");
       }catch(error){
         Object.assign(settings,previous);
         saveSettings();
@@ -603,6 +648,7 @@
         version:VERSION,
         ready:async()=>{ await Engine.resume(); await Engine.prepare(); },
         randomize:()=>Engine.randomizeSounds(),
+        randomizeForStyle:(styleId)=>Engine.randomizeForStyle(styleId),
         stop:()=>Engine.stopAll(),
         setMidiPlaybackActive:(active)=>Engine.setMidiPlaybackActive(active),
         setTrackAvailability:(availability)=>Engine.setTrackAvailability(availability)
