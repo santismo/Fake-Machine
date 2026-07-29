@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const VERSION = "20260729-recovery-assets";
+  const VERSION = "20260729-root-assets";
   const frame = document.getElementById("miniFrame");
   const loading = document.getElementById("miniLoading");
   const audioStatus = document.getElementById("miniAudioStatus");
