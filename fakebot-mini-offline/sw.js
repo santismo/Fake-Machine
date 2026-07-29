@@ -1,8 +1,11 @@
-const CACHE_NAME = "fakebot-mini-offline-20260728-lofi-infinite";
+const CACHE_NAME = "fakebot-mini-offline-20260729-startup-fix";
 const APP_FILES = [
   "./",
   "./index.html",
   "./app.html",
+  "./.fakebot-source/offline-01.js",
+  "./.fakebot-source/offline-02.js",
+  "./.fakebot-source/offline-03.js",
   "./shell.css",
   "./shell.js",
   "./mini-frame.css",

@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const VERSION = "20260728-lofi-infinite";
+  const VERSION = "20260729-startup-fix";
   const frame = document.getElementById("miniFrame");
   const loading = document.getElementById("miniLoading");
   const audioStatus = document.getElementById("miniAudioStatus");
