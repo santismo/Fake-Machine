@@ -527,9 +527,16 @@
     }
   };
 
+  let lastBassMidi = 43;
   function bassMidi(rootPitchClass){
-    let midi = 36 + ((Math.round(rootPitchClass)%12)+12)%12;
-    while (midi > 52) midi -= 12;
+    const pitchClass = ((Math.round(rootPitchClass)%12)+12)%12;
+    const base = 36 + pitchClass;
+    const candidates = [base - 12, base, base + 12].filter((midi)=>midi >= 31 && midi <= 55);
+    const midi = candidates.sort((a,b)=>{
+      const distance = Math.abs(a - lastBassMidi) - Math.abs(b - lastBassMidi);
+      return distance || a - b;
+    })[0] ?? base;
+    lastBassMidi = midi;
     return midi;
   }
 
@@ -580,7 +587,7 @@
       if (Engine.context.state !== "running") Engine.context.resume().catch(()=>{});
       Engine.prepare().catch(()=>{});
     };
-    audio.hardStop = ()=>{ Engine.stopAll(); original.hardStop(); };
+    audio.hardStop = ()=>{ lastBassMidi = 43; Engine.stopAll(); original.hardStop(); };
     audio.setMasterVolume = (value)=>original.setMasterVolume(value);
     audio.__fakebotMiniSamples = Object.freeze({version:VERSION,engine:Engine});
   }

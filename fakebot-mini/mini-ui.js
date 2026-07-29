@@ -195,7 +195,7 @@
   function makeInfiniteSettings(){
     const sectionBody = make("div", "miniSettingsSectionBody miniInfiniteSettings");
     const api = ()=>window.FakebotInfinite;
-    const current = ()=>api()?.getState?.() || {enabled:false,visibleChords:4,feelEvery:0,styleEvery:0};
+    const current = ()=>api()?.getState?.() || {enabled:false,visibleChords:4,feelEvery:0,styleEvery:0,majorResolve:68,minorResolve:32,modulation:34,modulateEvery:16};
 
     const toggle = make("label", "miniInfiniteToggle");
     const checkbox = document.createElement("input");
@@ -225,23 +225,58 @@
     const changes = [[0,"Never"],[4,"Every 4"],[8,"Every 8"],[12,"Every 12"],[16,"Every 16"],[24,"Every 24"]];
     const feel = makeSelect("Feel changes", "miniInfiniteFeel", changes);
     const style = makeSelect("Style changes", "miniInfiniteStyle", changes);
-    const hint = make("p", "miniInfiniteHint", "The leftmost card plays next; each new chord enters from the right.");
-    sectionBody.append(toggle, fields, hint);
+    const tonal = make("div", "miniInfiniteTonalGrid");
+    const makeRange = (label, id, initial)=>{
+      const field = make("label", "miniInfiniteRange");
+      const header = make("span", "");
+      const output = make("output", "", String(initial));
+      header.append(make("span", "", label), output);
+      const input = document.createElement("input");
+      input.type = "range";
+      input.id = id;
+      input.min = "0";
+      input.max = "100";
+      input.step = "1";
+      input.value = String(initial);
+      input.addEventListener("input", ()=>{ output.value = input.value; output.textContent = input.value; configure(); });
+      field.append(header, input);
+      tonal.appendChild(field);
+      return input;
+    };
+    const major = makeRange("Major resolve", "miniInfiniteMajorResolve", 68);
+    const minor = makeRange("Minor resolve", "miniInfiniteMinorResolve", 32);
+    const modulation = makeRange("Modulation", "miniInfiniteModulation", 34);
+    const modulateEvery = makeSelect("Key changes", "miniInfiniteModulateEvery", [[0,"Stay in key"],[8,"Every 8 chords"],[16,"Every 16 chords"],[24,"Every 24 chords"],[32,"Every 32 chords"]]);
+    modulateEvery.closest("label")?.classList.add("miniInfiniteKeyChanges");
+    const hint = make("p", "miniInfiniteHint", "Major and minor guide phrase endings. Key changes happen only at a prepared phrase seam.");
+    sectionBody.append(toggle, fields, tonal, hint);
 
     const sync = (next=current())=>{
       checkbox.checked = !!next.enabled;
       visible.value = String(next.visibleChords ?? 4);
       feel.value = String(next.feelEvery ?? 0);
       style.value = String(next.styleEvery ?? 0);
+      major.value = String(next.majorResolve ?? 68);
+      minor.value = String(next.minorResolve ?? 32);
+      modulation.value = String(next.modulation ?? 34);
+      modulateEvery.value = String(next.modulateEvery ?? 16);
+      [major, minor, modulation].forEach(input=>{
+        const output = input.closest("label")?.querySelector("output");
+        if (output){ output.value = input.value; output.textContent = input.value; }
+      });
       sectionBody.classList.toggle("isEnabled", !!next.enabled);
     };
     const configure = ()=>api()?.configure?.({
       visibleChords:Number(visible.value),
       feelEvery:Number(feel.value),
-      styleEvery:Number(style.value)
+      styleEvery:Number(style.value),
+      majorResolve:Number(major.value),
+      minorResolve:Number(minor.value),
+      modulation:Number(modulation.value),
+      modulateEvery:Number(modulateEvery.value)
     });
     checkbox.addEventListener("change", ()=>api()?.setEnabled?.(checkbox.checked));
-    [visible, feel, style].forEach((select)=>select.addEventListener("change", configure));
+    [visible, feel, style, modulateEvery].forEach((select)=>select.addEventListener("change", configure));
     window.addEventListener("fakebot-infinite-state", (event)=>sync(event.detail));
     sync();
     return settingsSection("Infinite loop", sectionBody);

@@ -1,11 +1,11 @@
-const CACHE_NAME = "fakebot-mini-offline-20260729-bootstrap-ready";
+const CACHE_NAME = "fakebot-mini-offline-20260729-infinite-harmony";
 const APP_FILES = [
   "./",
   "./index.html",
   "./app.html",
-  "./fakebot-source/offline-01.js",
-  "./fakebot-source/offline-02.js",
-  "./fakebot-source/offline-03.js",
+  "./fakebot-source/offline-harmony-v2-01.js",
+  "./fakebot-source/offline-harmony-v2-02.js",
+  "./fakebot-source/offline-harmony-v2-03.js",
   "./shell.css",
   "./shell.js",
   "./mini-frame.css",
