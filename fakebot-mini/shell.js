@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const VERSION = "20260729-bootstrap-ready";
+  const VERSION = "20260729-infinite-harmony";
   const frame = document.getElementById("miniFrame");
   const loading = document.getElementById("miniLoading");
   const audioStatus = document.getElementById("miniAudioStatus");
