@@ -12,13 +12,13 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" sizes="180x180" href="fakebot-mini-offline-icon-180.png">
   <link rel="icon" type="image/svg+xml" href="fakebot-mini-offline-icon.svg">
-  <link rel="stylesheet" href="shell.css?v=20260729-recovery-assets">
+  <link rel="stylesheet" href="shell.css?v=20260729-bootstrap-ready">
 </head>
 <body>
   <div class="miniShell">
     <main class="miniFrameWrap">
       <div class="miniAudioState" id="miniAudioStatus" data-state="ready" role="status">Offline synth ready</div>
-      <iframe id="miniFrame" src="app.html?variant=mini-offline&amp;v=20260729-recovery-assets" title="Fakebot Mini Offline chord generator" allow="autoplay"></iframe>
+      <iframe id="miniFrame" src="app.html?variant=mini-offline&amp;v=20260729-bootstrap-ready" title="Fakebot Mini Offline chord generator" allow="autoplay"></iframe>
       <div class="miniLoading" id="miniLoading" role="status">Loading Fakebot Mini Offline…</div>
     </main>
 
@@ -40,7 +40,7 @@
       </button>
     </nav>
   </div>
-  <script src="shell.js?v=20260729-recovery-assets"></script>
+  <script src="shell.js?v=20260729-bootstrap-ready"></script>
   <script>
     if ("serviceWorker" in navigator){
       window.addEventListener("load", ()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}), {once:true});

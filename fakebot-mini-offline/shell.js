@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const VERSION = "20260729-recovery-assets";
+  const VERSION = "20260729-bootstrap-ready";
   const frame = document.getElementById("miniFrame");
   const loading = document.getElementById("miniLoading");
   const audioStatus = document.getElementById("miniAudioStatus");
@@ -12,6 +12,8 @@
   let bootedDocument = null;
   let playPending = false;
   let stateSyncTimer = 0;
+  let bootRetryTimer = 0;
+  let bootWaitStartedAt = 0;
 
   function showStatus(message, hold=1400){
     if (!loading) return;
@@ -29,6 +31,24 @@
   function frameWindow(){
     try{ return frame?.contentWindow || null; }
     catch{ return null; }
+  }
+
+  function frameHasMiniSource(doc, win){
+    return !!(
+      doc?.getElementById("btnPlay") &&
+      doc?.getElementById("btnGenerate") &&
+      typeof win?.FakebotCore?.audio?.createExternalInput === "function"
+    );
+  }
+
+  function queueBootFrame(){
+    window.clearTimeout(bootRetryTimer);
+    if (!bootWaitStartedAt) bootWaitStartedAt = Date.now();
+    if (Date.now() - bootWaitStartedAt > 12000){
+      showStatus("Fakebot Mini Offline could not finish loading", 3200);
+      return;
+    }
+    bootRetryTimer = window.setTimeout(bootFrame, 60);
   }
 
   function assetUrl(path){
@@ -100,7 +120,15 @@
 
   async function bootFrame(){
     const doc = frameDocument();
+    const win = frameWindow();
     if (!doc || doc === bootedDocument) return;
+    if (!frameHasMiniSource(doc, win)){
+      showStatus("Opening Fakebot Mini Offline…", 500);
+      queueBootFrame();
+      return;
+    }
+    window.clearTimeout(bootRetryTimer);
+    bootWaitStartedAt = 0;
     bootedDocument = doc;
     showStatus("Building Fakebot Mini Offline…", 1800);
     try{
@@ -207,6 +235,9 @@
     if (event.data.type === "settings-closed") settingsButton?.focus();
   });
 
-  frame?.addEventListener("load", bootFrame);
-  if (frameDocument()?.readyState === "complete") bootFrame();
+  frame?.addEventListener("load", ()=>{
+    bootWaitStartedAt = 0;
+    queueBootFrame();
+  });
+  if (frameDocument()?.readyState === "complete") queueBootFrame();
 })();
