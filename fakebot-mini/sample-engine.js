@@ -104,6 +104,10 @@
     {id:"abuse:simmons-sds-5",instrument:"simmons-sds-5",engine:"abuse",label:"Simmons SDS-5",group:"More drum machines"}
   ];
   const DEFAULTS = {keys:"ep:WurlitzerEP200",bass:"acoustic_bass",drums:"abuse:emu-sp-12",mix:.9,muteMelody:false,muteSolo:false};
+  // Chords arrive as several simultaneous samples, while a kit is one hit at
+  // a time. These gains keep the backing band balanced on phone speakers.
+  const TRACK_VELOCITY = Object.freeze({keys:0.84,bass:0.94});
+  const DRUM_VELOCITY = Object.freeze({kick:1.24,snare:1.30,clap:1.24,hat:1.16,ride:1.14,crash:1.12,tom:1.20});
   const wait = (milliseconds)=>new Promise(resolve=>window.setTimeout(resolve,milliseconds));
 
   function readSettings(){
@@ -322,11 +326,12 @@
         const id = settings[role];
         const instance = await this.load(role,id);
         if (midiEpoch !== null && !this.isCurrentMidiSchedule(midiEpoch)) return;
+        const roleGain = TRACK_VELOCITY[role] ?? 1;
         const stop = instance.start({
           note:Math.round(midi),
           time:Math.max(this.context.currentTime+.006,Number(time)||this.context.currentTime+.006),
           duration:Math.max(.06,Number(duration)||.5),
-          velocity:Math.round(clamp(Number(velocity)||.75,.04,1)*127)
+          velocity:Math.round(clamp((Number(velocity)||.75) * roleGain,.04,1)*127)
         });
         if (midiEpoch !== null) this.trackMidiSchedule(stop,midiEpoch);
       }catch{
@@ -392,7 +397,8 @@
         const instance = await this.load("drums",settings.drums);
         if (midiEpoch !== null && !this.isCurrentMidiSchedule(midiEpoch)) return;
         const lofi = window.FakebotPlayStyle?.getState?.().genrePreset === "lofiJazz";
-        const humanizedVelocity = clamp((Number(velocity)||.8) * (lofi ? (0.90 + Math.random()*0.16) : 1),.04,1);
+        const kindGain = DRUM_VELOCITY[kind] ?? 1.18;
+        const humanizedVelocity = clamp((Number(velocity)||.8) * kindGain * (lofi ? (0.92 + Math.random()*0.16) : 1),.04,1);
         const humanizedTime = Math.max(this.context.currentTime+.006,Number(time)||this.context.currentTime+.006) + (lofi ? (Math.random()*0.004-0.002) : 0);
         const stop = instance.start({
           note:this.drumNote(kind,instance),
